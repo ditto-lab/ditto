@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 import "../DittoMachine.sol";
 import "./Bidder.sol";
 import "./BidderWithReceiver.sol";
+import "./BidderWithWrongReceiver.sol";
 
 contract UnderlyingNFT is ERC721 {
     constructor() ERC721("Underlying", "UNDER") {}
@@ -31,6 +32,9 @@ contract Currency is ERC20 {
 interface CheatCodes {
     function prank(address) external;
     function startPrank(address) external;
+    function stopPrank() external;
+    function expectRevert(bytes calldata) external;
+
 }
 
 contract ContractTest is DSTest {
@@ -42,13 +46,27 @@ contract ContractTest is DSTest {
     UnderlyingNFT nft;
     address nftAddr;
 
-    Currency curr;
-    address currAddr;
+    Currency currency;
+    address currencyAddr;
 
     uint256 nftTokenId = 0;
 
-    Bidder bidder;
-    BidderWithReceiver bidderWR;
+    Bidder immutable bidder;
+    BidderWithReceiver immutable bidderWR;
+    BidderWithWrongReceiver immutable bidderWWR;
+
+    bytes32 immutable FLOOR_HASH;
+    uint256 immutable DNOM;
+
+    constructor() {
+        dm = new DittoMachine();
+        FLOOR_HASH = dm.FLOOR_HASH();
+        DNOM = dm.DNOM();
+
+        bidder = new Bidder(dmAddr);
+        bidderWR = new BidderWithReceiver(dmAddr);
+        bidderWWR = new BidderWithWrongReceiver(dmAddr);
+    }
 
     function setUp() public {
         dm = new DittoMachine();
@@ -57,11 +75,8 @@ contract ContractTest is DSTest {
         nft = new UnderlyingNFT();
         nftAddr = address(nft);
 
-        curr = new Currency();
-        currAddr = address(curr);
-
-        bidder = new Bidder(dmAddr);
-        bidderWR = new BidderWithReceiver(dmAddr);
+        currency = new Currency();
+        currencyAddr = address(currency);
     }
 
     function generateAddress(bytes memory str) internal pure returns (address) {
@@ -92,33 +107,50 @@ contract ContractTest is DSTest {
     function testFailDuplicateForLowAmount() public {
         uint256 nftId = mintNft();
 
-        dm.duplicate(nftAddr, nftId, currAddr, 1, true);
+        dm.duplicate(nftAddr, nftId, currencyAddr, 1, true);
     }
 
-    function testFailWhenBidderDoesNotImplementOnErc721Received() public {
-        curr.mint(address(this), dm.DNOM());
-        curr.approve(dmAddr, dm.DNOM());
+    function testWhenBidderDoesNotImplementOnErc721Received() public {
+        currency.mint(address(bidder), DNOM);
+        cheats.startPrank(address(bidder));
+        currency.approve(dmAddr, DNOM);
 
+        cheats.expectRevert(bytes(""));
         dm.duplicate(
             nftAddr,
-            uint256(dm.FLOOR_HASH()),
-            currAddr,
-            dm.DNOM(),
+            uint256(FLOOR_HASH),
+            currencyAddr,
+            DNOM,
+            true
+        );
+    }
+
+    function testWhenBidderImplementsWrongOnErc721Received() public {
+        currency.mint(address(bidderWWR), DNOM);
+        cheats.startPrank(address(bidderWWR));
+        currency.approve(dmAddr, DNOM);
+
+        cheats.expectRevert(bytes("UNSAFE_RECIPIENT"));
+        dm.duplicate(
+            nftAddr,
+            uint256(FLOOR_HASH),
+            currencyAddr,
+            DNOM,
             true
         );
     }
 
     function testDuplicateMintFloor() public {
         uint256 nftId = mintNft();
-        curr.mint(address(bidderWR), dm.DNOM());
+        currency.mint(address(bidderWR), DNOM);
         cheats.startPrank(address(bidderWR));
-        curr.approve(dmAddr, dm.DNOM());
+        currency.approve(dmAddr, DNOM);
 
         uint256 cloneId = dm.duplicate(
             nftAddr,
-            uint256(dm.FLOOR_HASH()),
-            currAddr,
-            dm.DNOM(),
+            uint256(FLOOR_HASH),
+            currencyAddr,
+            DNOM,
             true
         );
 
@@ -126,12 +158,14 @@ contract ContractTest is DSTest {
             cloneId,
             uint256(keccak256(abi.encodePacked(
                 nftAddr,
-                uint256(dm.FLOOR_HASH()),
-                currAddr,
+                uint256(FLOOR_HASH),
+                currencyAddr,
                 true
             )))
         );
 
+        cheats.stopPrank();
+        assertEq(dm.ownerOf(cloneId), address(bidderWR));
         string memory dmTokenURI = dm.tokenURI(cloneId);
         string memory nftTokenURI = nft.tokenURI(nftId);
 
@@ -142,20 +176,20 @@ contract ContractTest is DSTest {
     function testFailProveDuplicateForFloor(uint256 _currAmount) public {
         uint256 nftId = mintNft();
 
-        dm.duplicate(nftAddr, nftId, currAddr, _currAmount, true);
+        dm.duplicate(nftAddr, nftId, currencyAddr, _currAmount, true);
     }
 
     function testDuplicateMintClone() public {
         uint256 nftId = mintNft();
-        curr.mint(address(bidderWR), dm.DNOM());
+        currency.mint(address(bidderWR), DNOM);
         cheats.startPrank(address(bidderWR));
-        curr.approve(dmAddr, dm.DNOM());
+        currency.approve(dmAddr, DNOM);
 
         uint256 cloneId = dm.duplicate(
             nftAddr,
             0,
-            currAddr,
-            dm.DNOM(),
+            currencyAddr,
+            DNOM,
             false
         );
 
@@ -164,7 +198,7 @@ contract ContractTest is DSTest {
             uint256(keccak256(abi.encodePacked(
                 nftAddr,
                 uint256(0),
-                currAddr,
+                currencyAddr,
                 false
             )))
         );
