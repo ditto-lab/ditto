@@ -75,8 +75,6 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
         uint256 _amount,
         bool floor
     ) public returns (uint256) {
-        require(!floor || (floor && (_tokenId==uint256(FLOOR_HASH))), "DM:duplicate:_tokenId.invalid");
-
         // ensure enough funds to do some math on
         require(_amount >= DNOM, "DM:duplicate:_amount.invalid");
 
