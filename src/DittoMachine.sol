@@ -74,10 +74,14 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
         address _ERC20Contract,
         uint256 _amount,
         bool floor
-    ) public {
+    ) public returns (uint256) {
+        require(!floor || (floor && (_tokenId==uint256(FLOOR_HASH))), "DM:duplicate:_tokenId.invalid");
+
         // ensure enough funds to do some math on
         require(_amount >= DNOM, "DM:duplicate:_amount.invalid");
-        _tokenId = !floor ? _tokenId : uint256(FLOOR_HASH);
+
+        _tokenId = floor ? uint256(FLOOR_HASH): _tokenId;
+
         // calculate cloneId by hashing identifiying information
         uint256 cloneId = uint256(keccak256(abi.encodePacked(
             _ERC721Contract,
@@ -99,7 +103,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
             subsidy = (_amount * MIN_FEE / DNOM).toUint128();
             value = _amount.toUint128() - subsidy;
             cloneIdToShape[cloneId] = CloneShape(
-                (!floor ? _tokenId : uint256(FLOOR_HASH)),
+                floor ? uint256(FLOOR_HASH): _tokenId,
                 value,
                 _ERC721Contract,
                 _ERC20Contract,
@@ -180,6 +184,8 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
             forceSafeTransferFrom(ownerOf[cloneId], msg.sender, cloneId); // EXTERNAL CALL
             assert((cloneShape.worth + (subsidy/2 + subsidy%2)) + (value + (subsidy/2)) == _amount);
         }
+
+        return cloneId;
     }
 
     /**
