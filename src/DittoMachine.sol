@@ -37,9 +37,9 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
         uint256 worth;
         address ERC721Contract;
         address ERC20Contract;
+        bool floor;
         uint16 heat;
         uint256 term;
-        bool floor;
     }
 
     mapping(uint256 => CloneShape) public cloneIdToShape;
@@ -59,11 +59,12 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
         CloneShape memory cloneShape = cloneIdToShape[id];
 
         string memory _name = string(abi.encodePacked('Ditto #', Strings.toString(id)));
+        string memory nftTokenId = cloneShape.floor ? "Floor" : Strings.toString(cloneShape.tokenId);
 
         string memory description = string(abi.encodePacked(
             'This Ditto gives you a chance to buy ',
             ERC721(cloneIdToShape[id].ERC721Contract).name(),
-            ' #', Strings.toString(cloneShape.tokenId),
+            ' #', nftTokenId,
             '(', Strings.toHexString(uint160(cloneIdToShape[id].ERC721Contract), 20), ')'
         ));
 
@@ -114,7 +115,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
         bool floor
     ) public returns (uint256) {
         // _tokenId has to be set to FLOOR_ID to purchase the floor perp
-        require(!floor || (floor && (_tokenId == FLOOR_ID)), "DM:duplicate:_tokenId.invalid");
+        require(!floor || (_tokenId == FLOOR_ID), "DM:duplicate:_tokenId.invalid");
 
         // ensure enough funds to do some math on
         require(_amount >= DNOM, "DM:duplicate:_amount.invalid");
@@ -140,9 +141,9 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
                 value,
                 _ERC721Contract,
                 _ERC20Contract,
+                floor,
                 1,
-                block.timestamp + BASE_TERM,
-                floor
+                block.timestamp + BASE_TERM
             );
             cloneIdToSubsidy[cloneId] += subsidy;
             SafeTransferLib.safeTransferFrom( // EXTERNAL CALL
@@ -199,10 +200,10 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
                 value,
                 cloneShape.ERC721Contract,
                 cloneShape.ERC20Contract,
+                floor,
                 heat,
                 // figure out auction time increase or decrease?
-                block.timestamp + BASE_TERM,
-                floor
+                block.timestamp + BASE_TERM
             );
             cloneIdToSubsidy[cloneId] += subsidy;
             // buying out the previous clone owner
@@ -256,6 +257,8 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
     // Visibility is `public` to enable it being called by other contracts for composition.
     function renderTokenById(uint256 id) public view returns (string memory) {
         CloneShape memory cloneShape = cloneIdToShape[id];
+        string memory nftTokenId = cloneShape.floor ? "Floor" : Strings.toString(cloneShape.tokenId);
+
         string memory render = string(abi.encodePacked(
             '<g>',
                 '<style>',
@@ -264,7 +267,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
                 '</style>',
                 '<text x="20" y="35" class="small">',Strings.toHexString(uint160(cloneIdToShape[id].ERC721Contract), 20),'</text>',
                 '<text x="55" y="65" class="Rrrrr">',ERC721(cloneShape.ERC721Contract).name(),'</text>',
-                '<text x="250" y="70" class="small">',Strings.toString(cloneShape.tokenId),'</text>',
+                '<text x="250" y="70" class="small">',nftTokenId,'</text>',
             '</g>'
         ));
 
