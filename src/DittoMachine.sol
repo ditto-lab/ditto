@@ -5,6 +5,8 @@ import "@rari-capital/solmate/src/tokens/ERC721.sol";
 import "@rari-capital/solmate/src/utils/SafeTransferLib.sol";
 import "abdk-libraries-solidity/ABDKMath64x64.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
+import 'base64-sol/base64.sol';
 
 /**
  * @title NFT derivative exchange inspired by the SALSA concept
@@ -37,6 +39,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
         address ERC20Contract;
         uint16 heat;
         uint256 term;
+        bool floor;
     }
 
     mapping(uint256 => CloneShape) public cloneIdToShape;
@@ -53,7 +56,42 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
     function tokenURI(uint256 id) public view override returns (string memory) {
         // might be neat to have some generative art?
         // or just return the the tokenURI of the original as below
-        return ERC721(cloneIdToShape[id].ERC721Contract).tokenURI(cloneIdToShape[id].tokenId);
+        CloneShape memory cloneShape = cloneIdToShape[id];
+
+        string memory _name = string(abi.encodePacked('Ditto #', Strings.toString(id)));
+
+        string memory description = string(abi.encodePacked(
+            'This Ditto gives you a chance to buy ',
+            ERC721(cloneIdToShape[id].ERC721Contract).name(),
+            ' #', Strings.toString(cloneShape.tokenId),
+            '(', Strings.toHexString(uint160(cloneIdToShape[id].ERC721Contract), 20), ')'
+        ));
+
+        string memory image = Base64.encode(bytes(generateSVGofTokenById(id)));
+
+        return string(abi.encodePacked(
+            'data:application/json;base64,',
+            Base64.encode(
+                bytes(
+                    abi.encodePacked(
+                       '{"name":"',
+                        _name,
+                       '", "description":"',
+                       description,
+                       '", "attributes": [{"trait_type": "Underlying NFT", "value": "',
+                       Strings.toHexString(uint160(cloneIdToShape[id].ERC721Contract), 20), '"',
+                       '"},{"trait_type": "tokenId", "value": ',
+                       Strings.toString(cloneShape.tokenId),
+                       '}], "owner":"',
+                       Strings.toHexString(uint160(ownerOf[id]), 20),
+                       '", "image": "',
+                       'data:image/svg+xml;base64,',
+                       image,
+                       '"}'
+                    )
+                )
+            )
+        ));
     }
 
     /**
@@ -103,7 +141,8 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
                 _ERC721Contract,
                 _ERC20Contract,
                 1,
-                block.timestamp + BASE_TERM
+                block.timestamp + BASE_TERM,
+                floor
             );
             cloneIdToSubsidy[cloneId] += subsidy;
             SafeTransferLib.safeTransferFrom( // EXTERNAL CALL
@@ -162,7 +201,8 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
                 cloneShape.ERC20Contract,
                 heat,
                 // figure out auction time increase or decrease?
-                block.timestamp + BASE_TERM
+                block.timestamp + BASE_TERM,
+                floor
             );
             cloneIdToSubsidy[cloneId] += subsidy;
             // buying out the previous clone owner
@@ -211,6 +251,24 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
             owner,
             cloneShape.worth
         );
+    }
+
+    // Visibility is `public` to enable it being called by other contracts for composition.
+    function renderTokenById(uint256 id) public view returns (string memory) {
+        CloneShape memory cloneShape = cloneIdToShape[id];
+        string memory render = string(abi.encodePacked(
+            '<g>',
+                '<style>',
+                    '.small { font: italic 13px sans-serif; }',
+                    '.Rrrrr { font: italic 40px serif; fill: red; }',
+                '</style>',
+                '<text x="20" y="35" class="small">',Strings.toHexString(uint160(cloneIdToShape[id].ERC721Contract), 20),'</text>',
+                '<text x="55" y="65" class="Rrrrr">',ERC721(cloneShape.ERC721Contract).name(),'</text>',
+                '<text x="250" y="70" class="small">',Strings.toString(cloneShape.tokenId),'</text>',
+            '</g>'
+        ));
+
+      return render;
     }
 
     ////////////// EXTERNAL FUNCTIONS //////////////
@@ -274,6 +332,18 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
             cloneShape.worth + subsidy
         );
         return this.onERC721Received.selector;
+    }
+
+    ////////////// INTERNAL FUNCTIONS //////////////
+    function generateSVGofTokenById(uint256 id) internal view returns (string memory) {
+
+        string memory svg = string(abi.encodePacked(
+          '<svg viewBox="0 0 340 310" xmlns="http://www.w3.org/2000/svg">',
+            renderTokenById(id),
+          '</svg>'
+        ));
+
+        return svg;
     }
 
     ////////////// PRIVATE FUNCTIONS //////////////
