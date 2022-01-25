@@ -22,7 +22,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
 
     ////////////// CONSTANT VARIABLES //////////////
 
-    bytes32 public constant FLOOR_HASH = hex'fddc260aecba8a66725ee58da4ea3cbfcf4ab6c6ad656c48345a575ca18c45c9';
+    uint256 public constant FLOOR_ID = uint256(0xfddc260aecba8a66725ee58da4ea3cbfcf4ab6c6ad656c48345a575ca18c45c9);
     uint256 public constant BASE_TERM = 2**18;
     uint256 public constant MIN_FEE = 32;
     uint256 public constant DNOM = 2**16;
@@ -75,10 +75,13 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
         uint256 _amount,
         bool floor
     ) public returns (uint256) {
+        // _tokenId has to be set to FLOOR_ID to purchase the floor perp
+        require(!floor || (floor && (_tokenId == FLOOR_ID)), "DM:duplicate:_tokenId.invalid");
+
         // ensure enough funds to do some math on
         require(_amount >= DNOM, "DM:duplicate:_amount.invalid");
 
-        _tokenId = floor ? uint256(FLOOR_HASH): _tokenId;
+        _tokenId = floor ? FLOOR_ID : _tokenId;
 
         // calculate cloneId by hashing identifiying information
         uint256 cloneId = uint256(keccak256(abi.encodePacked(
@@ -87,21 +90,15 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
             _ERC20Contract,
             floor
         )));
-        uint256 floorId = uint256(keccak256(abi.encodePacked(
-            _ERC721Contract,
-            uint256(FLOOR_HASH),
-            _ERC20Contract,
-            true
-        )));
 
         uint256 value;
         uint256 subsidy;
 
-        if (ownerOf[floorId] == address(0) && ownerOf[cloneId] == address(0)) {
+        if (ownerOf[cloneId] == address(0)) {
             subsidy = (_amount * MIN_FEE / DNOM).toUint128();
             value = _amount.toUint128() - subsidy;
             cloneIdToShape[cloneId] = CloneShape(
-                floor ? uint256(FLOOR_HASH): _tokenId,
+                _tokenId,
                 value,
                 _ERC721Contract,
                 _ERC20Contract,
@@ -117,14 +114,18 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
             );
             _safeMint(msg.sender, cloneId); // EXTERNAL CALL
         } else {
+            uint256 floorId = uint256(keccak256(abi.encodePacked(
+                _ERC721Contract,
+                FLOOR_ID,
+                _ERC20Contract,
+                true
+            )));
+
             // if a clone has already been made
             CloneShape memory cloneShape;
-            // use specific clone values if floor clone does not exist
-            // or or if specified clone is worth more than the floor clone
-            if (
-                ownerOf[floorId] == address(0) || // may be able to get rid of this check
-                cloneIdToShape[cloneId].worth > cloneIdToShape[floorId].worth // and only use this one
-            ) {
+
+            if (cloneIdToShape[cloneId].worth > cloneIdToShape[floorId].worth) {
+                // clone's worth is more than the floor perp or the floor perp does not exist
                 cloneShape = cloneIdToShape[cloneId];
             } else {
                 cloneShape = cloneIdToShape[floorId];
@@ -238,7 +239,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
 
         uint256 floorId = uint256(keccak256(abi.encodePacked(
             ERC721Contract,
-            FLOOR_HASH,
+            FLOOR_ID,
             ERC20Contract,
             true
         )));
