@@ -1,12 +1,12 @@
 pragma solidity ^0.8.4;
 //SPDX-License-Identifier: MIT
 
-import "@rari-capital/solmate/src/tokens/ERC721.sol";
-import "@rari-capital/solmate/src/utils/SafeTransferLib.sol";
-import "abdk-libraries-solidity/ABDKMath64x64.sol";
-import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "@openzeppelin/contracts/utils/Strings.sol";
-import 'base64-sol/base64.sol';
+import {ERC721, ERC721TokenReceiver} from "@rari-capital/solmate/src/tokens/ERC721.sol";
+import {SafeTransferLib, ERC20} from "@rari-capital/solmate/src/utils/SafeTransferLib.sol";
+import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
+import {Base64} from 'base64-sol/base64.sol';
 
 /**
  * @title NFT derivative exchange inspired by the SALSA concept
@@ -54,8 +54,6 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
     ////////////// PUBLIC FUNCTIONS //////////////
 
     function tokenURI(uint256 id) public view override returns (string memory) {
-        // might be neat to have some generative art?
-        // or just return the the tokenURI of the original as below
         CloneShape memory cloneShape = cloneIdToShape[id];
 
         string memory _name = string(abi.encodePacked('Ditto #', Strings.toString(id)));
@@ -80,7 +78,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
                        '", "description":"',
                        description,
                        '", "attributes": [{"trait_type": "Underlying NFT", "value": "',
-                       Strings.toHexString(uint160(cloneIdToShape[id].ERC721Contract), 20), '"',
+                       Strings.toHexString(uint160(cloneIdToShape[id].ERC721Contract), 20),
                        '"},{"trait_type": "tokenId", "value": ',
                        Strings.toString(cloneShape.tokenId),
                        '}], "owner":"',
