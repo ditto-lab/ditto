@@ -3,7 +3,6 @@ pragma solidity ^0.8.4;
 
 import {ERC721, ERC721TokenReceiver} from "@rari-capital/solmate/src/tokens/ERC721.sol";
 import {SafeTransferLib, ERC20} from "@rari-capital/solmate/src/utils/SafeTransferLib.sol";
-import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {Base64} from 'base64-sol/base64.sol';
@@ -20,7 +19,6 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
     ////////////// LIBS //////////////
 
     using SafeCast for *;
-    using ABDKMath64x64 for int128;
 
     ////////////// CONSTANT VARIABLES //////////////
 
@@ -239,7 +237,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
     }
 
     function getMinAmount(uint256 _value, uint256 _term) public view returns(uint256) {
-        uint256 timeLeft = _term > block.timestamp ? _term - block.timestamp : 0;
+        uint256 timeLeft = (_term > block.timestamp) ? (_term - block.timestamp) : 0;
 
         return (_value
             + (_value * timeLeft / BASE_TERM)
