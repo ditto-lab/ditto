@@ -3,7 +3,6 @@ pragma solidity ^0.8.4;
 
 import {ERC721, ERC721TokenReceiver} from "@rari-capital/solmate/src/tokens/ERC721.sol";
 import {SafeTransferLib, ERC20} from "@rari-capital/solmate/src/utils/SafeTransferLib.sol";
-import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {Base64} from 'base64-sol/base64.sol';
 
@@ -16,10 +15,6 @@ import {Base64} from 'base64-sol/base64.sol';
  */
 contract DittoMachine is ERC721, ERC721TokenReceiver {
 
-    ////////////// LIBS //////////////
-
-    using SafeCast for *;
-
     ////////////// CONSTANT VARIABLES //////////////
 
     uint256 public constant FLOOR_ID = uint256(0xfddc260aecba8a66725ee58da4ea3cbfcf4ab6c6ad656c48345a575ca18c45c9);
@@ -28,7 +23,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
     // change the type to ensure this?
     uint256 public constant BASE_TERM = 2**18;
     uint256 public constant MIN_FEE = 32;
-    uint256 public constant DNOM = 2**16;
+    uint256 public constant DNOM = 2**16 - 1;
 
     ////////////// STATE VARIABLES //////////////
 
