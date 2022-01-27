@@ -162,9 +162,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
             } else {
                 cloneShape = cloneIdToShape[floorId];
             }
-            value = cloneShape.worth;
 
-            // calculate time until auction ends
             uint256 minAmount = _getMinAmount(cloneShape);
 
             // calculate protocol fees, subsidy and worth values
@@ -185,20 +183,26 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
             cloneIdToSubsidy[cloneId] += subsidy;
 
             // BUG assertion fails here
-            assert((cloneShape.worth + (subsidy/2 + subsidy%2)) + (value + (subsidy/2)) == _amount);
-            // buying out the previous clone owner
-            SafeTransferLib.safeTransferFrom( // EXTERNAL CALL
-                ERC20(_ERC20Contract),
-                msg.sender,
-                ownerOf[cloneId],
-                (cloneShape.worth + (subsidy/2 + subsidy%2))
-            );
+            // assert((cloneShape.worth + (subsidy/2 + subsidy%2)) + (value + (subsidy/2)) == _amount);
+
             // paying required funds to this contract
-            SafeTransferLib.safeTransferFrom( // EXTERNAL CALL
+            SafeTransferLib.safeTransferFrom(
                 ERC20(_ERC20Contract),
                 msg.sender,
                 address(this),
-                (value + (subsidy/2))
+                _amount
+            );
+            // buying out the previous clone owner
+            require(
+                ERC20(_ERC20Contract).balanceOf(address(this)) >= (cloneShape.worth + (subsidy/2 + subsidy%2)),
+                "DM:duplicate:_amount.invalid"
+            );
+            // BUG this fails
+            SafeTransferLib.safeTransferFrom( // EXTERNAL CALL
+                ERC20(_ERC20Contract),
+                address(this),
+                ownerOf[cloneId],
+                (cloneShape.worth + (subsidy/2 + subsidy%2))
             );
             // force transfer from current owner to new highest bidder
             forceSafeTransferFrom(ownerOf[cloneId], msg.sender, cloneId); // EXTERNAL CALL
