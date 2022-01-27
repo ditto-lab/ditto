@@ -58,12 +58,14 @@ contract ContractTest is DSTest {
     uint256 immutable FLOOR_ID;
     uint256 immutable DNOM;
     uint256 immutable BASE_TERM;
+    uint256 immutable MIN_FEE;
 
     constructor() {
         dm = new DittoMachine();
         FLOOR_ID = dm.FLOOR_ID();
         DNOM = dm.DNOM();
         BASE_TERM = dm.BASE_TERM();
+        MIN_FEE = dm.MIN_FEE();
 
         bidder = new Bidder(dmAddr);
         bidderWR = new BidderWithReceiver(dmAddr);
@@ -212,5 +214,13 @@ contract ContractTest is DSTest {
 
         assertEq(dm.ownerOf(cloneId2), eoa2);
         assertEq(cloneId1, cloneId2);
+
+        // TODO: test clone transfer after some time passes
+    }
+
+    function testgetMinAmountForCloneTransfer() public {
+        assertEq(dm.getMinAmountForCloneTransfer(0), MIN_FEE / DNOM);
+
+        // TODO: test with existing clone and different timeLeft values
     }
 }

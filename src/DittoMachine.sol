@@ -182,9 +182,6 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
             );
             cloneIdToSubsidy[cloneId] += subsidy;
 
-            // BUG assertion fails here
-            // assert((cloneShape.worth + (subsidy/2 + subsidy%2)) + (value + (subsidy/2)) == _amount);
-
             // paying required funds to this contract
             SafeTransferLib.safeTransferFrom( // EXTERNAL CALL
                 ERC20(_ERC20Contract),
