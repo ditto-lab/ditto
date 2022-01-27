@@ -186,21 +186,15 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
             // assert((cloneShape.worth + (subsidy/2 + subsidy%2)) + (value + (subsidy/2)) == _amount);
 
             // paying required funds to this contract
-            SafeTransferLib.safeTransferFrom(
+            SafeTransferLib.safeTransferFrom( // EXTERNAL CALL
                 ERC20(_ERC20Contract),
                 msg.sender,
                 address(this),
                 _amount
             );
             // buying out the previous clone owner
-            require(
-                ERC20(_ERC20Contract).balanceOf(address(this)) >= (cloneShape.worth + (subsidy/2 + subsidy%2)),
-                "DM:duplicate:_amount.invalid"
-            );
-            // BUG this fails
-            SafeTransferLib.safeTransferFrom( // EXTERNAL CALL
+            SafeTransferLib.safeTransfer( // EXTERNAL CALL
                 ERC20(_ERC20Contract),
-                address(this),
                 ownerOf[cloneId],
                 (cloneShape.worth + (subsidy/2 + subsidy%2))
             );

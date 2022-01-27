@@ -207,7 +207,6 @@ contract ContractTest is DSTest {
         cheats.expectRevert(bytes("DM:duplicate:_amount.invalid"));
         dm.duplicate(nftAddr, nftId, currencyAddr, minAmountToBuyClone - 1, false);
 
-        // BUG this fails
         uint256 cloneId2 = dm.duplicate(nftAddr, nftId, currencyAddr, minAmountToBuyClone, false);
         cheats.stopPrank();
 
