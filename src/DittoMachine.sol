@@ -165,7 +165,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
             value = cloneShape.worth;
 
             // calculate time until auction ends
-            uint256 minAmount = getMinAmount(value, cloneShape.term);
+            uint256 minAmount = _getMinAmount(cloneShape);
 
             // calculate protocol fees, subsidy and worth values
             subsidy = minAmount * MIN_FEE / DNOM;
@@ -231,12 +231,11 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
         );
     }
 
-    function getMinAmount(uint256 _value, uint256 _term) public view returns(uint256) {
-        uint256 timeLeft = (_term > block.timestamp) ? (_term - block.timestamp) : 0;
-
-        return (_value
-            + (_value * timeLeft / BASE_TERM)
-            + (_value * MIN_FEE / DNOM));
+    function getMinAmountForCloneTransfer(uint256 cloneId) public view returns (uint256) {
+        // this returns `MIN_FEE/DNOM` for non-existent cloneId.
+        // See if we want to make this behavior more explicit.
+        uint256 _minAmount = _getMinAmount(cloneIdToShape[cloneId]);
+        return _minAmount + (_minAmount * MIN_FEE / DNOM);
     }
 
     // Visibility is `public` to enable it being called by other contracts for composition.
@@ -392,6 +391,19 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
                 ERC721TokenReceiver.onERC721Received.selector,
             "UNSAFE_RECIPIENT"
         );
+    }
+
+    /**
+     * @notice computes the minimum amount required to buy a clone.
+     * @notice it does not take into account the protocol fee or the subsidy
+     * @param cloneShape clone for which to compute the minimum amount
+     */
+    function _getMinAmount(CloneShape memory cloneShape) private view returns (uint256) {
+        uint256 timeLeft = (cloneShape.term > block.timestamp) ? (cloneShape.term - block.timestamp) : 0;
+
+        return cloneShape.worth
+            + (cloneShape.worth * timeLeft / BASE_TERM)
+            + (cloneShape.worth * MIN_FEE / DNOM);
     }
 
 }
