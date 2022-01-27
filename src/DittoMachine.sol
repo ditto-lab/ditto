@@ -183,6 +183,9 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
                 block.timestamp + BASE_TERM
             );
             cloneIdToSubsidy[cloneId] += subsidy;
+
+            // BUG assertion fails here
+            assert((cloneShape.worth + (subsidy/2 + subsidy%2)) + (value + (subsidy/2)) == _amount);
             // buying out the previous clone owner
             SafeTransferLib.safeTransferFrom( // EXTERNAL CALL
                 ERC20(_ERC20Contract),
@@ -199,7 +202,6 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
             );
             // force transfer from current owner to new highest bidder
             forceSafeTransferFrom(ownerOf[cloneId], msg.sender, cloneId); // EXTERNAL CALL
-            assert((cloneShape.worth + (subsidy/2 + subsidy%2)) + (value + (subsidy/2)) == _amount);
         }
 
         return cloneId;

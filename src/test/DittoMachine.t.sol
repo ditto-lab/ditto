@@ -195,6 +195,7 @@ contract ContractTest is DSTest {
 
         uint256 cloneId1 = dm.duplicate(nftAddr, nftId, currencyAddr, BASE_TERM, false);
         assertEq(dm.ownerOf(cloneId1), eoa1);
+        assertEq(currency.balanceOf(dmAddr), BASE_TERM);
         cheats.stopPrank();
 
         address eoa2 = generateAddress("eoa2");
