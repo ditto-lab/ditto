@@ -243,7 +243,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
             // ensure that term can always be safely typecasted to int128
             int128 timeLeft = int128(_term.toInt256() - (block.timestamp).toInt256());
             return (_value
-                + (_value * uint128((timeLeft << 64).sqrt() >> 64))
+                + (_value - (_value / uint128((timeLeft << 64).sqrt() >> 64)))
                 + (_value * MIN_FEE / DNOM));
         } else {
             return (_value + (_value * MIN_FEE / DNOM));
