@@ -5,6 +5,7 @@ import {ERC721, ERC721TokenReceiver} from "@rari-capital/solmate/src/tokens/ERC7
 import {SafeTransferLib, ERC20} from "@rari-capital/solmate/src/utils/SafeTransferLib.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
+import {IERC2981, IERC165} from "@openzeppelin/contracts/interfaces/IERC2981.sol";
 import {Base64} from 'base64-sol/base64.sol';
 
 /**
@@ -22,13 +23,15 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
 
     ////////////// CONSTANT VARIABLES //////////////
 
+    bytes4 private constant _INTERFACE_ID_ERC2981 = 0x2a55205a;
+
     uint256 public constant FLOOR_ID = uint256(0xfddc260aecba8a66725ee58da4ea3cbfcf4ab6c6ad656c48345a575ca18c45c9);
 
     // ensure that CloneShape can always be casted to int128.
     // change the type to ensure this?
     uint256 public constant BASE_TERM = 2**18;
     uint256 public constant MIN_FEE = 32;
-    uint256 public constant DNOM = 2**16;
+    uint256 public constant DNOM = 2**16-1;
 
     ////////////// STATE VARIABLES //////////////
 
@@ -38,6 +41,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
         uint256 worth;
         address ERC721Contract;
         address ERC20Contract;
+        // uint16 heat;
         bool floor;
         uint256 term;
     }
@@ -204,7 +208,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
             );
             // force transfer from current owner to new highest bidder
             forceSafeTransferFrom(ownerOf[cloneId], msg.sender, cloneId); // EXTERNAL CALL
-            assert((cloneShape.worth + (subsidy/2 + subsidy%2)) + (value + (subsidy/2)) == _amount);
+            assert(cloneIdToShape[cloneId].worth + subsidy == _amount);
         }
 
         return cloneId;
@@ -302,9 +306,9 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
         ) {
             // if cloneId is not active, check floor clone
             cloneId = floorId;
-            // if no cloneId is active revert
-            require(ownerOf[cloneId] != address(0), "DM:onERC721Received:!cloneId");
         }
+        // if no cloneId is active revert
+        require(ownerOf[cloneId] != address(0), "DM:onERC721Received:!cloneId");
 
         CloneShape memory cloneShape = cloneIdToShape[cloneId];
         uint256 subsidy = cloneIdToSubsidy[cloneId];
@@ -317,7 +321,27 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
             ERC721(ERC721Contract).ownerOf(id) == address(this),
             "DM:onERC721Received:!received"
         );
+
         ERC721(ERC721Contract).safeTransferFrom(address(this), owner, id);
+
+        if (
+            IERC165(ERC721Contract).supportsInterface(_INTERFACE_ID_ERC2981) == true
+        ) {
+            (address receiver, uint256 royaltyAmount) = IERC2981(ERC721Contract).royaltyInfo(
+                cloneShape.tokenId,
+                cloneShape.worth
+            );
+            if (royaltyAmount > 0) {
+                cloneShape.worth -= royaltyAmount;
+                SafeTransferLib.safeTransferFrom(
+                    ERC20(ERC20Contract),
+                    address(this),
+                    receiver,
+                    royaltyAmount
+                );
+            }
+        }
+
         SafeTransferLib.safeTransferFrom(
             ERC20(ERC20Contract),
             address(this),
