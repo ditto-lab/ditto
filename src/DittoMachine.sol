@@ -229,8 +229,10 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
     }
 
     function getMinAmountForCloneTransfer(uint256 cloneId) public view returns (uint256) {
-        // this returns `MIN_FEE/DNOM` for non-existent cloneId.
-        // See if we want to make this behavior more explicit.
+        if(cloneIdToShape[cloneId].worth == 0) {
+            return BASE_TERM * MIN_FEE / DNOM;
+        }
+
         uint256 _minAmount = _getMinAmount(cloneIdToShape[cloneId]);
         return _minAmount + (_minAmount * MIN_FEE / DNOM);
     }
@@ -394,6 +396,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
      * @notice computes the minimum amount required to buy a clone.
      * @notice it does not take into account the protocol fee or the subsidy
      * @param cloneShape clone for which to compute the minimum amount
+     * @dev only use it for a minted clone
      */
     function _getMinAmount(CloneShape memory cloneShape) private view returns (uint256) {
         uint256 timeLeft = (cloneShape.term > block.timestamp) ? (cloneShape.term - block.timestamp) : 0;
