@@ -118,7 +118,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
         require(!floor || (_tokenId == FLOOR_ID), "DM:duplicate:_tokenId.invalid");
 
         // ensure enough funds to do some math on
-        require(_amount >= DNOM, "DM:duplicate:_amount.invalid");
+        require(_amount >= BASE_TERM, "DM:duplicate:_amount.invalid");
 
         _tokenId = floor ? FLOOR_ID : _tokenId;
 
@@ -239,15 +239,11 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
     }
 
     function getMinAmount(uint256 _value, uint256 _term) public view returns(uint256) {
-        if (_term > block.timestamp) {
-            // ensure that term can always be safely typecasted to int128
-            int128 timeLeft = int128(_term.toInt256() - (block.timestamp).toInt256());
-            return (_value
-                + (_value - (_value / uint128((timeLeft << 64).sqrt() >> 64)))
-                + (_value * MIN_FEE / DNOM));
-        } else {
-            return (_value + (_value * MIN_FEE / DNOM));
-        }
+        uint256 timeLeft = _term > block.timestamp ? _term - block.timestamp : 0;
+
+        return (_value
+            + (_value * timeLeft / BASE_TERM)
+            + (_value * MIN_FEE / DNOM));
     }
 
     // Visibility is `public` to enable it being called by other contracts for composition.
