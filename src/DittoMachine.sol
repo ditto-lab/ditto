@@ -24,6 +24,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
     uint256 public constant BASE_TERM = 2**18;
     uint256 public constant MIN_FEE = 32;
     uint256 public constant DNOM = 2**16 - 1;
+    uint256 public constant MIN_AMOUNT_FOR_NEW_CLONE = BASE_TERM + (BASE_TERM * MIN_FEE / DNOM);
 
     ////////////// STATE VARIABLES //////////////
 
@@ -111,7 +112,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
         require(!floor || (_tokenId == FLOOR_ID), "DM:duplicate:_tokenId.invalid");
 
         // ensure enough funds to do some math on
-        require(_amount >= BASE_TERM, "DM:duplicate:_amount.invalid");
+        require(_amount >= MIN_AMOUNT_FOR_NEW_CLONE, "DM:duplicate:_amount.invalid");
 
         _tokenId = floor ? FLOOR_ID : _tokenId;
 
@@ -229,7 +230,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
 
     function getMinAmountForCloneTransfer(uint256 cloneId) public view returns (uint256) {
         if(ownerOf[cloneId] == address(0)) {
-            return BASE_TERM * MIN_FEE / DNOM;
+            return MIN_AMOUNT_FOR_NEW_CLONE;
         }
 
         uint256 _minAmount = _getMinAmount(cloneIdToShape[cloneId]);
