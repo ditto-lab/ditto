@@ -112,7 +112,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
         require(!floor || (_tokenId == FLOOR_ID), "DM:duplicate:_tokenId.invalid");
 
         // ensure enough funds to do some math on
-        require(_amount >= MIN_AMOUNT_FOR_NEW_CLONE, "DM:duplicate:_amount.invalid");
+        require(_amount >= MIN_AMOUNT_FOR_NEW_CLONE, "DM:duplicate:_amount.invalid.min");
 
         _tokenId = floor ? FLOOR_ID : _tokenId;
 
@@ -154,21 +154,19 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
                 true
             )));
 
-            CloneShape memory cloneShape;
-
             if (cloneIdToShape[cloneId].worth > cloneIdToShape[floorId].worth) {
                 // clone's worth is more than the floor perp or the floor perp does not exist
-                cloneShape = cloneIdToShape[cloneId];
+                cloneId = cloneId;
             } else {
-                cloneShape = cloneIdToShape[floorId];
+                cloneId = floorId;
             }
-
+            CloneShape memory cloneShape = cloneIdToShape[cloneId];
             uint256 minAmount = _getMinAmount(cloneShape);
 
             // calculate subsidy and worth values
             subsidy = minAmount * MIN_FEE / DNOM;
             value = _amount - subsidy; // will be applied to cloneShape.worth
-            require(value >= minAmount, "DM:duplicate:_amount.invalid");
+            require(value >= minAmount, "DM:duplicate:_amount.invalid.val");
 
             // calculate new clone term values
             cloneIdToShape[cloneId] = CloneShape(
@@ -402,8 +400,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
         uint256 timeLeft = (cloneShape.term > block.timestamp) ? (cloneShape.term - block.timestamp) : 0;
 
         return cloneShape.worth
-            + (cloneShape.worth * timeLeft / BASE_TERM)
-            + (cloneShape.worth * MIN_FEE / DNOM);
+            + (cloneShape.worth * timeLeft / BASE_TERM);
     }
 
 }
