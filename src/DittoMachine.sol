@@ -153,7 +153,6 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
                 true
             )));
 
-            // if a clone has already been made
             CloneShape memory cloneShape;
 
             if (cloneIdToShape[cloneId].worth > cloneIdToShape[floorId].worth) {
