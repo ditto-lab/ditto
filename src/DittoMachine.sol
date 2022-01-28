@@ -154,7 +154,6 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
                 true
             )));
 
-            // if a clone has already been made
             CloneShape memory cloneShape;
 
             if (cloneIdToShape[cloneId].worth > cloneIdToShape[floorId].worth) {
@@ -163,7 +162,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
             } else {
                 cloneShape = cloneIdToShape[floorId];
             }
-            
+
             uint256 minAmount = _getMinAmount(cloneShape);
 
             // calculate subsidy and worth values
