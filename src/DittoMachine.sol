@@ -154,13 +154,16 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
                 true
             )));
 
+            // if a clone has already been made
+            CloneShape memory cloneShape;
+
             if (cloneIdToShape[cloneId].worth > cloneIdToShape[floorId].worth) {
                 // clone's worth is more than the floor perp or the floor perp does not exist
-                cloneId = cloneId;
+                cloneShape = cloneIdToShape[cloneId];
             } else {
-                cloneId = floorId;
+                cloneShape = cloneIdToShape[floorId];
             }
-            CloneShape memory cloneShape = cloneIdToShape[cloneId];
+            
             uint256 minAmount = _getMinAmount(cloneShape);
 
             // calculate subsidy and worth values
