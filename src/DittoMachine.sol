@@ -24,6 +24,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
     uint256 public constant BASE_TERM = 2**18;
     uint256 public constant MIN_FEE = 32;
     uint256 public constant DNOM = 2**16 - 1;
+    uint256 public constant MIN_AMOUNT_FOR_NEW_CLONE = BASE_TERM + (BASE_TERM * MIN_FEE / DNOM);
 
     ////////////// STATE VARIABLES //////////////
 
@@ -111,7 +112,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
         require(!floor || (_tokenId == FLOOR_ID), "DM:duplicate:_tokenId.invalid");
 
         // ensure enough funds to do some math on
-        require(_amount >= BASE_TERM, "DM:duplicate:_amount.invalid");
+        require(_amount >= MIN_AMOUNT_FOR_NEW_CLONE, "DM:duplicate:_amount.invalid.min");
 
         _tokenId = floor ? FLOOR_ID : _tokenId;
 
@@ -153,7 +154,6 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
                 true
             )));
 
-            // if a clone has already been made
             CloneShape memory cloneShape;
 
             if (cloneIdToShape[cloneId].worth > cloneIdToShape[floorId].worth) {
@@ -165,10 +165,10 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
 
             uint256 minAmount = _getMinAmount(cloneShape);
 
-            // calculate protocol fees, subsidy and worth values
+            // calculate subsidy and worth values
             subsidy = minAmount * MIN_FEE / DNOM;
             value = _amount - subsidy; // will be applied to cloneShape.worth
-            require(value >= minAmount, "DM:duplicate:_amount.invalid");
+            require(value >= minAmount, "DM:duplicate:_amount.invalid.val");
 
             // calculate new clone term values
             cloneIdToShape[cloneId] = CloneShape(
@@ -180,7 +180,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
                 // figure out auction time increase or decrease?
                 block.timestamp + BASE_TERM
             );
-            cloneIdToSubsidy[cloneId] += subsidy;
+            cloneIdToSubsidy[cloneId] += subsidy / 2;
 
             // paying required funds to this contract
             SafeTransferLib.safeTransferFrom( // EXTERNAL CALL
@@ -229,8 +229,8 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
     }
 
     function getMinAmountForCloneTransfer(uint256 cloneId) public view returns (uint256) {
-        if(cloneIdToShape[cloneId].worth == 0) {
-            return BASE_TERM * MIN_FEE / DNOM;
+        if(ownerOf[cloneId] == address(0)) {
+            return MIN_AMOUNT_FOR_NEW_CLONE;
         }
 
         uint256 _minAmount = _getMinAmount(cloneIdToShape[cloneId]);
@@ -398,12 +398,11 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
      * @param cloneShape clone for which to compute the minimum amount
      * @dev only use it for a minted clone
      */
-    function _getMinAmount(CloneShape memory cloneShape) private view returns (uint256) {
+    function _getMinAmount(CloneShape memory cloneShape) internal view returns (uint256) {
         uint256 timeLeft = (cloneShape.term > block.timestamp) ? (cloneShape.term - block.timestamp) : 0;
 
         return cloneShape.worth
-            + (cloneShape.worth * timeLeft / BASE_TERM)
-            + (cloneShape.worth * MIN_FEE / DNOM);
+            + (cloneShape.worth * timeLeft / BASE_TERM);
     }
 
 }
