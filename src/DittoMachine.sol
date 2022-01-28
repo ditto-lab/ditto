@@ -165,7 +165,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
 
             uint256 minAmount = _getMinAmount(cloneShape);
 
-            // calculate protocol fees, subsidy and worth values
+            // calculate subsidy and worth values
             subsidy = minAmount * MIN_FEE / DNOM;
             value = _amount - subsidy; // will be applied to cloneShape.worth
             require(value >= minAmount, "DM:duplicate:_amount.invalid");
@@ -180,7 +180,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
                 // figure out auction time increase or decrease?
                 block.timestamp + BASE_TERM
             );
-            cloneIdToSubsidy[cloneId] += subsidy;
+            cloneIdToSubsidy[cloneId] += subsidy / 2;
 
             // paying required funds to this contract
             SafeTransferLib.safeTransferFrom( // EXTERNAL CALL
@@ -229,7 +229,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
     }
 
     function getMinAmountForCloneTransfer(uint256 cloneId) public view returns (uint256) {
-        if(cloneIdToShape[cloneId].worth == 0) {
+        if(ownerOf[cloneId] == address(0)) {
             return BASE_TERM * MIN_FEE / DNOM;
         }
 
@@ -398,7 +398,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
      * @param cloneShape clone for which to compute the minimum amount
      * @dev only use it for a minted clone
      */
-    function _getMinAmount(CloneShape memory cloneShape) private view returns (uint256) {
+    function _getMinAmount(CloneShape memory cloneShape) internal view returns (uint256) {
         uint256 timeLeft = (cloneShape.term > block.timestamp) ? (cloneShape.term - block.timestamp) : 0;
 
         return cloneShape.worth
