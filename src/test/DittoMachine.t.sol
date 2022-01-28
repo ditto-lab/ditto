@@ -34,10 +34,10 @@ interface CheatCodes {
     function startPrank(address) external;
     function stopPrank() external;
     function expectRevert(bytes calldata) external;
-
+    function warp(uint256) external;
 }
 
-contract ContractTest is DSTest {
+contract ContractTest is DSTest, DittoMachine {
     CheatCodes constant cheats = CheatCodes(HEVM_ADDRESS);
 
     DittoMachine dm;
@@ -55,13 +55,8 @@ contract ContractTest is DSTest {
     BidderWithReceiver immutable bidderWR;
     BidderWithWrongReceiver immutable bidderWWR;
 
-    uint256 immutable FLOOR_ID;
-    uint256 immutable DNOM;
-
     constructor() {
         dm = new DittoMachine();
-        FLOOR_ID = dm.FLOOR_ID();
-        DNOM = dm.DNOM();
 
         bidder = new Bidder(dmAddr);
         bidderWR = new BidderWithReceiver(dmAddr);
@@ -90,12 +85,28 @@ contract ContractTest is DSTest {
         return nftTokenId++;
     }
 
+    function getCloneShape(uint256 cloneId) internal view returns (CloneShape memory) {
+        (uint256 tokenId, uint256 worth, address ERC721Contract,
+            address ERC20Contract, bool floor, uint256 term) = dm.cloneIdToShape(cloneId);
+
+        CloneShape memory shape = CloneShape(
+            tokenId,
+            worth,
+            ERC721Contract,
+            ERC20Contract,
+            floor,
+            term
+        );
+
+        return shape;
+    }
+
     function testNameAndSymbol() public {
         assertEq(dm.name(), "Ditto");
         assertEq(dm.symbol(), "DTO");
     }
 
-    // DittoMachine should not accept any ether sent to it
+    // DittoMachine should revert when ether is sent to it
     function testSendEther() public {
         assertEq(dmAddr.balance, 0);
         (bool success, ) = dmAddr.call{value: 10}("");
@@ -103,36 +114,37 @@ contract ContractTest is DSTest {
         assertEq(dmAddr.balance, 0);
     }
 
-    // DNOM is the minimum amount for a clone
-    function testDuplicateRevert() public {
-        // when amount < DNOM
+    // test obvious reverts in `duplicate()`
+    function testDuplicateReverts() public {
+        // when amount < BASE_TERM
         uint256 nftId = mintNft();
         address eoa = generateAddress("eoa");
-        currency.mint(eoa, DNOM);
+        currency.mint(eoa, MIN_AMOUNT_FOR_NEW_CLONE);
         cheats.startPrank(eoa);
 
-        cheats.expectRevert("DM:duplicate:_amount.invalid");
+        cheats.expectRevert("DM:duplicate:_amount.invalid.min");
+        // BASE_TERM is the minimum amount for a clone
         dm.duplicate(nftAddr, nftId, currencyAddr, 1, false);
 
         cheats.stopPrank();
 
         // when bidder is a contract which does not implement `onERC721Received()`
-        currency.mint(address(bidder), DNOM);
+        currency.mint(address(bidder), MIN_AMOUNT_FOR_NEW_CLONE);
         cheats.startPrank(address(bidder));
-        currency.approve(dmAddr, DNOM);
+        currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
 
         cheats.expectRevert(bytes(""));
-        dm.duplicate(nftAddr, FLOOR_ID, currencyAddr, DNOM, true);
+        dm.duplicate(nftAddr, FLOOR_ID, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, true);
         cheats.stopPrank();
 
         // when bidder is a contract with `onERC721Received()`
         // which doesn't return the function selector
-        currency.mint(address(bidderWWR), DNOM);
+        currency.mint(address(bidderWWR), MIN_AMOUNT_FOR_NEW_CLONE);
         cheats.startPrank(address(bidderWWR));
-        currency.approve(dmAddr, DNOM);
+        currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
 
         cheats.expectRevert(bytes("UNSAFE_RECIPIENT"));
-        dm.duplicate(nftAddr, FLOOR_ID, currencyAddr, DNOM, true);
+        dm.duplicate(nftAddr, FLOOR_ID, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, true);
         cheats.stopPrank();
     }
 
@@ -142,14 +154,17 @@ contract ContractTest is DSTest {
         dm.duplicate(nftAddr, nftId, currencyAddr, _currAmount, true);
     }
 
+    // test that a floor clone is minted
     function testDuplicateMintFloor() public {
-        uint256 nftId = mintNft();
-        currency.mint(address(bidderWR), DNOM);
+        mintNft();
+        currency.mint(address(bidderWR), MIN_AMOUNT_FOR_NEW_CLONE);
         cheats.startPrank(address(bidderWR));
-        currency.approve(dmAddr, DNOM);
+        currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
 
-        uint256 cloneId = dm.duplicate(nftAddr, FLOOR_ID, currencyAddr, DNOM, true);
+        uint256 cloneId = dm.duplicate(nftAddr, FLOOR_ID, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, true);
+        cheats.stopPrank();
 
+        assertEq(dm.ownerOf(cloneId), address(bidderWR));
         assertEq(
             cloneId,
             uint256(keccak256(abi.encodePacked(
@@ -159,24 +174,21 @@ contract ContractTest is DSTest {
                 true
             )))
         );
-
-        cheats.stopPrank();
-        assertEq(dm.ownerOf(cloneId), address(bidderWR));
-        string memory dmTokenURI = dm.tokenURI(cloneId);
-        string memory nftTokenURI = nft.tokenURI(nftId);
-
-        // TODO ensure this is the expected behavior
-        assert(keccak256(abi.encode(dmTokenURI)) != keccak256(abi.encode(nftTokenURI)));
+        assertEq(currency.balanceOf(dmAddr), MIN_AMOUNT_FOR_NEW_CLONE);
+        assertEq(dm.cloneIdToSubsidy(cloneId), MIN_AMOUNT_FOR_NEW_CLONE * MIN_FEE / DNOM);
     }
 
+    // test that a non-floor clone is minted
     function testDuplicateMintClone() public {
         uint256 nftId = mintNft();
-        currency.mint(address(bidderWR), DNOM);
+        currency.mint(address(bidderWR), MIN_AMOUNT_FOR_NEW_CLONE);
         cheats.startPrank(address(bidderWR));
-        currency.approve(dmAddr, DNOM);
+        currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
 
-        uint256 cloneId = dm.duplicate(nftAddr, 0, currencyAddr, DNOM, false);
+        uint256 cloneId = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false);
+        cheats.stopPrank();
 
+        assertEq(dm.ownerOf(cloneId), address(bidderWR));
         assertEq(
             cloneId,
             uint256(keccak256(abi.encodePacked(
@@ -186,11 +198,78 @@ contract ContractTest is DSTest {
                 false
             )))
         );
+        assertEq(currency.balanceOf(dmAddr), MIN_AMOUNT_FOR_NEW_CLONE);
+        assertEq(dm.cloneIdToSubsidy(cloneId), MIN_AMOUNT_FOR_NEW_CLONE * MIN_FEE / DNOM);
+    }
 
-        string memory dmTokenURI = dm.tokenURI(cloneId);
-        string memory nftTokenURI = nft.tokenURI(nftId);
+    // test a clone is correctly transferred
+    function testDuplicateTransfer() public {
+        uint256 nftId = mintNft();
+        address eoa1 = generateAddress("eoa1");
+        currency.mint(eoa1, MIN_AMOUNT_FOR_NEW_CLONE);
+        cheats.startPrank(eoa1);
+        currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
 
-        // TODO ensure this is the expected behavior
-        assertEq(dmTokenURI, nftTokenURI);
+        // buy a clone using the minimum purchase amount
+        uint256 cloneId1 = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false);
+        assertEq(dm.ownerOf(cloneId1), eoa1);
+
+        // ensure erc20 balances
+        assertEq(currency.balanceOf(eoa1), 0);
+        assertEq(currency.balanceOf(dmAddr), MIN_AMOUNT_FOR_NEW_CLONE);
+
+        uint256 subsidy1 = dm.cloneIdToSubsidy(cloneId1);
+        assertEq(subsidy1, MIN_AMOUNT_FOR_NEW_CLONE * MIN_FEE / DNOM);
+
+        CloneShape memory shape1 = getCloneShape(cloneId1);
+        assertEq(shape1.worth, currency.balanceOf(dmAddr) - subsidy1);
+
+        cheats.stopPrank();
+
+        // increment time so that clone's term is in past
+        cheats.warp(block.timestamp + BASE_TERM);
+        assertEq(shape1.term, block.timestamp);
+        address eoa2 = generateAddress("eoa2");
+
+        uint256 minAmountToBuyClone = dm.getMinAmountForCloneTransfer(cloneId1);
+        uint256 minAmountWithoutSubsidy = shape1.worth;
+        assertEq(minAmountToBuyClone, minAmountWithoutSubsidy + (minAmountWithoutSubsidy * MIN_FEE / DNOM));
+
+        currency.mint(eoa2, minAmountToBuyClone);
+        cheats.startPrank(eoa2);
+        currency.approve(dmAddr, minAmountToBuyClone);
+
+        cheats.expectRevert(bytes("DM:duplicate:_amount.invalid.min"));
+        // this reverts as we pass lower than minimum purchase amount
+        dm.duplicate(nftAddr, nftId, currencyAddr, minAmountToBuyClone - 1, false);
+
+        uint256 cloneId2 = dm.duplicate(nftAddr, nftId, currencyAddr, minAmountToBuyClone, false);
+        cheats.stopPrank();
+
+        assertEq(dm.ownerOf(cloneId2), eoa2);
+
+        // ensure that a clone is transferred, not minted
+        assertEq(cloneId1, cloneId2);
+
+        CloneShape memory shape2 = getCloneShape(cloneId2);
+        uint256 subsidy2 = dm.cloneIdToSubsidy(cloneId2);
+
+        // ensure complete purchase amount is taken from `eoa2`
+        assertEq(currency.balanceOf(eoa2), 0);
+        // ensure DittoMachine's complete erc20 balance is accounted for
+        assertEq(currency.balanceOf(dmAddr), subsidy2 + shape2.worth);
+        // ensure every erc20 token is accounted for
+        assertEq(
+            currency.balanceOf(eoa1),
+            currency.totalSupply() - currency.balanceOf(dmAddr) - currency.balanceOf(eoa2)
+        );
+
+        // TODO: test clone transfer when clone's term is in future
+    }
+
+    function testgetMinAmountForCloneTransfer() public {
+        assertEq(dm.getMinAmountForCloneTransfer(0), MIN_AMOUNT_FOR_NEW_CLONE);
+
+        // TODO: test with existing clone and different timeLeft values
     }
 }
