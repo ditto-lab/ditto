@@ -222,7 +222,7 @@ contract ContractTest is DSTest, DittoMachine {
         assertEq(subsidy1, MIN_AMOUNT_FOR_NEW_CLONE * MIN_FEE / DNOM);
 
         CloneShape memory shape1 = getCloneShape(cloneId1);
-        assertEq(shape1.worth, currency.balanceOf(dmAddr) - subsidy1);
+        assertEq(shape1.worth + subsidy1, currency.balanceOf(dmAddr));
 
         cheats.stopPrank();
 
@@ -256,6 +256,13 @@ contract ContractTest is DSTest, DittoMachine {
 
         // ensure complete purchase amount is taken from `eoa2`
         assertEq(currency.balanceOf(eoa2), 0);
+
+        uint256 subsidyFundsToDitto = subsidy2 - subsidy1;
+        uint256 subsidyFundsToEoa1 = currency.balanceOf(eoa1) - shape1.worth;
+
+        // ensure the difference between bid amount and clone's worth is distributed
+        // between subsidy and `eoa1` (from which the clone was taken)
+        assertEq(subsidyFundsToDitto + subsidyFundsToEoa1, minAmountToBuyClone - shape2.worth);
         // ensure DittoMachine's complete erc20 balance is accounted for
         assertEq(currency.balanceOf(dmAddr), subsidy2 + shape2.worth);
         // ensure every erc20 token is accounted for
@@ -265,6 +272,52 @@ contract ContractTest is DSTest, DittoMachine {
         );
 
         // TODO: test clone transfer when clone's term is in future
+        // TODO: test clone transfer when it's worth is less than the floor's worth
+    }
+
+    function testDissolve() public {
+        uint256 nftId = mintNft();
+        address eoa1 = generateAddress("eoa1");
+        currency.mint(eoa1, type(uint256).max);
+
+        cheats.startPrank(eoa1);
+        currency.approve(dmAddr, type(uint256).max);
+
+        // mint a clone
+        uint256 cloneId = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false);
+        // eoa1 should be able to dissolve the clone it owns
+        dm.dissolve(cloneId);
+        // ensure the clone is burned
+        assertEq(dm.ownerOf(cloneId), address(0));
+
+        // mint another clone with the same `cloneId` since we are passing the same arguments as before
+        dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false);
+        cheats.stopPrank();
+        address eoa2 = generateAddress("eoa2");
+
+        cheats.startPrank(eoa2);
+        // eoa2 should not able to dissolve someeone else's clone
+        cheats.expectRevert("NOT_AUTHORIZED");
+        dm.dissolve(cloneId);
+        cheats.stopPrank();
+
+        cheats.prank(eoa1);
+        dm.approve(eoa2, cloneId);
+
+        cheats.prank(eoa2);
+        // eoa2 should be able to dissolve the clone when it's owner has given approval for `cloneId`
+        dm.dissolve(cloneId);
+        assertEq(dm.ownerOf(cloneId), address(0));
+
+        cheats.startPrank(eoa1);
+        cloneId = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false);
+        dm.setApprovalForAll(eoa2, true);
+        cheats.stopPrank();
+
+        cheats.prank(eoa2);
+        // eoa2 should be able to dissolve the clone when it's owner has given approval for all the clones it owns
+        dm.dissolve(cloneId);
+        assertEq(dm.ownerOf(cloneId), address(0));
     }
 
     function testgetMinAmountForCloneTransfer() public {
