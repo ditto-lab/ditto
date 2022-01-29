@@ -204,25 +204,23 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
 
     /**
      * @notice unwind a position in a clone
-     * @param owner of the selected token
-     * @param _cloneId selected
+     * @param _cloneId specifies the clone to burn
      * @dev will refund funds held in a position, subsidy will remain for sellers in the future
      */
-    function dissolve(address owner, uint256 _cloneId) public {
-        require(owner == ownerOf[_cloneId], "WRONG_OWNER");
-
+    function dissolve(uint256 _cloneId) public {
         require(
-            msg.sender == owner || msg.sender == getApproved[_cloneId] || isApprovedForAll[owner][msg.sender],
+            msg.sender == ownerOf[_cloneId] || msg.sender == getApproved[_cloneId] || isApprovedForAll[ownerOf[_cloneId]][msg.sender],
             "NOT_AUTHORIZED"
         );
 
+        address owner = ownerOf[_cloneId];
         CloneShape memory cloneShape = cloneIdToShape[_cloneId];
+
         delete cloneIdToShape[_cloneId];
 
         _burn(_cloneId);
-        SafeTransferLib.safeTransferFrom( // EXTERNAL CALL
+        SafeTransferLib.safeTransfer( // EXTERNAL CALL
             ERC20(cloneShape.ERC20Contract),
-            msg.sender,
             owner,
             cloneShape.worth
         );
