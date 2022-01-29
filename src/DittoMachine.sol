@@ -295,7 +295,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
         if (
             floor == true ||
             ownerOf[cloneId] == address(0) ||
-            cloneIdToShape[floorId].worth > cloneIdToShape[cloneId].worth // could remove this and just let seller specify
+            cloneIdToShape[floorId].worth > cloneIdToShape[cloneId].worth
         ) {
             // if cloneId is not active, check floor clone
             cloneId = floorId;
@@ -326,18 +326,17 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
             );
             if (royaltyAmount > 0) {
                 cloneShape.worth -= royaltyAmount;
-                SafeTransferLib.safeTransferFrom(
+                SafeTransferLib.safeTransfer(
                     ERC20(ERC20Contract),
-                    address(this),
+                    // address(this),
                     receiver,
                     royaltyAmount
                 );
             }
         }
-
-        SafeTransferLib.safeTransferFrom(
+        SafeTransferLib.safeTransfer(
             ERC20(ERC20Contract),
-            address(this),
+            // address(this),
             from,
             cloneShape.worth + subsidy
         );
@@ -354,6 +353,11 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
         ));
 
         return svg;
+    }
+
+    function checkRoyalties(address _contract) internal returns (bool) {
+        (bool success) = IERC165(_contract).supportsInterface(_INTERFACE_ID_ERC2981);
+        return success;
     }
 
     ////////////// PRIVATE FUNCTIONS //////////////
