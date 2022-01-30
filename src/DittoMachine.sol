@@ -4,6 +4,7 @@ pragma solidity ^0.8.4;
 import {ERC721, ERC721TokenReceiver} from "@rari-capital/solmate/src/tokens/ERC721.sol";
 import {SafeTransferLib, ERC20} from "@rari-capital/solmate/src/utils/SafeTransferLib.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
+import {IERC2981, IERC165} from "@openzeppelin/contracts/interfaces/IERC2981.sol";
 import {Base64} from 'base64-sol/base64.sol';
 
 /**
@@ -16,6 +17,8 @@ import {Base64} from 'base64-sol/base64.sol';
 contract DittoMachine is ERC721, ERC721TokenReceiver {
 
     ////////////// CONSTANT VARIABLES //////////////
+
+    bytes4 private constant _INTERFACE_ID_ERC2981 = 0x2a55205a;
 
     uint256 public constant FLOOR_ID = uint256(0xfddc260aecba8a66725ee58da4ea3cbfcf4ab6c6ad656c48345a575ca18c45c9);
 
@@ -34,6 +37,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
         uint256 worth;
         address ERC721Contract;
         address ERC20Contract;
+        // uint16 heat;
         bool floor;
         uint256 term;
     }
@@ -289,13 +293,13 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
         if (
             floor == true ||
             ownerOf[cloneId] == address(0) ||
-            cloneIdToShape[floorId].worth > cloneIdToShape[cloneId].worth // could remove this and just let seller specify
+            cloneIdToShape[floorId].worth > cloneIdToShape[cloneId].worth
         ) {
             // if cloneId is not active, check floor clone
             cloneId = floorId;
-            // if no cloneId is active revert
-            require(ownerOf[cloneId] != address(0), "DM:onERC721Received:!cloneId");
         }
+        // if no cloneId is active revert
+        require(ownerOf[cloneId] != address(0), "DM:onERC721Received:!cloneId");
 
         CloneShape memory cloneShape = cloneIdToShape[cloneId];
         uint256 subsidy = cloneIdToSubsidy[cloneId];
@@ -308,10 +312,25 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
             ERC721(ERC721Contract).ownerOf(id) == address(this),
             "DM:onERC721Received:!received"
         );
+
         ERC721(ERC721Contract).safeTransferFrom(address(this), owner, id);
-        SafeTransferLib.safeTransferFrom(
+
+        if (IERC165(ERC721Contract).supportsInterface(_INTERFACE_ID_ERC2981) == true) {
+            (address receiver, uint256 royaltyAmount) = IERC2981(ERC721Contract).royaltyInfo(
+                cloneShape.tokenId,
+                cloneShape.worth
+            );
+            if (royaltyAmount > 0) {
+                cloneShape.worth -= royaltyAmount;
+                SafeTransferLib.safeTransfer(
+                    ERC20(ERC20Contract),
+                    receiver,
+                    royaltyAmount
+                );
+            }
+        }
+        SafeTransferLib.safeTransfer(
             ERC20(ERC20Contract),
-            address(this),
             from,
             cloneShape.worth + subsidy
         );

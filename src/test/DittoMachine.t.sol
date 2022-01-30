@@ -5,6 +5,7 @@ import "ds-test/test.sol";
 import "@rari-capital/solmate/src/tokens/ERC721.sol";
 import "@rari-capital/solmate/src/tokens/ERC20.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
+import "@openzeppelin/contracts/interfaces/IERC2981.sol";
 import "../DittoMachine.sol";
 import "./Bidder.sol";
 import "./BidderWithReceiver.sol";
@@ -19,6 +20,35 @@ contract UnderlyingNFT is ERC721 {
     function tokenURI(uint256 id) public pure override returns (string memory) {
         return string(abi.encodePacked("id: ", Strings.toString(id)));
     }
+}
+
+contract UnderlyingNFTWithRoyalties is UnderlyingNFT, IERC2981 {
+
+    address immutable public royaltyReceiver;
+
+    constructor(address _receiver) {
+        royaltyReceiver = _receiver;
+    }
+
+    function royaltyInfo(
+        uint256 _tokenId,
+        uint256 _salePrice
+    ) external view returns (
+        address receiver,
+        uint256 royaltyAmount
+    ) {
+        receiver = royaltyReceiver;
+        royaltyAmount = _salePrice * 10 / 100;
+    }
+
+    function supportsInterface(bytes4 interfaceId) public pure override(ERC721, IERC165) returns (bool) {
+        return
+            interfaceId == 0x01ffc9a7 || // ERC165 Interface ID for ERC165
+            interfaceId == 0x80ac58cd || // ERC165 Interface ID for ERC721
+            interfaceId == 0x5b5e139f || // ERC165 Interface ID for ERC721Metadata
+            interfaceId == 0x2a55205a; // ERC165 Interface ID for ERC2981
+    }
+
 }
 
 contract Currency is ERC20 {
@@ -46,6 +76,9 @@ contract ContractTest is DSTest, DittoMachine {
     UnderlyingNFT nft;
     address nftAddr;
 
+    UnderlyingNFTWithRoyalties nftWR;
+    address nftWRAddr;
+
     Currency currency;
     address currencyAddr;
 
@@ -69,6 +102,9 @@ contract ContractTest is DSTest, DittoMachine {
 
         nft = new UnderlyingNFT();
         nftAddr = address(nft);
+
+        nftWR = new UnderlyingNFTWithRoyalties(generateAddress("royaltyReceiver"));
+        nftWRAddr = address(nftWR);
 
         currency = new Currency();
         currencyAddr = address(currency);
@@ -324,5 +360,80 @@ contract ContractTest is DSTest, DittoMachine {
         assertEq(dm.getMinAmountForCloneTransfer(0), MIN_AMOUNT_FOR_NEW_CLONE);
 
         // TODO: test with existing clone and different timeLeft values
+    }
+
+    function testSellUnderlying() public {
+        address eoaSeller = generateAddress("eoaSeller");
+        cheats.startPrank(eoaSeller);
+        nft.mint(eoaSeller, nftTokenId);
+        uint256 nftId = nftTokenId++;
+        assertEq(nft.ownerOf(nftId), eoaSeller);
+        cheats.stopPrank();
+
+        address eoaBidder = generateAddress("eoaBidder");
+        currency.mint(eoaBidder, MIN_AMOUNT_FOR_NEW_CLONE);
+        cheats.startPrank(eoaBidder);
+        currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
+
+        // buy a clone using the minimum purchase amount
+        uint256 cloneId1 = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false);
+        assertEq(dm.ownerOf(cloneId1), eoaBidder);
+
+        // ensure erc20 balances
+        assertEq(currency.balanceOf(eoaBidder), 0);
+        assertEq(currency.balanceOf(dmAddr), MIN_AMOUNT_FOR_NEW_CLONE);
+
+        uint256 subsidy1 = dm.cloneIdToSubsidy(cloneId1);
+        assertEq(subsidy1, MIN_AMOUNT_FOR_NEW_CLONE * MIN_FEE / DNOM);
+
+        CloneShape memory shape1 = getCloneShape(cloneId1);
+        assertEq(shape1.worth, currency.balanceOf(dmAddr) - subsidy1);
+
+        cheats.stopPrank();
+
+
+        cheats.startPrank(eoaSeller);
+        nft.safeTransferFrom(eoaSeller, dmAddr, nftId, abi.encode(currencyAddr, false));
+        cheats.stopPrank();
+        assertEq(currency.balanceOf(eoaSeller), shape1.worth + subsidy1);
+        assertEq(currency.balanceOf(dmAddr), 0);
+    }
+
+    function testSellUnderlyingWithRoyalties() public {
+        address eoaSeller = generateAddress("eoaSeller");
+        cheats.startPrank(eoaSeller);
+        nftWR.mint(eoaSeller, nftTokenId);
+        uint256 nftId = nftTokenId++;
+        assertEq(nftWR.ownerOf(nftId), eoaSeller);
+        cheats.stopPrank();
+
+        address eoaBidder = generateAddress("eoaBidder");
+        currency.mint(eoaBidder, MIN_AMOUNT_FOR_NEW_CLONE);
+        cheats.startPrank(eoaBidder);
+        currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
+
+        // buy a clone using the minimum purchase amount
+        uint256 cloneId1 = dm.duplicate(nftWRAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false);
+        assertEq(dm.ownerOf(cloneId1), eoaBidder);
+
+        // ensure erc20 balances
+        assertEq(currency.balanceOf(eoaBidder), 0);
+        assertEq(currency.balanceOf(dmAddr), MIN_AMOUNT_FOR_NEW_CLONE);
+
+        uint256 subsidy1 = dm.cloneIdToSubsidy(cloneId1);
+        assertEq(subsidy1, MIN_AMOUNT_FOR_NEW_CLONE * MIN_FEE / DNOM);
+
+        CloneShape memory shape1 = getCloneShape(cloneId1);
+        assertEq(shape1.worth, currency.balanceOf(dmAddr) - subsidy1);
+
+        cheats.stopPrank();
+
+        cheats.startPrank(eoaSeller);
+        nftWR.safeTransferFrom(eoaSeller, dmAddr, nftId, abi.encode(currencyAddr, false));
+        cheats.stopPrank();
+
+        uint256 royaltyAmount = (MIN_AMOUNT_FOR_NEW_CLONE - (MIN_AMOUNT_FOR_NEW_CLONE * MIN_FEE / DNOM)) * 10 / 100;
+        assertEq(currency.balanceOf(nftWR.royaltyReceiver()), royaltyAmount);
+        assertEq(currency.balanceOf(eoaSeller), (shape1.worth + subsidy1) - royaltyAmount);
     }
 }
