@@ -76,8 +76,8 @@ contract ContractTest is DSTest, DittoMachine {
     UnderlyingNFT nft;
     address nftAddr;
 
-    UnderlyingNFTWithRoyalties nftwr;
-    address nftwrAddr;
+    UnderlyingNFTWithRoyalties nftWR;
+    address nftWRAddr;
 
     Currency currency;
     address currencyAddr;
@@ -103,8 +103,8 @@ contract ContractTest is DSTest, DittoMachine {
         nft = new UnderlyingNFT();
         nftAddr = address(nft);
 
-        nftwr = new UnderlyingNFTWithRoyalties(generateAddress("royaltyReceiver"));
-        nftwrAddr = address(nftwr);
+        nftWR = new UnderlyingNFTWithRoyalties(generateAddress("royaltyReceiver"));
+        nftWRAddr = address(nftWR);
 
         currency = new Currency();
         currencyAddr = address(currency);
@@ -342,16 +342,16 @@ contract ContractTest is DSTest, DittoMachine {
         cheats.startPrank(eoaSeller);
         nft.safeTransferFrom(eoaSeller, dmAddr, nftId, abi.encode(currencyAddr, false));
         cheats.stopPrank();
-        assertEq(currency.balanceOf(eoaSeller), MIN_AMOUNT_FOR_NEW_CLONE);
+        assertEq(currency.balanceOf(eoaSeller), shape1.worth + subsidy1);
         assertEq(currency.balanceOf(dmAddr), 0);
     }
 
     function testSellUnderlyingWithRoyalties() public {
         address eoaSeller = generateAddress("eoaSeller");
         cheats.startPrank(eoaSeller);
-        nftwr.mint(eoaSeller, nftTokenId);
+        nftWR.mint(eoaSeller, nftTokenId);
         uint256 nftId = nftTokenId++;
-        assertEq(nftwr.ownerOf(nftId), eoaSeller);
+        assertEq(nftWR.ownerOf(nftId), eoaSeller);
         cheats.stopPrank();
 
         address eoaBidder = generateAddress("eoaBidder");
@@ -360,7 +360,7 @@ contract ContractTest is DSTest, DittoMachine {
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
 
         // buy a clone using the minimum purchase amount
-        uint256 cloneId1 = dm.duplicate(nftwrAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false);
+        uint256 cloneId1 = dm.duplicate(nftWRAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false);
         assertEq(dm.ownerOf(cloneId1), eoaBidder);
 
         // ensure erc20 balances
@@ -376,11 +376,11 @@ contract ContractTest is DSTest, DittoMachine {
         cheats.stopPrank();
 
         cheats.startPrank(eoaSeller);
-        nftwr.safeTransferFrom(eoaSeller, dmAddr, nftId, abi.encode(currencyAddr, false));
+        nftWR.safeTransferFrom(eoaSeller, dmAddr, nftId, abi.encode(currencyAddr, false));
         cheats.stopPrank();
 
         uint256 royaltyAmount = (MIN_AMOUNT_FOR_NEW_CLONE - (MIN_AMOUNT_FOR_NEW_CLONE * MIN_FEE / DNOM)) * 10 / 100;
-        assertEq(currency.balanceOf(nftwr.royaltyReceiver()), royaltyAmount);
-        assertEq(currency.balanceOf(eoaSeller), MIN_AMOUNT_FOR_NEW_CLONE - royaltyAmount);
+        assertEq(currency.balanceOf(nftWR.royaltyReceiver()), royaltyAmount);
+        assertEq(currency.balanceOf(eoaSeller), (shape1.worth + subsidy1) - royaltyAmount);
     }
 }

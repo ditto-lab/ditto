@@ -336,7 +336,6 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
         }
         SafeTransferLib.safeTransfer(
             ERC20(ERC20Contract),
-            // address(this),
             from,
             cloneShape.worth + subsidy
         );
@@ -353,11 +352,6 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
         ));
 
         return svg;
-    }
-
-    function checkRoyalties(address _contract) internal returns (bool) {
-        (bool success) = IERC165(_contract).supportsInterface(_INTERFACE_ID_ERC2981);
-        return success;
     }
 
     ////////////// PRIVATE FUNCTIONS //////////////
