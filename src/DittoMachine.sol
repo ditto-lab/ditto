@@ -121,13 +121,12 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
         uint256 _amount,
         bool floor
     ) public returns (uint256) {
-        // _tokenId has to be set to FLOOR_ID to purchase the floor perp
-        require(!floor || (_tokenId == FLOOR_ID), "DM:duplicate:_tokenId.invalid");
-
         // ensure enough funds to do some math on
         require(_amount >= MIN_AMOUNT_FOR_NEW_CLONE, "DM:duplicate:_amount.invalid.min");
 
-        _tokenId = floor ? FLOOR_ID : _tokenId;
+        if (floor) {
+            _tokenId = FLOOR_ID;
+        }
 
         // calculate cloneId by hashing identifiying information
         uint256 cloneId = uint256(keccak256(abi.encodePacked(
@@ -413,7 +412,6 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
             try ERC721TokenEjector(from).onERC721Ejected(address(this), to, id, "") {} // EXTERNAL CALL
             catch {}
         }
-
     }
 
     /**
