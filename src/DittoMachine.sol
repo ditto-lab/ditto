@@ -122,7 +122,9 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
         bool floor
     ) public returns (uint256) {
         // ensure enough funds to do some math on
-        require(_amount >= MIN_AMOUNT_FOR_NEW_CLONE, "DM:duplicate:_amount.invalid.min");
+        if (_amount < MIN_AMOUNT_FOR_NEW_CLONE) {
+            revert AmountInvalid();
+        }
 
         if (floor) {
             _tokenId = FLOOR_ID;
