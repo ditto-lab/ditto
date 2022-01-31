@@ -399,6 +399,12 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
         address to,
         uint256 id
     ) private {
+        require(
+            to.code.length == 0 ||
+                ERC721TokenReceiver(to).onERC721Received(msg.sender, address(0), id, "") == // EXTERNAL CALL
+                ERC721TokenReceiver.onERC721Received.selector,
+            "UNSAFE_RECIPIENT"
+        );
         forceTransferFrom(from, to, id);
         // give contracts the option to account for a forced transfer
         // if they don't implement the ejector we're stll going to move the token.
@@ -408,12 +414,6 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
             catch {}
         }
 
-        require(
-            to.code.length == 0 ||
-                ERC721TokenReceiver(to).onERC721Received(msg.sender, address(0), id, "") == // EXTERNAL CALL
-                ERC721TokenReceiver.onERC721Received.selector,
-            "UNSAFE_RECIPIENT"
-        );
     }
 
     /**
