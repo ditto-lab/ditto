@@ -22,7 +22,6 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
      */
     error AmountInvalid();
     error FromInvalid();
-    // error RecipientInvalid();
     error NFTNotReceived();
     error NotAuthorized();
 
