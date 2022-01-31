@@ -376,7 +376,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
         if (from != ownerOf[id]) {
             revert FromInvalid();
         }
-        require(to != address(0), "INVALID_RECIPIENT");
+
         unchecked {
             balanceOf[from]--;
             balanceOf[to]++;
