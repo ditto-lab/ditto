@@ -22,8 +22,9 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
      */
     error AmountInvalid();
     error FromInvalid();
-    error RecipientInvalid();
+    // error RecipientInvalid();
     error NFTNotReceived();
+    error NotAuthorized();
 
     ////////////// CONSTANT VARIABLES //////////////
 
@@ -224,10 +225,11 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
      * @dev will refund funds held in a position, subsidy will remain for sellers in the future
      */
     function dissolve(uint256 _cloneId) public {
-        require(
-            msg.sender == ownerOf[_cloneId] || msg.sender == getApproved[_cloneId] || isApprovedForAll[ownerOf[_cloneId]][msg.sender],
-            "NOT_AUTHORIZED"
-        );
+        if (!(msg.sender == ownerOf[_cloneId]
+                || msg.sender == getApproved[_cloneId]
+                || isApprovedForAll[ownerOf[_cloneId]][msg.sender])) {
+            revert NotAuthorized();
+        }
 
         address owner = ownerOf[_cloneId];
         CloneShape memory cloneShape = cloneIdToShape[_cloneId];
