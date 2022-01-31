@@ -182,7 +182,9 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
             // calculate subsidy and worth values
             subsidy = minAmount * MIN_FEE / DNOM;
             value = _amount - subsidy; // will be applied to cloneShape.worth
-            require(value >= minAmount, "DM:duplicate:_amount.invalid.val");
+            if (value < minAmount) {
+                revert AmountInvalid();
+            }
 
             // calculate new clone term values
             cloneIdToShape[cloneId] = CloneShape(
@@ -371,12 +373,12 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
         uint256 id
     ) private {
         // no ownership or approval checks cause we're forcing a change of ownership
-        require(from == ownerOf[id], "WRONG_FROM");
+        if (from != ownerOf[id]) {
+            revert FromInvalid();
+        }
         require(to != address(0), "INVALID_RECIPIENT");
-
         unchecked {
             balanceOf[from]--;
-
             balanceOf[to]++;
         }
 
