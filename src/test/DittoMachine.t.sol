@@ -279,7 +279,9 @@ contract ContractTest is DSTest, DittoMachine {
         // this reverts as we pass lower than minimum purchase amount
         dm.duplicate(nftAddr, nftId, currencyAddr, minAmountToBuyClone - 1, false);
 
+        uint256 gasBefore = gasleft();
         uint256 cloneId2 = dm.duplicate(nftAddr, nftId, currencyAddr, minAmountToBuyClone, false);
+        emit log_uint(gasBefore - gasleft());
         cheats.stopPrank();
 
         assertEq(dm.ownerOf(cloneId2), eoa2);

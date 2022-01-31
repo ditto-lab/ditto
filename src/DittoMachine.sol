@@ -15,6 +15,15 @@ import {Base64} from 'base64-sol/base64.sol';
  * token for a higher price and force a transfer from the previous owner to the new buyer
  */
 contract DittoMachine is ERC721, ERC721TokenReceiver {
+    /**
+     * @notice Insufficient bid for purchasing a clone.
+     * @dev thrown when the number of erc20 tokens sent is lower than
+     *      the number of tokens required to purchase a clone.
+     */
+    error AmountInvalid();
+    error FromInvalid();
+    error RecipientInvalid();
+    error NFTNotReceived();
 
     ////////////// CONSTANT VARIABLES //////////////
 
@@ -184,7 +193,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
                 // figure out auction time increase or decrease?
                 block.timestamp + BASE_TERM
             );
-            cloneIdToSubsidy[cloneId] += subsidy / 2;
+            cloneIdToSubsidy[cloneId] += (subsidy >> 1);
 
             // paying required funds to this contract
             SafeTransferLib.safeTransferFrom( // EXTERNAL CALL
@@ -197,7 +206,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
             SafeTransferLib.safeTransfer( // EXTERNAL CALL
                 ERC20(_ERC20Contract),
                 ownerOf[cloneId],
-                (cloneShape.worth + (subsidy/2 + subsidy%2))
+                (cloneShape.worth + (subsidy >> 1) + (subsidy & 1))
             );
             // force transfer from current owner to new highest bidder
             forceSafeTransferFrom(ownerOf[cloneId], msg.sender, cloneId); // EXTERNAL CALL
@@ -308,11 +317,9 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
         delete cloneIdToSubsidy[cloneId];
         _burn(cloneId);
 
-        require(
-            ERC721(ERC721Contract).ownerOf(id) == address(this),
-            "DM:onERC721Received:!received"
-        );
-
+        if (ERC721(ERC721Contract).ownerOf(id) != address(this)) {
+            revert NFTNotReceived();
+        }
         ERC721(ERC721Contract).safeTransferFrom(address(this), owner, id);
 
         if (IERC165(ERC721Contract).supportsInterface(_INTERFACE_ID_ERC2981) == true) {
