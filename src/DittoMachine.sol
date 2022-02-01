@@ -21,6 +21,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
      *      the number of tokens required to purchase a clone.
      */
     error AmountInvalid();
+    error AmountInvalidMin();
     error FromInvalid();
     error NFTNotReceived();
     error NotAuthorized();
@@ -112,7 +113,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
      * @param floor selector determining if the purchase is for a floor perp
      * @dev creates an ERC721 representing the specified future or floor perp, reffered to as clone
      * @dev a clone id is calculated by hashing ERC721Contract, _tokenId, _ERC20Contract, and floor params
-     * @dev if floor == true FLOOR_HASH will replace _tokenId in cloneId calculation
+     * @dev if floor == true FLOOR_ID will replace _tokenId in cloneId calculation
      */
     function duplicate(
         address _ERC721Contract,
@@ -123,7 +124,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
     ) public returns (uint256) {
         // ensure enough funds to do some math on
         if (_amount < MIN_AMOUNT_FOR_NEW_CLONE) {
-            revert AmountInvalid();
+            revert AmountInvalidMin();
         }
 
         if (floor) {
@@ -363,10 +364,11 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
     ////////////// PRIVATE FUNCTIONS //////////////
 
     /**
-     * @notice transfer without owner/approval checks
+     * @notice transfer clone without owner/approval checks
      * @param from current token owner
      * @param to transfer recepient
      * @param id token id
+     * @dev `to` != address(0) is assumed and is not explicitly check.
      */
     function forceTransferFrom(
         address from,
@@ -391,12 +393,13 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
     }
 
     /**
-     * @notice forces safeTransferFrom without owner/approval checks
-     * @param from current token owner
+     * @notice forces clone safeTransferFrom without owner/approval checks
+     * @param from current clone owner
      * @param to transfer recepient
-     * @param id token id
-     * @dev if a contract holds a clone and implements ERC721Ejected we call it
-     * @dev we will force the transfer in any case
+     * @param id clone id
+     * @dev if a contract holds a clone and implements ERC721Ejected we call it.
+     * @dev we will force the transfer in any case.
+     * @dev `to` != address(0) is assumed and is not explicitly check.
      */
     function forceSafeTransferFrom(
         address from,
