@@ -158,7 +158,7 @@ contract ContractTest is DSTest, DittoMachine {
         currency.mint(eoa, MIN_AMOUNT_FOR_NEW_CLONE);
         cheats.startPrank(eoa);
 
-        cheats.expectRevert("DM:duplicate:_amount.invalid.min");
+        cheats.expectRevert(abi.encodeWithSelector(DittoMachine.AmountInvalid.selector));
         // BASE_TERM is the minimum amount for a clone
         dm.duplicate(nftAddr, nftId, currencyAddr, 1, false);
 
@@ -275,7 +275,7 @@ contract ContractTest is DSTest, DittoMachine {
         cheats.startPrank(eoa2);
         currency.approve(dmAddr, minAmountToBuyClone);
 
-        cheats.expectRevert(bytes("DM:duplicate:_amount.invalid.min"));
+        cheats.expectRevert(abi.encodeWithSelector(DittoMachine.AmountInvalid.selector));
         // this reverts as we pass lower than minimum purchase amount
         dm.duplicate(nftAddr, nftId, currencyAddr, minAmountToBuyClone - 1, false);
 
@@ -333,7 +333,7 @@ contract ContractTest is DSTest, DittoMachine {
 
         cheats.startPrank(eoa2);
         // eoa2 should not able to dissolve someeone else's clone
-        cheats.expectRevert("NOT_AUTHORIZED");
+        cheats.expectRevert(abi.encodeWithSelector(DittoMachine.NotAuthorized.selector));
         dm.dissolve(cloneId);
         cheats.stopPrank();
 

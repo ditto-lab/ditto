@@ -15,6 +15,16 @@ import {Base64} from 'base64-sol/base64.sol';
  * token for a higher price and force a transfer from the previous owner to the new buyer
  */
 contract DittoMachine is ERC721, ERC721TokenReceiver {
+    /**
+     * @notice Insufficient bid for purchasing a clone.
+     * @dev thrown when the number of erc20 tokens sent is lower than
+     *      the number of tokens required to purchase a clone.
+     */
+    error AmountInvalid();
+    error AmountInvalidMin();
+    error FromInvalid();
+    error NFTNotReceived();
+    error NotAuthorized();
 
     ////////////// CONSTANT VARIABLES //////////////
 
@@ -103,7 +113,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
      * @param floor selector determining if the purchase is for a floor perp
      * @dev creates an ERC721 representing the specified future or floor perp, reffered to as clone
      * @dev a clone id is calculated by hashing ERC721Contract, _tokenId, _ERC20Contract, and floor params
-     * @dev if floor == true FLOOR_HASH will replace _tokenId in cloneId calculation
+     * @dev if floor == true FLOOR_ID will replace _tokenId in cloneId calculation
      */
     function duplicate(
         address _ERC721Contract,
@@ -112,13 +122,14 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
         uint256 _amount,
         bool floor
     ) public returns (uint256) {
-        // _tokenId has to be set to FLOOR_ID to purchase the floor perp
-        require(!floor || (_tokenId == FLOOR_ID), "DM:duplicate:_tokenId.invalid");
-
         // ensure enough funds to do some math on
-        require(_amount >= MIN_AMOUNT_FOR_NEW_CLONE, "DM:duplicate:_amount.invalid.min");
+        if (_amount < MIN_AMOUNT_FOR_NEW_CLONE) {
+            revert AmountInvalidMin();
+        }
 
-        _tokenId = floor ? FLOOR_ID : _tokenId;
+        if (floor) {
+            _tokenId = FLOOR_ID;
+        }
 
         // calculate cloneId by hashing identifiying information
         uint256 cloneId = uint256(keccak256(abi.encodePacked(
@@ -172,7 +183,9 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
             // calculate subsidy and worth values
             subsidy = minAmount * MIN_FEE / DNOM;
             value = _amount - subsidy; // will be applied to cloneShape.worth
-            require(value >= minAmount, "DM:duplicate:_amount.invalid.val");
+            if (value < minAmount) {
+                revert AmountInvalid();
+            }
 
             // calculate new clone term values
             cloneIdToShape[cloneId] = CloneShape(
@@ -184,7 +197,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
                 // figure out auction time increase or decrease?
                 block.timestamp + BASE_TERM
             );
-            cloneIdToSubsidy[cloneId] += subsidy / 2;
+            cloneIdToSubsidy[cloneId] += (subsidy >> 1);
 
             // paying required funds to this contract
             SafeTransferLib.safeTransferFrom( // EXTERNAL CALL
@@ -197,7 +210,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
             SafeTransferLib.safeTransfer( // EXTERNAL CALL
                 ERC20(_ERC20Contract),
                 ownerOf[cloneId],
-                (cloneShape.worth + (subsidy/2 + subsidy%2))
+                (cloneShape.worth + (subsidy >> 1) + (subsidy & 1))
             );
             // force transfer from current owner to new highest bidder
             forceSafeTransferFrom(ownerOf[cloneId], msg.sender, cloneId); // EXTERNAL CALL
@@ -212,10 +225,11 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
      * @dev will refund funds held in a position, subsidy will remain for sellers in the future
      */
     function dissolve(uint256 _cloneId) public {
-        require(
-            msg.sender == ownerOf[_cloneId] || msg.sender == getApproved[_cloneId] || isApprovedForAll[ownerOf[_cloneId]][msg.sender],
-            "NOT_AUTHORIZED"
-        );
+        if (!(msg.sender == ownerOf[_cloneId]
+                || msg.sender == getApproved[_cloneId]
+                || isApprovedForAll[ownerOf[_cloneId]][msg.sender])) {
+            revert NotAuthorized();
+        }
 
         address owner = ownerOf[_cloneId];
         CloneShape memory cloneShape = cloneIdToShape[_cloneId];
@@ -308,11 +322,9 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
         delete cloneIdToSubsidy[cloneId];
         _burn(cloneId);
 
-        require(
-            ERC721(ERC721Contract).ownerOf(id) == address(this),
-            "DM:onERC721Received:!received"
-        );
-
+        if (ERC721(ERC721Contract).ownerOf(id) != address(this)) {
+            revert NFTNotReceived();
+        }
         ERC721(ERC721Contract).safeTransferFrom(address(this), owner, id);
 
         if (IERC165(ERC721Contract).supportsInterface(_INTERFACE_ID_ERC2981) == true) {
@@ -352,10 +364,11 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
     ////////////// PRIVATE FUNCTIONS //////////////
 
     /**
-     * @notice transfer without owner/approval checks
+     * @notice transfer clone without owner/approval checks
      * @param from current token owner
      * @param to transfer recepient
      * @param id token id
+     * @dev `to` != address(0) is assumed and is not explicitly check.
      */
     function forceTransferFrom(
         address from,
@@ -363,12 +376,12 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
         uint256 id
     ) private {
         // no ownership or approval checks cause we're forcing a change of ownership
-        require(from == ownerOf[id], "WRONG_FROM");
-        require(to != address(0), "INVALID_RECIPIENT");
+        if (from != ownerOf[id]) {
+            revert FromInvalid();
+        }
 
         unchecked {
             balanceOf[from]--;
-
             balanceOf[to]++;
         }
 
@@ -380,18 +393,25 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
     }
 
     /**
-     * @notice forces safeTransferFrom without owner/approval checks
-     * @param from current token owner
+     * @notice forces clone safeTransferFrom without owner/approval checks
+     * @param from current clone owner
      * @param to transfer recepient
-     * @param id token id
-     * @dev if a contract holds a clone and implements ERC721Ejected we call it
-     * @dev we will force the transfer in any case
+     * @param id clone id
+     * @dev if a contract holds a clone and implements ERC721Ejected we call it.
+     * @dev we will force the transfer in any case.
+     * @dev `to` != address(0) is assumed and is not explicitly check.
      */
     function forceSafeTransferFrom(
         address from,
         address to,
         uint256 id
     ) private {
+        require(
+            to.code.length == 0 ||
+                ERC721TokenReceiver(to).onERC721Received(msg.sender, address(0), id, "") == // EXTERNAL CALL
+                ERC721TokenReceiver.onERC721Received.selector,
+            "UNSAFE_RECIPIENT"
+        );
         forceTransferFrom(from, to, id);
         // give contracts the option to account for a forced transfer
         // if they don't implement the ejector we're stll going to move the token.
@@ -400,13 +420,6 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
             try ERC721TokenEjector(from).onERC721Ejected(address(this), to, id, "") {} // EXTERNAL CALL
             catch {}
         }
-
-        require(
-            to.code.length == 0 ||
-                ERC721TokenReceiver(to).onERC721Received(msg.sender, address(0), id, "") == // EXTERNAL CALL
-                ERC721TokenReceiver.onERC721Received.selector,
-            "UNSAFE_RECIPIENT"
-        );
     }
 
     /**
