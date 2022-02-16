@@ -430,7 +430,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
         // if they don't implement the ejector we're stll going to move the token.
         if (to.code.length != 0) {
             // not sure if this is exploitable yet?
-            try ERC721TokenEjector(from).onERC721Ejected(address(this), to, id, "") {} // EXTERNAL CALL
+            try ERC721TokenEjector(from).onERC721Ejected{gas: 30000}(address(this), to, id, "") {} // EXTERNAL CALL
             catch {}
         }
     }
