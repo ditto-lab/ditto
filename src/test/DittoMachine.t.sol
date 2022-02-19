@@ -523,7 +523,7 @@ contract ContractTest is DSTest, DittoMachine {
         }
     }
 
-    function testHeatDuplicatePrice(uint32[255] memory time) public {
+    function testHeatDuplicatePrice(uint16 time) public {
         cheats.warp(1644911858); // bring timestamp to a realistic number
 
         uint256 nftId = mintNft();
@@ -547,8 +547,8 @@ contract ContractTest is DSTest, DittoMachine {
 
         cheats.stopPrank();
 
-        for (uint256 i = 1; i <= time.length; i++) {
-            cheats.warp(block.timestamp + (time[i-1]));
+        for (uint256 i = 1; i < 30; i++) {
+            cheats.warp(block.timestamp + uint256(time));
 
             cheats.startPrank(eoa1);
 
@@ -566,7 +566,6 @@ contract ContractTest is DSTest, DittoMachine {
 
             dm.duplicate(nftAddr, nftId, currencyAddr, minAmountToBuyClone, false);
             shape = getCloneShape(cloneId);
-            // assertEq(shape.term, block.timestamp + ((BASE_TERM-1) + shape.heat**2)/2);
 
             cheats.stopPrank();
         }

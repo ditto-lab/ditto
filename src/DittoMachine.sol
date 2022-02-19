@@ -190,14 +190,16 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
 
             uint256 heat = cloneIdToShape[cloneId].heat;
             // reduce heat relative to amount of time elapsed by auction
-            if (cloneIdToShape[cloneId].term >= block.timestamp) {
-                uint256 termStart = cloneIdToShape[cloneId].term - ((BASE_TERM-1) + heat**2);
-                uint256 termLength = cloneIdToShape[cloneId].term - termStart;
+            if (cloneIdToShape[cloneId].term > block.timestamp) {
+                uint256 termLength = (BASE_TERM-1) + heat**2;
+                uint256 termStart = cloneIdToShape[cloneId].term - termLength;
                 uint256 elapsed = block.timestamp - termStart;
+                // add 1 to current heat so heat is not stuck at low value with anything but extreme demand for a clone
                 uint256 cool = (heat+1) * elapsed / termLength;
-                heat -= cool > heat ? heat : cool;
+                heat -= cool >= heat ? heat : cool;
+                heat = heat < type(uint8).max ? uint8(heat+1) : type(uint8).max; // does not exceed 2**16-1
             } else {
-                heat = 0;
+                heat = 1;
             }
 
             // calculate new clone term values
@@ -206,9 +208,9 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
                 value,
                 cloneShape.ERC721Contract,
                 cloneShape.ERC20Contract,
-                heat < type(uint8).max ? uint8(heat+1) : type(uint8).max, // does not inherit heat of floor id, does not exeed 2**16-1
+                uint8(heat), // does not inherit heat of floor id
                 floor,
-                block.timestamp + (BASE_TERM) + heat**2
+                block.timestamp + (BASE_TERM-1) + (heat)**2
             );
             cloneIdToSubsidy[cloneId] += (subsidy >> 1);
 
@@ -443,8 +445,8 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
      */
     function _getMinAmount(CloneShape memory cloneShape) internal view returns (uint256) {
         uint256 timeLeft = (cloneShape.term > block.timestamp) ? (cloneShape.term - block.timestamp) : 0;
-        uint256 termStart = cloneShape.term - ((BASE_TERM-1) + uint256(cloneShape.heat)**2);
-        uint256 termLength = cloneShape.term - termStart;
+        uint256 termLength = (BASE_TERM-1) + uint256(cloneShape.heat)**2;
+        uint256 termStart = cloneShape.term - termLength;
 
         return cloneShape.worth
             + (cloneShape.worth * timeLeft / termLength);
