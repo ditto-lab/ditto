@@ -61,7 +61,9 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
         revert();
     }
 
-    ////////////// PUBLIC FUNCTIONS //////////////
+    ///////////////////////////////////////////
+    ////////////// SVG FUNCTIONS //////////////
+    ///////////////////////////////////////////
 
     function tokenURI(uint256 id) public view override returns (string memory) {
         CloneShape memory cloneShape = cloneIdToShape[id];
@@ -102,6 +104,41 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
             )
         ));
     }
+
+    // Visibility is `public` to enable it being called by other contracts for composition.
+    function renderTokenById(uint256 id) public view returns (string memory) {
+        CloneShape memory cloneShape = cloneIdToShape[id];
+        string memory nftTokenId = cloneShape.floor ? "Floor" : Strings.toString(cloneShape.tokenId);
+
+        string memory render = string(abi.encodePacked(
+            '<g>',
+                '<style>',
+                    '.small { font: italic 13px sans-serif; }',
+                    '.Rrrrr { font: italic 40px serif; fill: red; }',
+                '</style>',
+                '<text x="20" y="35" class="small">',Strings.toHexString(uint160(cloneIdToShape[id].ERC721Contract), 20),'</text>',
+                '<text x="55" y="65" class="Rrrrr">',ERC721(cloneShape.ERC721Contract).name(),'</text>',
+                '<text x="250" y="70" class="small">',nftTokenId,'</text>',
+            '</g>'
+        ));
+
+      return render;
+    }
+
+    function generateSVGofTokenById(uint256 id) internal view returns (string memory) {
+
+        string memory svg = string(abi.encodePacked(
+          '<svg viewBox="0 0 340 310" xmlns="http://www.w3.org/2000/svg">',
+            renderTokenById(id),
+          '</svg>'
+        ));
+
+        return svg;
+    }
+
+    /////////////////////////////////////////////////
+    //////////////// CLONE FUNCTIONS ////////////////
+    /////////////////////////////////////////////////
 
     /**
      * @notice open or buy out a future on a particular NFT or floor perp
@@ -268,27 +305,23 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
         return _minAmount + (_minAmount * MIN_FEE * (1 + heat) / DNOM);
     }
 
-    // Visibility is `public` to enable it being called by other contracts for composition.
-    function renderTokenById(uint256 id) public view returns (string memory) {
-        CloneShape memory cloneShape = cloneIdToShape[id];
-        string memory nftTokenId = cloneShape.floor ? "Floor" : Strings.toString(cloneShape.tokenId);
+    /**
+     * @notice computes the minimum amount required to buy a clone.
+     * @notice it does not take into account the protocol fee or the subsidy
+     * @param cloneShape clone for which to compute the minimum amount
+     * @dev only use it for a minted clone
+     */
+    function _getMinAmount(CloneShape memory cloneShape) internal view returns (uint256) {
+        uint256 timeLeft = (cloneShape.term > block.timestamp) ? (cloneShape.term - block.timestamp) : 0;
+        uint256 termLength = (BASE_TERM-1) + uint256(cloneShape.heat)**2;
 
-        string memory render = string(abi.encodePacked(
-            '<g>',
-                '<style>',
-                    '.small { font: italic 13px sans-serif; }',
-                    '.Rrrrr { font: italic 40px serif; fill: red; }',
-                '</style>',
-                '<text x="20" y="35" class="small">',Strings.toHexString(uint160(cloneIdToShape[id].ERC721Contract), 20),'</text>',
-                '<text x="55" y="65" class="Rrrrr">',ERC721(cloneShape.ERC721Contract).name(),'</text>',
-                '<text x="250" y="70" class="small">',nftTokenId,'</text>',
-            '</g>'
-        ));
-
-      return render;
+        return cloneShape.worth
+            + (cloneShape.worth * timeLeft / termLength);
     }
 
+    ////////////////////////////////////////////////
     ////////////// EXTERNAL FUNCTIONS //////////////
+    ////////////////////////////////////////////////
 
     /**
      * @dev will allow NFT sellers to sell by safeTransferFrom-ing directly to this contract
@@ -364,19 +397,9 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
         return this.onERC721Received.selector;
     }
 
-    ////////////// INTERNAL FUNCTIONS //////////////
-    function generateSVGofTokenById(uint256 id) internal view returns (string memory) {
-
-        string memory svg = string(abi.encodePacked(
-          '<svg viewBox="0 0 340 310" xmlns="http://www.w3.org/2000/svg">',
-            renderTokenById(id),
-          '</svg>'
-        ));
-
-        return svg;
-    }
-
+    ///////////////////////////////////////////////
     ////////////// PRIVATE FUNCTIONS //////////////
+    ///////////////////////////////////////////////
 
     /**
      * @notice transfer clone without owner/approval checks
@@ -437,19 +460,6 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
         }
     }
 
-    /**
-     * @notice computes the minimum amount required to buy a clone.
-     * @notice it does not take into account the protocol fee or the subsidy
-     * @param cloneShape clone for which to compute the minimum amount
-     * @dev only use it for a minted clone
-     */
-    function _getMinAmount(CloneShape memory cloneShape) internal view returns (uint256) {
-        uint256 timeLeft = (cloneShape.term > block.timestamp) ? (cloneShape.term - block.timestamp) : 0;
-        uint256 termLength = (BASE_TERM-1) + uint256(cloneShape.heat)**2;
-
-        return cloneShape.worth
-            + (cloneShape.worth * timeLeft / termLength);
-    }
 
 }
 
