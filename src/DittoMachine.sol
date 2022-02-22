@@ -47,7 +47,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
         uint256 worth;
         address ERC721Contract;
         address ERC20Contract;
-        // uint16 heat;
+        uint8 heat;
         bool floor;
         uint256 term;
     }
@@ -150,6 +150,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
                 value,
                 _ERC721Contract,
                 _ERC20Contract,
+                1,
                 floor,
                 block.timestamp + BASE_TERM
             );
@@ -179,12 +180,25 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
             }
 
             uint256 minAmount = _getMinAmount(cloneShape);
-
+            uint256 heat = cloneIdToShape[cloneId].heat;
             // calculate subsidy and worth values
-            subsidy = minAmount * MIN_FEE / DNOM;
+            subsidy = minAmount * (MIN_FEE * (1 + heat)) / DNOM;
             value = _amount - subsidy; // will be applied to cloneShape.worth
             if (value < minAmount) {
                 revert AmountInvalid();
+            }
+
+            // reduce heat relative to amount of time elapsed by auction
+            if (cloneIdToShape[cloneId].term > block.timestamp) {
+                uint256 termLength = (BASE_TERM-1) + heat**2;
+                uint256 termStart = cloneIdToShape[cloneId].term - termLength;
+                uint256 elapsed = block.timestamp - termStart;
+                // add 1 to current heat so heat is not stuck at low value with anything but extreme demand for a clone
+                uint256 cool = (heat+1) * elapsed / termLength;
+                heat -= cool >= heat ? heat : cool;
+                heat = heat < type(uint8).max ? uint8(heat+1) : type(uint8).max; // does not exceed 2**16-1
+            } else {
+                heat = 1;
             }
 
             // calculate new clone term values
@@ -193,10 +207,11 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
                 value,
                 cloneShape.ERC721Contract,
                 cloneShape.ERC20Contract,
+                uint8(heat), // does not inherit heat of floor id
                 floor,
-                // figure out auction time increase or decrease?
-                block.timestamp + BASE_TERM
+                block.timestamp + (BASE_TERM-1) + (heat)**2
             );
+            // half of fee goes into subsidy pool, half to previous clone owner
             cloneIdToSubsidy[cloneId] += (subsidy >> 1);
 
             // paying required funds to this contract
@@ -210,7 +225,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
             SafeTransferLib.safeTransfer( // EXTERNAL CALL
                 ERC20(_ERC20Contract),
                 ownerOf[cloneId],
-                (cloneShape.worth + (subsidy >> 1) + (subsidy & 1))
+                (cloneShape.worth + (subsidy >> 1) + (subsidy & 1)) // previous clone value + half of subsidy sent to prior clone owner
             );
             // force transfer from current owner to new highest bidder
             forceSafeTransferFrom(ownerOf[cloneId], msg.sender, cloneId); // EXTERNAL CALL
@@ -248,9 +263,9 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
         if(ownerOf[cloneId] == address(0)) {
             return MIN_AMOUNT_FOR_NEW_CLONE;
         }
-
+        uint256 heat = cloneIdToShape[cloneId].heat;
         uint256 _minAmount = _getMinAmount(cloneIdToShape[cloneId]);
-        return _minAmount + (_minAmount * MIN_FEE / DNOM);
+        return _minAmount + (_minAmount * MIN_FEE * (1 + heat) / DNOM);
     }
 
     // Visibility is `public` to enable it being called by other contracts for composition.
@@ -417,7 +432,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
         // if they don't implement the ejector we're stll going to move the token.
         if (to.code.length != 0) {
             // not sure if this is exploitable yet?
-            try ERC721TokenEjector(from).onERC721Ejected(address(this), to, id, "") {} // EXTERNAL CALL
+            try ERC721TokenEjector(from).onERC721Ejected{gas: 30000}(address(this), to, id, "") {} // EXTERNAL CALL
             catch {}
         }
     }
@@ -430,9 +445,10 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
      */
     function _getMinAmount(CloneShape memory cloneShape) internal view returns (uint256) {
         uint256 timeLeft = (cloneShape.term > block.timestamp) ? (cloneShape.term - block.timestamp) : 0;
+        uint256 termLength = (BASE_TERM-1) + uint256(cloneShape.heat)**2;
 
         return cloneShape.worth
-            + (cloneShape.worth * timeLeft / BASE_TERM);
+            + (cloneShape.worth * timeLeft / termLength);
     }
 
 }

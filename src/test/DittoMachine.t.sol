@@ -123,13 +123,14 @@ contract ContractTest is DSTest, DittoMachine {
 
     function getCloneShape(uint256 cloneId) internal view returns (CloneShape memory) {
         (uint256 tokenId, uint256 worth, address ERC721Contract,
-            address ERC20Contract, bool floor, uint256 term) = dm.cloneIdToShape(cloneId);
+            address ERC20Contract, uint8 heat, bool floor, uint256 term) = dm.cloneIdToShape(cloneId);
 
         CloneShape memory shape = CloneShape(
             tokenId,
             worth,
             ERC721Contract,
             ERC20Contract,
+            heat,
             floor,
             term
         );
@@ -158,7 +159,7 @@ contract ContractTest is DSTest, DittoMachine {
         currency.mint(eoa, MIN_AMOUNT_FOR_NEW_CLONE);
         cheats.startPrank(eoa);
 
-        cheats.expectRevert(abi.encodeWithSelector(DittoMachine.AmountInvalid.selector));
+        cheats.expectRevert(abi.encodeWithSelector(DittoMachine.AmountInvalidMin.selector));
         // BASE_TERM is the minimum amount for a clone
         dm.duplicate(nftAddr, nftId, currencyAddr, 1, false);
 
@@ -269,7 +270,7 @@ contract ContractTest is DSTest, DittoMachine {
 
         uint256 minAmountToBuyClone = dm.getMinAmountForCloneTransfer(cloneId1);
         uint256 minAmountWithoutSubsidy = shape1.worth;
-        assertEq(minAmountToBuyClone, minAmountWithoutSubsidy + (minAmountWithoutSubsidy * MIN_FEE / DNOM));
+        assertEq(minAmountToBuyClone, minAmountWithoutSubsidy + (minAmountWithoutSubsidy * (MIN_FEE*2) / DNOM));
 
         currency.mint(eoa2, minAmountToBuyClone);
         cheats.startPrank(eoa2);
@@ -435,5 +436,138 @@ contract ContractTest is DSTest, DittoMachine {
         uint256 royaltyAmount = (MIN_AMOUNT_FOR_NEW_CLONE - (MIN_AMOUNT_FOR_NEW_CLONE * MIN_FEE / DNOM)) * 10 / 100;
         assertEq(currency.balanceOf(nftWR.royaltyReceiver()), royaltyAmount);
         assertEq(currency.balanceOf(eoaSeller), (shape1.worth + subsidy1) - royaltyAmount);
+    }
+
+    function testHeatIncrease() public {
+        cheats.warp(1644911858); // bring timestamp to a realistic number
+
+        uint256 nftId = mintNft();
+        address eoa1 = generateAddress("eoa1");
+        currency.mint(eoa1, MIN_AMOUNT_FOR_NEW_CLONE);
+
+        cheats.startPrank(eoa1);
+        currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
+
+        // buy a clone using the minimum purchase amount
+        uint256 cloneId1 = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false);
+        assertEq(dm.ownerOf(cloneId1), eoa1);
+
+        // ensure erc20 balances
+        assertEq(currency.balanceOf(eoa1), 0);
+        assertEq(currency.balanceOf(dmAddr), MIN_AMOUNT_FOR_NEW_CLONE);
+
+        CloneShape memory shape = getCloneShape(cloneId1);
+        assertEq(shape.heat, 1);
+
+        cheats.stopPrank();
+
+        for (uint256 i = 1; i < 221; i++) {
+            // after 221 overflow error
+
+            cheats.startPrank(eoa1);
+
+            uint256 minAmountToBuyClone = dm.getMinAmountForCloneTransfer(cloneId1);
+            currency.mint(eoa1, minAmountToBuyClone);
+            currency.approve(dmAddr, minAmountToBuyClone);
+
+            dm.duplicate(nftAddr, nftId, currencyAddr, minAmountToBuyClone, false);
+            shape = getCloneShape(cloneId1);
+            assertEq(shape.heat, 1+i);
+            // assertEq(minAmountToBuyClone, 0);
+            // assertEq(block.timestamp, 0);
+
+            cheats.stopPrank();
+        }
+    }
+
+    function testHeatStatic() public {
+        cheats.warp(1644911858); // bring timestamp to a realistic number
+
+        uint256 nftId = mintNft();
+        address eoa1 = generateAddress("eoa1");
+
+        currency.mint(eoa1, MIN_AMOUNT_FOR_NEW_CLONE);
+
+        cheats.startPrank(eoa1);
+        currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
+
+        // buy a clone using the minimum purchase amount
+        uint256 cloneId = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false);
+        assertEq(dm.ownerOf(cloneId), eoa1);
+
+        // ensure erc20 balances
+        assertEq(currency.balanceOf(eoa1), 0);
+        assertEq(currency.balanceOf(dmAddr), MIN_AMOUNT_FOR_NEW_CLONE);
+
+        CloneShape memory shape = getCloneShape(cloneId);
+        assertEq(shape.heat, 1);
+
+        cheats.stopPrank();
+        // cheats.warp(block.timestamp + 1);
+
+        for (uint256 i = 1; i < 256; i++) {
+            cheats.warp(block.timestamp + (BASE_TERM-1) + shape.heat**2);
+
+            cheats.startPrank(eoa1);
+
+            uint256 minAmountToBuyClone = dm.getMinAmountForCloneTransfer(cloneId);
+            currency.mint(eoa1, minAmountToBuyClone);
+            currency.approve(dmAddr, minAmountToBuyClone);
+
+            dm.duplicate(nftAddr, nftId, currencyAddr, minAmountToBuyClone, false);
+            shape = getCloneShape(cloneId);
+            assertEq(shape.heat, 1);
+            assertEq(shape.term, block.timestamp + (BASE_TERM-1) + shape.heat**2);
+
+            cheats.stopPrank();
+        }
+    }
+
+    function testHeatDuplicatePrice(uint16 time) public {
+        cheats.warp(1644911858); // bring timestamp to a realistic number
+
+        uint256 nftId = mintNft();
+        address eoa1 = generateAddress("eoa1");
+
+        currency.mint(eoa1, MIN_AMOUNT_FOR_NEW_CLONE);
+
+        cheats.startPrank(eoa1);
+        currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
+
+        // buy a clone using the minimum purchase amount
+        uint256 cloneId = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false);
+        assertEq(dm.ownerOf(cloneId), eoa1);
+
+        // ensure erc20 balances
+        assertEq(currency.balanceOf(eoa1), 0);
+        assertEq(currency.balanceOf(dmAddr), MIN_AMOUNT_FOR_NEW_CLONE);
+
+        CloneShape memory shape = getCloneShape(cloneId);
+        assertEq(shape.heat, 1);
+
+        cheats.stopPrank();
+
+        for (uint256 i = 1; i < 30; i++) {
+            cheats.warp(block.timestamp + uint256(time));
+
+            cheats.startPrank(eoa1);
+
+            uint256 minAmountToBuyClone = dm.getMinAmountForCloneTransfer(cloneId);
+            currency.mint(eoa1, minAmountToBuyClone);
+            currency.approve(dmAddr, minAmountToBuyClone);
+
+            uint256 timeLeft = shape.term > block.timestamp ? shape.term - block.timestamp : 0;
+            uint256 termStart = shape.term - ((BASE_TERM-1) + uint256(shape.heat)**2);
+            uint256 termLength = shape.term - termStart;
+
+            uint256 auctionPrice = shape.worth + (shape.worth * timeLeft / termLength);
+
+            assertEq(minAmountToBuyClone, (auctionPrice + (auctionPrice * MIN_FEE * (1+shape.heat) / DNOM)), "price");
+
+            dm.duplicate(nftAddr, nftId, currencyAddr, minAmountToBuyClone, false);
+            shape = getCloneShape(cloneId);
+
+            cheats.stopPrank();
+        }
     }
 }
