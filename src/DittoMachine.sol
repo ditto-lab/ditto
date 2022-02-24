@@ -54,6 +54,8 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
 
     mapping(uint256 => CloneShape) public cloneIdToShape;
     mapping(uint256 => uint256) public cloneIdToSubsidy;
+    mapping(uint256 => uint256) public cloneIdToCumulativePrice;
+    mapping(uint256 => uint256) public cloneIdToTimestampLast;
 
     constructor() ERC721("Ditto", "DTO") { }
 
@@ -176,6 +178,8 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
             floor
         )));
 
+        _updatePrice(cloneId);
+
         uint256 value;
         uint256 subsidy;
 
@@ -283,6 +287,8 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
             revert NotAuthorized();
         }
 
+        _updatePrice(_cloneId);
+
         address owner = ownerOf[_cloneId];
         CloneShape memory cloneShape = cloneIdToShape[_cloneId];
 
@@ -362,6 +368,8 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
         }
         // if no cloneId is active revert
         require(ownerOf[cloneId] != address(0), "DM:onERC721Received:!cloneId");
+
+        _updatePrice(cloneId);
 
         CloneShape memory cloneShape = cloneIdToShape[cloneId];
         uint256 subsidy = cloneIdToSubsidy[cloneId];
@@ -458,6 +466,12 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
             try ERC721TokenEjector(from).onERC721Ejected{gas: 30000}(address(this), to, id, "") {} // EXTERNAL CALL
             catch {}
         }
+    }
+
+    function _updatePrice(uint256 cloneId) internal {
+        uint256 timeElapsed = block.timestamp - cloneIdToTimestampLast[cloneId];
+        cloneIdToCumulativePrice[cloneId] += cloneIdToShape[cloneId].worth * timeElapsed;
+        cloneIdToTimestampLast[cloneId] = block.timestamp;
     }
 
 
