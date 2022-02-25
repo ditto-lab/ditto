@@ -470,7 +470,9 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
 
     function _updatePrice(uint256 cloneId) internal {
         uint256 timeElapsed = block.timestamp - cloneIdToTimestampLast[cloneId];
-        cloneIdToCumulativePrice[cloneId] += cloneIdToShape[cloneId].worth * timeElapsed;
+        unchecked  {
+            cloneIdToCumulativePrice[cloneId] += cloneIdToShape[cloneId].worth * timeElapsed;
+        }
         cloneIdToTimestampLast[cloneId] = block.timestamp;
     }
 
