@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.4;
 
-import "../DittoMachine.sol";
-import "./Bidder.sol";
+import {Bidder, DittoMachine} from "./Bidder.sol";
 import {ERC721TokenReceiver} from "@rari-capital/solmate/src/tokens/ERC721.sol";
 
 contract BidderWithWrongReceiver is Bidder, ERC721TokenReceiver {

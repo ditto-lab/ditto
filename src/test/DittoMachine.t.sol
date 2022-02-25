@@ -2,54 +2,12 @@
 pragma solidity ^0.8.4;
 
 import "ds-test/test.sol";
-import "@rari-capital/solmate/src/tokens/ERC721.sol";
-import "@rari-capital/solmate/src/tokens/ERC20.sol";
-import "@openzeppelin/contracts/utils/Strings.sol";
-import "@openzeppelin/contracts/interfaces/IERC2981.sol";
 import "../DittoMachine.sol";
-import "./Bidder.sol";
-import "./BidderWithReceiver.sol";
-import "./BidderWithWrongReceiver.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
+import {BidderWithReceiver, Bidder, DittoMachine} from "./BidderWithReceiver.sol";
+import {BidderWithWrongReceiver} from "./BidderWithWrongReceiver.sol";
+import {ERC721, IERC2981, UnderlyingNFTWithRoyalties, UnderlyingNFT} from "./UnderlyingNFTWithRoyalties.sol";
 
-contract UnderlyingNFT is ERC721 {
-    constructor() ERC721("Underlying", "UNDER") {}
-
-    function mint(address to, uint256 id) external {
-        _mint(to, id);
-    }
-    function tokenURI(uint256 id) public pure override returns (string memory) {
-        return string(abi.encodePacked("id: ", Strings.toString(id)));
-    }
-}
-
-contract UnderlyingNFTWithRoyalties is UnderlyingNFT, IERC2981 {
-
-    address immutable public royaltyReceiver;
-
-    constructor(address _receiver) {
-        royaltyReceiver = _receiver;
-    }
-
-    function royaltyInfo(
-        uint256 _tokenId,
-        uint256 _salePrice
-    ) external view returns (
-        address receiver,
-        uint256 royaltyAmount
-    ) {
-        receiver = royaltyReceiver;
-        royaltyAmount = _salePrice * 10 / 100;
-    }
-
-    function supportsInterface(bytes4 interfaceId) public pure override(ERC721, IERC165) returns (bool) {
-        return
-            interfaceId == 0x01ffc9a7 || // ERC165 Interface ID for ERC165
-            interfaceId == 0x80ac58cd || // ERC165 Interface ID for ERC721
-            interfaceId == 0x5b5e139f || // ERC165 Interface ID for ERC721Metadata
-            interfaceId == 0x2a55205a; // ERC165 Interface ID for ERC2981
-    }
-
-}
 
 contract Currency is ERC20 {
     constructor() ERC20("Currency", "CRY", 18) {}
