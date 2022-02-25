@@ -111,7 +111,7 @@ contract ContractTest is DSTest, DittoMachine {
     }
 
     function generateAddress(bytes memory str) internal pure returns (address) {
-        return address(bytes20(uint160(uint256(keccak256(str)))));
+        return address(bytes20(keccak256(str)));
     }
 
     function mintNft() internal returns (uint256) {
