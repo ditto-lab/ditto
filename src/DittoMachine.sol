@@ -452,20 +452,20 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
         address to,
         uint256 id
     ) private {
+        forceTransferFrom(from, to, id);
+        // give contracts the option to account for a forced transfer
+        // if they don't implement the ejector we're stll going to move the token.
+        if (from.code.length != 0) {
+            // not sure if this is exploitable yet?
+            try ERC721TokenEjector(from).onERC721Ejected{gas: 30000}(address(this), to, id, "") {} // EXTERNAL CALL
+            catch {}
+        }
         require(
             to.code.length == 0 ||
                 ERC721TokenReceiver(to).onERC721Received(msg.sender, address(0), id, "") == // EXTERNAL CALL
                 ERC721TokenReceiver.onERC721Received.selector,
             "UNSAFE_RECIPIENT"
         );
-        forceTransferFrom(from, to, id);
-        // give contracts the option to account for a forced transfer
-        // if they don't implement the ejector we're stll going to move the token.
-        if (to.code.length != 0) {
-            // not sure if this is exploitable yet?
-            try ERC721TokenEjector(from).onERC721Ejected{gas: 30000}(address(this), to, id, "") {} // EXTERNAL CALL
-            catch {}
-        }
     }
 
     function _updatePrice(uint256 cloneId) internal {
