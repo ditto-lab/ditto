@@ -98,6 +98,12 @@ contract ContractTest is DSTest, DittoMachine {
         assertEq(dmAddr.balance, 0);
     }
 
+    function testNoFallback() public {
+        // fallback() should revert
+        (bool success, ) = dmAddr.call("0x12345678");
+        assert(!success);
+    }
+
     // test obvious reverts in `duplicate()`
     function testDuplicateReverts() public {
         // when amount < MIN_AMOUNT_FOR_NEW_CLONE

@@ -59,10 +59,6 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
 
     constructor() ERC721("Ditto", "DTO") { }
 
-    fallback() external {
-        revert();
-    }
-
     ///////////////////////////////////////////
     ////////////// SVG FUNCTIONS //////////////
     ///////////////////////////////////////////
