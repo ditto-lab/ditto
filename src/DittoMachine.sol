@@ -54,6 +54,8 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
 
     mapping(uint256 => CloneShape) public cloneIdToShape;
     mapping(uint256 => uint256) public cloneIdToSubsidy;
+    mapping(uint256 => uint256) public cloneIdToCumulativePrice;
+    mapping(uint256 => uint256) public cloneIdToTimestampLast;
 
     constructor() ERC721("Ditto", "DTO") { }
 
@@ -176,6 +178,8 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
             floor
         )));
 
+        _updatePrice(cloneId);
+
         uint256 value;
         uint256 subsidy;
 
@@ -283,6 +287,8 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
             revert NotAuthorized();
         }
 
+        _updatePrice(_cloneId);
+
         address owner = ownerOf[_cloneId];
         CloneShape memory cloneShape = cloneIdToShape[_cloneId];
 
@@ -362,6 +368,8 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
         }
         // if no cloneId is active revert
         require(ownerOf[cloneId] != address(0), "DM:onERC721Received:!cloneId");
+
+        _updatePrice(cloneId);
 
         CloneShape memory cloneShape = cloneIdToShape[cloneId];
         uint256 subsidy = cloneIdToSubsidy[cloneId];
@@ -444,22 +452,31 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
         address to,
         uint256 id
     ) private {
+        forceTransferFrom(from, to, id);
+        // give contracts the option to account for a forced transfer
+        // if they don't implement the ejector we're stll going to move the token.
+        if (from.code.length != 0) {
+            // not sure if this is exploitable yet?
+            try IERC721TokenEjector(from).onERC721Ejected{gas: 30000}(address(this), to, id, "") {} // EXTERNAL CALL
+            catch {}
+        }
         require(
             to.code.length == 0 ||
                 ERC721TokenReceiver(to).onERC721Received(msg.sender, address(0), id, "") == // EXTERNAL CALL
                 ERC721TokenReceiver.onERC721Received.selector,
             "UNSAFE_RECIPIENT"
         );
-        forceTransferFrom(from, to, id);
-        // give contracts the option to account for a forced transfer
-        // if they don't implement the ejector we're stll going to move the token.
-        if (to.code.length != 0) {
-            // not sure if this is exploitable yet?
-            try ERC721TokenEjector(from).onERC721Ejected{gas: 30000}(address(this), to, id, "") {} // EXTERNAL CALL
-            catch {}
-        }
     }
 
+    function _updatePrice(uint256 cloneId) internal {
+        uint256 timeElapsed = block.timestamp - cloneIdToTimestampLast[cloneId];
+        if (timeElapsed > 0) {
+            unchecked  {
+                cloneIdToCumulativePrice[cloneId] += cloneIdToShape[cloneId].worth * timeElapsed;
+            }
+        }
+        cloneIdToTimestampLast[cloneId] = block.timestamp;
+    }
 
 }
 
@@ -467,7 +484,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
  * @title A funtion to support token ejection
  * @notice function is called if a contract must do accounting on a forced transfer
  */
-interface ERC721TokenEjector {
+interface IERC721TokenEjector {
 
     function onERC721Ejected(
         address operator,
