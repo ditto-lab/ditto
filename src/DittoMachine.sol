@@ -379,7 +379,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
         }
         ERC721(ERC721Contract).safeTransferFrom(address(this), owner, id);
 
-        if (IERC165(ERC721Contract).supportsInterface(_INTERFACE_ID_ERC2981) == true) {
+        if (IERC165(ERC721Contract).supportsInterface(_INTERFACE_ID_ERC2981)) {
             (address receiver, uint256 royaltyAmount) = IERC2981(ERC721Contract).royaltyInfo(
                 cloneShape.tokenId,
                 cloneShape.worth
