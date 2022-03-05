@@ -59,10 +59,6 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
 
     constructor() ERC721("Ditto", "DTO") { }
 
-    fallback() external {
-        revert();
-    }
-
     ///////////////////////////////////////////
     ////////////// SVG FUNCTIONS //////////////
     ///////////////////////////////////////////
@@ -202,7 +198,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
                 address(this),
                 _amount
             );
-            _safeMint(msg.sender, cloneId); // EXTERNAL CALL
+            _mint(msg.sender, cloneId);
         } else {
             uint256 floorId = uint256(keccak256(abi.encodePacked(
                 _ERC721Contract,
@@ -269,7 +265,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
                 (cloneShape.worth + (subsidy >> 1) + (subsidy & 1)) // previous clone value + half of subsidy sent to prior clone owner
             );
             // force transfer from current owner to new highest bidder
-            forceSafeTransferFrom(ownerOf[cloneId], msg.sender, cloneId); // EXTERNAL CALL
+            forceTransferFrom(ownerOf[cloneId], msg.sender, cloneId); // EXTERNAL CALL
         }
 
         return cloneId;
@@ -383,7 +379,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
         }
         ERC721(ERC721Contract).safeTransferFrom(address(this), owner, id);
 
-        if (IERC165(ERC721Contract).supportsInterface(_INTERFACE_ID_ERC2981) == true) {
+        if (IERC165(ERC721Contract).supportsInterface(_INTERFACE_ID_ERC2981)) {
             (address receiver, uint256 royaltyAmount) = IERC2981(ERC721Contract).royaltyInfo(
                 cloneShape.tokenId,
                 cloneShape.worth
@@ -411,10 +407,14 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
 
     /**
      * @notice transfer clone without owner/approval checks
-     * @param from current token owner
+     * @param from current clone owner
      * @param to transfer recepient
-     * @param id token id
-     * @dev `to` != address(0) is assumed and is not explicitly check.
+     * @param id clone id
+     * @dev if a contract holds a clone and implements ERC721Ejected, we call it.
+     *    only to be called from `duplicate()` function to transfer to the next bidder.
+     *    we will force the transfer in any case.
+     *    `to` != address(0) is assumed and is not explicitly check.
+     *    `onERC721Received` is not called on the receiver, the bidder is responsible for accounting.
      */
     function forceTransferFrom(
         address from,
@@ -435,24 +435,6 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
 
         delete getApproved[id];
 
-        emit Transfer(from, to, id);
-    }
-
-    /**
-     * @notice forces clone safeTransferFrom without owner/approval checks
-     * @param from current clone owner
-     * @param to transfer recepient
-     * @param id clone id
-     * @dev if a contract holds a clone and implements ERC721Ejected we call it.
-     * @dev we will force the transfer in any case.
-     * @dev `to` != address(0) is assumed and is not explicitly check.
-     */
-    function forceSafeTransferFrom(
-        address from,
-        address to,
-        uint256 id
-    ) private {
-        forceTransferFrom(from, to, id);
         // give contracts the option to account for a forced transfer
         // if they don't implement the ejector we're stll going to move the token.
         if (from.code.length != 0) {
@@ -460,12 +442,8 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
             try IERC721TokenEjector(from).onERC721Ejected{gas: 30000}(address(this), to, id, "") {} // EXTERNAL CALL
             catch {}
         }
-        require(
-            to.code.length == 0 ||
-                ERC721TokenReceiver(to).onERC721Received(msg.sender, address(0), id, "") == // EXTERNAL CALL
-                ERC721TokenReceiver.onERC721Received.selector,
-            "UNSAFE_RECIPIENT"
-        );
+
+        emit Transfer(from, to, id);
     }
 
     function _updatePrice(uint256 cloneId) internal {
