@@ -5,6 +5,7 @@ import "ds-test/test.sol";
 import "../DittoMachine.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import {Bidder, DittoMachine} from "./Bidder.sol";
+import {BidderWithEjector, BidderWithBadEjector, BidderWithGassyEjector} from "./BidderWithEjector.sol";
 import {ERC721, IERC2981, UnderlyingNFTWithRoyalties, UnderlyingNFT} from "./UnderlyingNFTWithRoyalties.sol";
 
 
@@ -43,11 +44,17 @@ contract ContractTest is DSTest, DittoMachine {
     uint256 nftTokenId = 0;
 
     Bidder immutable bidder;
+    BidderWithEjector immutable bidderWithEjector;
+    BidderWithBadEjector immutable bidderWithBadEjector;
+    BidderWithGassyEjector immutable bidderWithGassyEjector;
 
     constructor() {
         dm = new DittoMachine();
 
         bidder = new Bidder(dmAddr);
+        bidderWithEjector = new BidderWithEjector(dmAddr);
+        bidderWithBadEjector = new BidderWithBadEjector(dmAddr);
+        bidderWithGassyEjector = new BidderWithGassyEjector(dmAddr);
     }
 
     function setUp() public {
@@ -566,5 +573,77 @@ contract ContractTest is DSTest, DittoMachine {
 
             cheats.stopPrank();
         }
+    }
+
+    function testEjector() public {
+        uint256 nftId = mintNft();
+        currency.mint(address(bidderWithEjector), MIN_AMOUNT_FOR_NEW_CLONE);
+
+        cheats.startPrank(address(bidderWithEjector));
+        currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
+
+        uint256 cloneId = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false);
+        cheats.stopPrank();
+
+        address eoa1 = generateAddress("eoa1");
+        uint256 minAmountToBuyClone = dm.getMinAmountForCloneTransfer(cloneId);
+        currency.mint(eoa1, minAmountToBuyClone);
+
+        cheats.startPrank(eoa1);
+        currency.approve(dmAddr, minAmountToBuyClone);
+        dm.duplicate(nftAddr, nftId, currencyAddr, minAmountToBuyClone, false);
+        cheats.stopPrank();
+
+        uint256 ejections = bidderWithEjector.ejections();
+        assertEq(ejections, 1);
+        assertEq(dm.ownerOf(cloneId), eoa1);
+    }
+
+    function testEjectorWithRevert() public {
+        uint256 nftId = mintNft();
+        currency.mint(address(bidderWithBadEjector), MIN_AMOUNT_FOR_NEW_CLONE);
+
+        cheats.startPrank(address(bidderWithBadEjector));
+        currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
+
+        uint256 cloneId = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false);
+        cheats.stopPrank();
+
+        address eoa1 = generateAddress("eoa1");
+        uint256 minAmountToBuyClone = dm.getMinAmountForCloneTransfer(cloneId);
+        currency.mint(eoa1, minAmountToBuyClone);
+
+        cheats.startPrank(eoa1);
+        currency.approve(dmAddr, minAmountToBuyClone);
+        dm.duplicate(nftAddr, nftId, currencyAddr, minAmountToBuyClone, false);
+        cheats.stopPrank();
+
+        uint256 ejections = bidderWithBadEjector.ejections();
+        assertEq(ejections, 0);
+        assertEq(dm.ownerOf(cloneId), eoa1);
+    }
+
+    function testEjectorWithOOG() public {
+        uint256 nftId = mintNft();
+        currency.mint(address(bidderWithGassyEjector), MIN_AMOUNT_FOR_NEW_CLONE);
+
+        cheats.startPrank(address(bidderWithGassyEjector));
+        currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
+
+        uint256 cloneId = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false);
+        cheats.stopPrank();
+
+        address eoa1 = generateAddress("eoa1");
+        uint256 minAmountToBuyClone = dm.getMinAmountForCloneTransfer(cloneId);
+        currency.mint(eoa1, minAmountToBuyClone);
+
+        cheats.startPrank(eoa1);
+        currency.approve(dmAddr, minAmountToBuyClone);
+        dm.duplicate(nftAddr, nftId, currencyAddr, minAmountToBuyClone, false);
+        cheats.stopPrank();
+
+        uint256 ejections = bidderWithGassyEjector.ejections();
+        assertEq(ejections, 0);
+        assertEq(dm.ownerOf(cloneId), eoa1);
     }
 }
