@@ -5,8 +5,6 @@ import {DittoMachine} from "../DittoMachine.sol";
 
 contract Bidder {
 
-    DittoMachine immutable dm;
-    constructor(address dmAddr) {
-        dm = DittoMachine(dmAddr);
-    }
+    constructor() {}
+
 }

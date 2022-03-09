@@ -51,10 +51,10 @@ contract ContractTest is DSTest, DittoMachine {
     constructor() {
         dm = new DittoMachine();
 
-        bidder = new Bidder(dmAddr);
-        bidderWithEjector = new BidderWithEjector(dmAddr);
-        bidderWithBadEjector = new BidderWithBadEjector(dmAddr);
-        bidderWithGassyEjector = new BidderWithGassyEjector(dmAddr);
+        bidder = new Bidder();
+        bidderWithEjector = new BidderWithEjector();
+        bidderWithBadEjector = new BidderWithBadEjector();
+        bidderWithGassyEjector = new BidderWithGassyEjector();
     }
 
     function setUp() public {

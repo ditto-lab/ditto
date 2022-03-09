@@ -7,10 +7,7 @@ contract BidderWithEjector is IERC721TokenEjector {
 
     uint256 public ejections;
 
-    DittoMachine immutable dm;
-    constructor(address dmAddr) {
-        dm = DittoMachine(dmAddr);
-    }
+    constructor() {}
 
     function onERC721Ejected(
         address operator,
@@ -27,10 +24,7 @@ contract BidderWithBadEjector is IERC721TokenEjector {
 
     uint256 public ejections;
 
-    DittoMachine immutable dm;
-    constructor(address dmAddr) {
-        dm = DittoMachine(dmAddr);
-    }
+    constructor() {}
 
     function onERC721Ejected(
         address operator,
@@ -49,10 +43,7 @@ contract BidderWithGassyEjector is IERC721TokenEjector {
     uint256 public ejections;
     uint256[] public stored;
 
-    DittoMachine immutable dm;
-    constructor(address dmAddr) {
-        dm = DittoMachine(dmAddr);
-    }
+    constructor() {}
 
     function onERC721Ejected(
         address operator,
