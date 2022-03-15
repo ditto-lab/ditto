@@ -29,6 +29,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
     ////////////// CONSTANT VARIABLES //////////////
 
     bytes4 private constant _INTERFACE_ID_ERC2981 = 0x2a55205a;
+    bytes16 private constant _HEX_SYMBOLS = "0123456789abcdef";
 
     uint256 public constant FLOOR_ID = uint256(0xfddc260aecba8a66725ee58da4ea3cbfcf4ab6c6ad656c48345a575ca18c45c9);
 
@@ -64,26 +65,23 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
     ///////////////////////////////////////////
 
     function tokenURI(uint256 id) public view override returns (string memory) {
-        string memory uri;
-
         CloneShape memory cloneShape = cloneIdToShape[id];
 
-        if (cloneShape.floor == false) {
+        if (!cloneShape.floor) {
             // if clone is not a floor return underlying token uri
-            uri = ERC721(cloneShape.ERC721Contract).tokenURI(cloneShape.tokenId);
-
+            return ERC721(cloneShape.ERC721Contract).tokenURI(cloneShape.tokenId);
         } else {
 
             string memory _name = string(abi.encodePacked('Ditto Floor #', Strings.toString(id)));
 
             string memory description = string(abi.encodePacked(
                 'This Ditto represents the floor price of tokens at ',
-                cloneIdToShape[id].ERC721Contract
+                Strings.toHexString(uint160(cloneIdToShape[id].ERC721Contract), 20)
             ));
 
             string memory image = Base64.encode(bytes(generateSVGofTokenById(id)));
 
-            uri = string(abi.encodePacked(
+            return string(abi.encodePacked(
                 'data:application/json;base64,',
                 Base64.encode(
                     bytes(
@@ -107,21 +105,34 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
                 )
             ));
         }
-
-        return uri;
     }
 
-    function generateSVGofTokenById(uint256 _tokenId) public view returns (string memory) {
-
-        bytes3 hexColor = bytes3(bytes32(_tokenId));
-
+    function generateSVGofTokenById(uint256 _tokenId) internal pure returns (string memory) {
         string memory svg = string(abi.encodePacked(
           '<svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">',
-            '<rect width="400" height="400" rx="15" style="fill:%23', hexColor, '" />',
+            renderTokenById(_tokenId),
           '</svg>'
         ));
 
         return svg;
+    }
+
+    // Visibility is `public` to enable it being called by other contracts for composition.
+    function renderTokenById(uint256 _tokenId) public pure returns (string memory) {
+        string memory hexColor = toHexString(uint24(_tokenId), 3);
+        return string(abi.encodePacked('<rect width="400" height="400" rx="15" style="fill:#', hexColor, '" />'));
+    }
+
+    // same as inspired from @openzeppelin/contracts/utils/Strings.sol except that it doesn't add "0x" as prefix.
+    function toHexString(uint256 value, uint256 length) internal pure returns (string memory) {
+        bytes memory buffer = new bytes(2 * length);
+        
+        for (uint256 i = 2 * length; i > 0; --i) {
+            buffer[i - 1] = _HEX_SYMBOLS[value & 0xf];
+            value >>= 4;
+        }
+        require(value == 0, "Strings: hex length insufficient");
+        return string(buffer);
     }
 
     /////////////////////////////////////////////////
