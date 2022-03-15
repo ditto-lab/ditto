@@ -8,11 +8,11 @@ import {IERC2981, IERC165} from "@openzeppelin/contracts/interfaces/IERC2981.sol
 import {Base64} from 'base64-sol/base64.sol';
 
 /**
- * @title NFT derivative exchange inspired by the SALSA concept
+ * @title NFT derivative exchange inspired by the SALSA concept.
  * @author calvbore
  * @notice A user may self assess the price of an NFT and purchase a token representing
  * the right to ownership when it is sold via this contract. Anybody may buy the
- * token for a higher price and force a transfer from the previous owner to the new buyer
+ * token for a higher price and force a transfer from the previous owner to the new buyer.
  */
 contract DittoMachine is ERC721, ERC721TokenReceiver {
     /**
@@ -140,16 +140,16 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
     /////////////////////////////////////////////////
 
     /**
-     * @notice open or buy out a future on a particular NFT or floor perp
-     * @notice fees will be taken from purchases and set aside as a subsidy to encourage sellers
-     * @param _ERC721Contract address of selected NFT smart contract
-     * @param _tokenId selected NFT token id
-     * @param _ERC20Contract address of the ERC20 contract used for purchase
-     * @param _amount address of ERC20 tokens used for purchase
-     * @param floor selector determining if the purchase is for a floor perp
-     * @dev creates an ERC721 representing the specified future or floor perp, reffered to as clone
-     * @dev a clone id is calculated by hashing ERC721Contract, _tokenId, _ERC20Contract, and floor params
-     * @dev if floor == true FLOOR_ID will replace _tokenId in cloneId calculation
+     * @notice open or buy out a future on a particular NFT or floor perp.
+     * @notice fees will be taken from purchases and set aside as a subsidy to encourage sellers.
+     * @param _ERC721Contract address of selected NFT smart contract.
+     * @param _tokenId selected NFT token id.
+     * @param _ERC20Contract address of the ERC20 contract used for purchase.
+     * @param _amount address of ERC20 tokens used for purchase.
+     * @param floor selector determining if the purchase is for a floor perp.
+     * @dev creates an ERC721 representing the specified future or floor perp, reffered to as clone.
+     * @dev a clone id is calculated by hashing ERC721Contract, _tokenId, _ERC20Contract, and floor params.
+     * @dev if floor == true, FLOOR_ID will replace _tokenId in cloneId calculation.
      */
     function duplicate(
         address _ERC721Contract,
@@ -274,9 +274,9 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
     }
 
     /**
-     * @notice unwind a position in a clone
-     * @param _cloneId specifies the clone to burn
-     * @dev will refund funds held in a position, subsidy will remain for sellers in the future
+     * @notice unwind a position in a clone.
+     * @param _cloneId specifies the clone to burn.
+     * @dev will refund funds held in a position, subsidy will remain for sellers in the future.
      */
     function dissolve(uint256 _cloneId) public {
         if (!(msg.sender == ownerOf[_cloneId]
@@ -311,9 +311,9 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
 
     /**
      * @notice computes the minimum amount required to buy a clone.
-     * @notice it does not take into account the protocol fee or the subsidy
-     * @param cloneShape clone for which to compute the minimum amount
-     * @dev only use it for a minted clone
+     * @notice it does not take into account the protocol fee or the subsidy.
+     * @param cloneShape clone for which to compute the minimum amount.
+     * @dev only use it for a minted clone.
      */
     function _getMinAmount(CloneShape memory cloneShape) internal view returns (uint256) {
         uint256 timeLeft;
@@ -333,7 +333,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
     ////////////////////////////////////////////////
 
     /**
-     * @dev will allow NFT sellers to sell by safeTransferFrom-ing directly to this contract
+     * @dev will allow NFT sellers to sell by safeTransferFrom-ing directly to this contract.
      * @param data will contain ERC20 address that the seller wishes to sell for
      * allows specifying selling for the floor price
      * @return returns received selector
@@ -415,13 +415,13 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
     ///////////////////////////////////////////////
 
     /**
-     * @notice transfer clone without owner/approval checks
-     * @param from current clone owner
-     * @param to transfer recepient
-     * @param id clone id
-     * @dev if a contract holds a clone and implements ERC721Ejected, we call it.
+     * @notice transfer clone without owner/approval checks.
+     * @param from current clone owner.
+     * @param to transfer recepient.
+     * @param id clone id.
+     * @dev if the current clone owner implements ERC721Ejected, we call it.
+     *    we will still transfer the clone if that call reverts.
      *    only to be called from `duplicate()` function to transfer to the next bidder.
-     *    we will force the transfer in any case.
      *    `to` != address(0) is assumed and is not explicitly check.
      *    `onERC721Received` is not called on the receiver, the bidder is responsible for accounting.
      */
@@ -444,7 +444,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
 
         delete getApproved[id];
 
-        // give contracts the option to account for a forced transfer
+        // give contracts the option to account for a forced transfer.
         // if they don't implement the ejector we're stll going to move the token.
         if (from.code.length != 0) {
             // not sure if this is exploitable yet?
