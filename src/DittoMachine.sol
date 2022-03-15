@@ -60,74 +60,64 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
     constructor() ERC721("Ditto", "DTO") { }
 
     ///////////////////////////////////////////
-    ////////////// SVG FUNCTIONS //////////////
+    ////////////// URI FUNCTIONS //////////////
     ///////////////////////////////////////////
 
     function tokenURI(uint256 id) public view override returns (string memory) {
+        string memory uri;
+
         CloneShape memory cloneShape = cloneIdToShape[id];
 
-        string memory _name = string(abi.encodePacked('Ditto #', Strings.toString(id)));
-        string memory nftTokenId = cloneShape.floor ? "Floor" : Strings.toString(cloneShape.tokenId);
+        if (cloneShape.floor == false) {
+            // if clone is not a floor return underlying token uri
+            uri = ERC721(cloneShape.ERC721Contract).tokenURI(cloneShape.tokenId);
 
-        string memory description = string(abi.encodePacked(
-            'This Ditto gives you a chance to buy ',
-            ERC721(cloneIdToShape[id].ERC721Contract).name(),
-            ' #', nftTokenId,
-            '(', Strings.toHexString(uint160(cloneIdToShape[id].ERC721Contract), 20), ')'
-        ));
+        } else {
 
-        string memory image = Base64.encode(bytes(generateSVGofTokenById(id)));
+            string memory _name = string(abi.encodePacked('Ditto Floor #', Strings.toString(id)));
 
-        return string(abi.encodePacked(
-            'data:application/json;base64,',
-            Base64.encode(
-                bytes(
-                    abi.encodePacked(
-                       '{"name":"',
-                        _name,
-                       '", "description":"',
-                       description,
-                       '", "attributes": [{"trait_type": "Underlying NFT", "value": "',
-                       Strings.toHexString(uint160(cloneIdToShape[id].ERC721Contract), 20),
-                       '"},{"trait_type": "tokenId", "value": ',
-                       Strings.toString(cloneShape.tokenId),
-                       '}], "owner":"',
-                       Strings.toHexString(uint160(ownerOf[id]), 20),
-                       '", "image": "',
-                       'data:image/svg+xml;base64,',
-                       image,
-                       '"}'
+            string memory description = string(abi.encodePacked(
+                'This Ditto represents the floor price of tokens at ',
+                cloneIdToShape[id].ERC721Contract
+            ));
+
+            string memory image = Base64.encode(bytes(generateSVGofTokenById(id)));
+
+            uri = string(abi.encodePacked(
+                'data:application/json;base64,',
+                Base64.encode(
+                    bytes(
+                        abi.encodePacked(
+                           '{"name":"',
+                            _name,
+                           '", "description":"',
+                           description,
+                           '", "attributes": [{"trait_type": "Underlying NFT", "value": "',
+                           Strings.toHexString(uint160(cloneIdToShape[id].ERC721Contract), 20),
+                           '"},{"trait_type": "tokenId", "value": ',
+                           Strings.toString(cloneShape.tokenId),
+                           '}], "owner":"',
+                           Strings.toHexString(uint160(ownerOf[id]), 20),
+                           '", "image": "',
+                           'data:image/svg+xml;base64,',
+                           image,
+                           '"}'
+                        )
                     )
                 )
-            )
-        ));
+            ));
+        }
+
+        return uri;
     }
 
-    // Visibility is `public` to enable it being called by other contracts for composition.
-    function renderTokenById(uint256 id) public view returns (string memory) {
-        CloneShape memory cloneShape = cloneIdToShape[id];
-        string memory nftTokenId = cloneShape.floor ? "Floor" : Strings.toString(cloneShape.tokenId);
+    function generateSVGofTokenById(uint256 _tokenId) public view returns (string memory) {
 
-        string memory render = string(abi.encodePacked(
-            '<g>',
-                '<style>',
-                    '.small { font: italic 13px sans-serif; }',
-                    '.Rrrrr { font: italic 40px serif; fill: red; }',
-                '</style>',
-                '<text x="20" y="35" class="small">',Strings.toHexString(uint160(cloneIdToShape[id].ERC721Contract), 20),'</text>',
-                '<text x="55" y="65" class="Rrrrr">',ERC721(cloneShape.ERC721Contract).name(),'</text>',
-                '<text x="250" y="70" class="small">',nftTokenId,'</text>',
-            '</g>'
-        ));
-
-      return render;
-    }
-
-    function generateSVGofTokenById(uint256 id) internal view returns (string memory) {
+        bytes3 hexColor = bytes3(bytes32(_tokenId));
 
         string memory svg = string(abi.encodePacked(
-          '<svg viewBox="0 0 340 310" xmlns="http://www.w3.org/2000/svg">',
-            renderTokenById(id),
+          '<svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">',
+            '<rect width="400" height="400" rx="15" style="fill:%23', hexColor, '" />',
           '</svg>'
         ));
 
