@@ -646,4 +646,88 @@ contract ContractTest is DSTest, DittoMachine {
         assertEq(ejections, 0);
         assertEq(dm.ownerOf(cloneId), eoa1);
     }
+
+    function testFloorCloneSetsNewClonePrice() public {
+        uint256 nftId = mintNft();
+        address eoa1 = generateAddress("eoa1");
+        address eoa2 = generateAddress("eoa2");
+
+        currency.mint(eoa1, MIN_AMOUNT_FOR_NEW_CLONE * 2);
+        currency.mint(eoa2, MIN_AMOUNT_FOR_NEW_CLONE * 2);
+
+        cheats.startPrank(eoa1);
+        currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE * 2);
+
+        uint256 floorId = dm.duplicate(nftAddr, 0, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE * 2, true);
+        cheats.stopPrank();
+
+        uint256 cloneId = uint256(keccak256(abi.encodePacked(nftAddr, nftId, currencyAddr, false)));
+        assertEq(dm.ownerOf(cloneId), address(0));
+        assertEq(dm.ownerOf(floorId), eoa1);
+
+        cheats.startPrank(eoa2);
+
+        currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE * 2);
+
+        cheats.expectRevert(abi.encodeWithSelector(DittoMachine.AmountInvalid.selector));
+        // expect revert with amount less than floor clone worth
+        dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false);
+
+        uint256 cId = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE * 2, false);
+        assertEq(cId, cloneId);
+        cheats.stopPrank();
+
+        uint256 floorMinAmm = dm.getMinAmountForCloneTransfer(floorId);
+        uint256 cloneMinAmm = dm.getMinAmountForCloneTransfer(cloneId);
+        assertEq(floorMinAmm, cloneMinAmm);
+
+        uint256 floorWorth = getCloneShape(floorId).worth;
+        uint256 cloneWorth = getCloneShape(cloneId).worth;
+        assertEq(floorWorth, cloneWorth);
+    }
+
+    function testFloorCloneSetsExistingClonePrice() public {
+        uint256 nftId = mintNft();
+        address eoa1 = generateAddress("eoa1");
+        address eoa2 = generateAddress("eoa2");
+
+        currency.mint(eoa1, MIN_AMOUNT_FOR_NEW_CLONE);
+        currency.mint(eoa2, MIN_AMOUNT_FOR_NEW_CLONE * 3);
+
+        cheats.startPrank(eoa1);
+        currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
+
+        uint256 cloneId = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false);
+        cheats.stopPrank();
+
+        uint256 clonePrice = dm.getMinAmountForCloneTransfer(cloneId);
+        assertEq(
+            MIN_AMOUNT_FOR_NEW_CLONE * 2 + ((MIN_AMOUNT_FOR_NEW_CLONE * 2) * MIN_FEE / DNOM),
+            clonePrice
+        );
+
+        cheats.startPrank(eoa2);
+        currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE * 3);
+
+        uint256 floorId = dm.duplicate(nftAddr, 0, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE * 3, true);
+        cheats.stopPrank();
+
+        uint256 newClonePrice = dm.getMinAmountForCloneTransfer(cloneId);
+
+        currency.mint(eoa1, newClonePrice);
+
+        cheats.startPrank(eoa1);
+        currency.approve(dmAddr, newClonePrice);
+
+        cheats.expectRevert(abi.encodeWithSelector(DittoMachine.AmountInvalid.selector));
+        dm.duplicate(nftAddr, nftId, currencyAddr, newClonePrice - 1, false);
+
+        clonePrice = dm.getMinAmountForCloneTransfer(cloneId);
+        dm.duplicate(nftAddr, nftId, currencyAddr, newClonePrice, false);
+        cheats.stopPrank();
+
+        uint256 floorWorth = getCloneShape(floorId).worth;
+        uint256 cloneWorth = getCloneShape(cloneId).worth;
+        assertEq(floorWorth, cloneWorth);
+    }
 }
