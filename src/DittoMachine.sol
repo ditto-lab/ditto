@@ -430,7 +430,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
     /**
      * @notice transfer clone without owner/approval checks.
      * @param from current clone owner.
-     * @param to transfer recepient.
+     * @param to transfer recipient.
      * @param id clone id.
      * @dev if the current clone owner implements ERC721Ejected, we call it.
      *    we will still transfer the clone if that call reverts.
