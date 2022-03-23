@@ -120,13 +120,26 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
     // Visibility is `public` to enable it being called by other contracts for composition.
     function renderTokenById(uint256 _tokenId) public pure returns (string memory) {
         string memory hexColor = toHexString(uint24(_tokenId), 3);
-        return string(abi.encodePacked('<rect width="400" height="400" rx="15" style="fill:#', hexColor, '" />'));
+        return string(abi.encodePacked(
+            '<rect width="400" height="400" rx="15" style="fill:#', hexColor, '" />',
+            '<g id="face" transform="matrix(2.12413,0,0,2.12413,-1117.13,-1592.24)">',
+              '<g transform="matrix(0.673529,0,0,0.673529,201.831,282.644)">',
+                '<circle cx="568.403" cy="815.132" r="3.15"/>',
+              '</g>',
+              '<g transform="matrix(0.673529,0,0,0.673529,272.214,282.644)">',
+                '<circle cx="568.403" cy="815.132" r="3.15"/>',
+              '</g>',
+              '<g transform="matrix(1,0,0,1,0.0641825,0)">',
+                '<path d="M572.927,854.4C604.319,859.15 635.71,859.166 667.102,854.4" style="fill:none;stroke:black;stroke-width:0.98px;"/>',
+              '</g>',
+            '</g>'
+        ));
     }
 
     // same as inspired from @openzeppelin/contracts/utils/Strings.sol except that it doesn't add "0x" as prefix.
     function toHexString(uint256 value, uint256 length) internal pure returns (string memory) {
         bytes memory buffer = new bytes(2 * length);
-        
+
         for (uint256 i = 2 * length; i > 0; --i) {
             buffer[i - 1] = _HEX_SYMBOLS[value & 0xf];
             value >>= 4;
