@@ -10,10 +10,10 @@ contract BidderWithEjector is IERC721TokenEjector {
     constructor() {}
 
     function onERC721Ejected(
-        address operator,
-        address to,
-        uint256 id,
-        bytes calldata data
+        address /*data*/,
+        address /*data*/,
+        uint256 /*data*/,
+        bytes calldata /*data*/
     ) external returns (bytes4) {
         ++ejections;
         return this.onERC721Ejected.selector;
@@ -27,10 +27,10 @@ contract BidderWithBadEjector is IERC721TokenEjector {
     constructor() {}
 
     function onERC721Ejected(
-        address operator,
-        address to,
-        uint256 id,
-        bytes calldata data
+        address /*data*/,
+        address /*data*/,
+        uint256 /*data*/,
+        bytes calldata /*data*/
     ) external returns (bytes4) {
         revert();
         ++ejections;
@@ -46,10 +46,10 @@ contract BidderWithGassyEjector is IERC721TokenEjector {
     constructor() {}
 
     function onERC721Ejected(
-        address operator,
-        address to,
-        uint256 id,
-        bytes calldata data
+        address /*data*/,
+        address /*data*/,
+        uint256 /*data*/,
+        bytes calldata /*data*/
     ) external returns (bytes4) {
         uint256 gas = gasleft();
         while (stored.length <= gas) {

@@ -181,8 +181,25 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
         uint256 subsidy;
 
         if (ownerOf[cloneId] == address(0)) {
+
+            uint256 floorId = uint256(keccak256(abi.encodePacked(
+                _ERC721Contract,
+                FLOOR_ID,
+                _ERC20Contract,
+                true
+            )));
+
             subsidy = _amount * MIN_FEE / DNOM; // with current constants subsidy <= _amount
             value = _amount - subsidy;
+
+            if (cloneId != floorId && ownerOf[floorId] != address(0)) {
+                // check price of floor clone for price floor
+                uint256 minAmount = cloneIdToShape[floorId].worth;
+                if (value < minAmount) {
+                    revert AmountInvalid();
+                }
+            }
+
             cloneIdToShape[cloneId] = CloneShape(
                 _tokenId,
                 value,
@@ -200,22 +217,10 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
                 _amount
             );
             _mint(msg.sender, cloneId);
+
         } else {
-            uint256 floorId = uint256(keccak256(abi.encodePacked(
-                _ERC721Contract,
-                FLOOR_ID,
-                _ERC20Contract,
-                true
-            )));
 
-            CloneShape memory cloneShape;
-
-            if (cloneIdToShape[cloneId].worth > cloneIdToShape[floorId].worth) {
-                // clone's worth is more than the floor perp or the floor perp does not exist
-                cloneShape = cloneIdToShape[cloneId];
-            } else {
-                cloneShape = cloneIdToShape[floorId];
-            }
+            CloneShape memory cloneShape = cloneIdToShape[cloneId];
 
             uint256 minAmount = _getMinAmount(cloneShape);
             uint256 heat = cloneIdToShape[cloneId].heat;
@@ -316,6 +321,14 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
      * @dev only use it for a minted clone.
      */
     function _getMinAmount(CloneShape memory cloneShape) internal view returns (uint256) {
+        uint256 floorId = uint256(keccak256(abi.encodePacked(
+            cloneShape.ERC721Contract,
+            FLOOR_ID,
+            cloneShape.ERC20Contract,
+            true
+        )));
+        uint256 floorPrice = cloneIdToShape[floorId].worth;
+
         uint256 timeLeft;
         unchecked {
             if (cloneShape.term > block.timestamp) {
@@ -323,9 +336,9 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
             }
         }
         uint256 termLength = (BASE_TERM-1) + uint256(cloneShape.heat)**2;
-
-        return cloneShape.worth
-            + (cloneShape.worth * timeLeft / termLength);
+        uint256 clonePrice = cloneShape.worth + (cloneShape.worth * timeLeft / termLength);
+        // return floor price if greater than clone auction price
+        return floorPrice > clonePrice ? floorPrice : clonePrice;
     }
 
     ////////////////////////////////////////////////
@@ -417,7 +430,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
     /**
      * @notice transfer clone without owner/approval checks.
      * @param from current clone owner.
-     * @param to transfer recepient.
+     * @param to transfer recipient.
      * @param id clone id.
      * @dev if the current clone owner implements ERC721Ejected, we call it.
      *    we will still transfer the clone if that call reverts.
