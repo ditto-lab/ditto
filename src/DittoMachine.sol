@@ -348,21 +348,21 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver {
 
     function onTokenReceived(
         address from,
-        address ERC721Contract,
+        address tokenContract,
         uint256 id,
         address ERC20Contract,
         bool floor,
-        bool ERC1155Contract
+        bool isERC1155
     ) private {
         uint256 cloneId = uint256(keccak256(abi.encodePacked(
-            msg.sender, // ERC721Contract
+            tokenContract, // ERC721 or ERC1155 Contract address
             id,
             ERC20Contract,
             false
         )));
 
         uint256 floorId = uint256(keccak256(abi.encodePacked(
-            msg.sender,
+            tokenContract,
             FLOOR_ID,
             ERC20Contract,
             true
@@ -390,20 +390,20 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver {
         delete cloneIdToSubsidy[cloneId];
         _burn(cloneId);
 
-        if (ERC1155Contract) {
-            if (ERC1155(ERC721Contract).balanceOf(address(this), id) > 0) {
+        if (isERC1155) {
+            if (ERC1155(tokenContract).balanceOf(address(this), id) > 0) {
                 revert NFTNotReceived();
             }
-            ERC1155(ERC721Contract).safeTransferFrom(address(this), owner, id, 1, "");
+            ERC1155(tokenContract).safeTransferFrom(address(this), owner, id, 1, "");
         } else {
-            if (ERC721(ERC721Contract).ownerOf(id) != address(this)) {
+            if (ERC721(tokenContract).ownerOf(id) != address(this)) {
                 revert NFTNotReceived();
             }
-            ERC721(ERC721Contract).safeTransferFrom(address(this), owner, id);
+            ERC721(tokenContract).safeTransferFrom(address(this), owner, id);
         }
 
-        if (IERC165(msg.sender).supportsInterface(_INTERFACE_ID_ERC2981)) {
-            (address receiver, uint256 royaltyAmount) = IERC2981(msg.sender).royaltyInfo(
+        if (IERC165(tokenContract).supportsInterface(_INTERFACE_ID_ERC2981)) {
+            (address receiver, uint256 royaltyAmount) = IERC2981(tokenContract).royaltyInfo(
                 cloneShape.tokenId,
                 cloneShape.worth
             );
@@ -435,10 +435,9 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver {
         uint256 id,
         bytes calldata data
     ) external returns (bytes4) {
-        address ERC721Contract = msg.sender;
         (address ERC20Contract, bool floor) = abi.decode(data, (address, bool));
 
-        onTokenReceived(from, ERC721Contract, id, ERC20Contract, floor, false);
+        onTokenReceived(from, msg.sender /*ERC721 contract address*/, id, ERC20Contract, floor, false);
 
         return this.onERC721Received.selector;
     }
@@ -450,14 +449,13 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver {
         uint256 amount,
         bytes calldata data
     ) external returns (bytes4) {
-        // clones can only represent a single 1155 token
         if (amount != 1) {
             revert AmountInvalid();
         }
-        address ERC1155Contract = msg.sender;
+        // address ERC1155Contract = msg.sender;
         (address ERC20Contract, bool floor) = abi.decode(data, (address, bool));
 
-        onTokenReceived(from, ERC1155Contract, id, ERC20Contract, floor, true);
+        onTokenReceived(from, msg.sender /*ERC1155 contract address*/, id, ERC20Contract, floor, true);
 
         return this.onERC1155Received.selector;
     }
@@ -474,13 +472,12 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver {
                 revert AmountInvalid();
             }
         }
-        address ERC1155Contract = msg.sender;
         address[] memory ERC20Contracts = new address[](ids.length);
         bool[] memory floors = new bool[](ids.length);
         (ERC20Contracts, floors) = abi.decode(data, (address[], bool[]));
 
         for (uint256 i; i < ids.length; i++) {
-            onTokenReceived(from, ERC1155Contract, ids[i], ERC20Contracts[i], floors[i], true);
+            onTokenReceived(from, msg.sender /*ERC1155 contract address*/, ids[i], ERC20Contracts[i], floors[i], true);
         }
 
         return this.onERC1155BatchReceived.selector;
