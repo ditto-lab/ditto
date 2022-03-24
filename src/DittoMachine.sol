@@ -2,6 +2,7 @@ pragma solidity ^0.8.4;
 //SPDX-License-Identifier: MIT
 
 import {ERC721, ERC721TokenReceiver} from "@rari-capital/solmate/src/tokens/ERC721.sol";
+import {ERC1155, ERC1155TokenReceiver} from "@rari-capital/solmate/src/tokens/ERC1155.sol";
 import {SafeTransferLib, ERC20} from "@rari-capital/solmate/src/utils/SafeTransferLib.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {IERC2981, IERC165} from "@openzeppelin/contracts/interfaces/IERC2981.sol";
@@ -14,7 +15,7 @@ import {Base64} from 'base64-sol/base64.sol';
  * the right to ownership when it is sold via this contract. Anybody may buy the
  * token for a higher price and force a transfer from the previous owner to the new buyer.
  */
-contract DittoMachine is ERC721, ERC721TokenReceiver {
+contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver {
     /**
      * @notice Insufficient bid for purchasing a clone.
      * @dev thrown when the number of erc20 tokens sent is lower than
@@ -342,23 +343,21 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
     }
 
     ////////////////////////////////////////////////
-    ////////////// EXTERNAL FUNCTIONS //////////////
+    ////////////// RECEIVER FUNCTIONS //////////////
     ////////////////////////////////////////////////
 
-    /**
-     * @dev will allow NFT sellers to sell by safeTransferFrom-ing directly to this contract.
-     * @param data will contain ERC20 address that the seller wishes to sell for
-     * allows specifying selling for the floor price
-     * @return returns received selector
-     */
-    function onERC721Received(
-        address,
+    function onTokenReceived(
         address from,
+        address ERC721Contract,
         uint256 id,
-        bytes calldata data
-    ) external returns (bytes4) {
-        address ERC721Contract = msg.sender;
-        (address ERC20Contract, bool floor) = abi.decode(data, (address, bool));
+        address ERC20Contract,
+        bool floor,
+        bool ERC1155Contract
+    ) private {
+        uint256 balanceBefore;
+        if (ERC1155Contract) {
+            balanceBefore = ERC1155(ERC721Contract).balanceOf(address(this), id);
+        }
 
         uint256 cloneId = uint256(keccak256(abi.encodePacked(
             ERC721Contract,
@@ -396,10 +395,17 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
         delete cloneIdToSubsidy[cloneId];
         _burn(cloneId);
 
-        if (ERC721(ERC721Contract).ownerOf(id) != address(this)) {
-            revert NFTNotReceived();
+        if (ERC1155Contract) {
+            if (ERC1155(ERC721Contract).balanceOf(address(this), id) != balanceBefore+1) {
+                revert NFTNotReceived();
+            }
+            ERC1155(ERC721Contract).safeTransferFrom(address(this), owner, id, 1, "");
+        } else {
+            if (ERC721(ERC721Contract).ownerOf(id) != address(this)) {
+                revert NFTNotReceived();
+            }
+            ERC721(ERC721Contract).safeTransferFrom(address(this), owner, id);
         }
-        ERC721(ERC721Contract).safeTransferFrom(address(this), owner, id);
 
         if (IERC165(ERC721Contract).supportsInterface(_INTERFACE_ID_ERC2981)) {
             (address receiver, uint256 royaltyAmount) = IERC2981(ERC721Contract).royaltyInfo(
@@ -420,7 +426,69 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
             from,
             cloneShape.worth + subsidy
         );
+    }
+
+    /**
+     * @dev will allow NFT sellers to sell by safeTransferFrom-ing directly to this contract.
+     * @param data will contain ERC20 address that the seller wishes to sell for
+     * allows specifying selling for the floor price
+     * @return returns received selector
+     */
+    function onERC721Received(
+        address,
+        address from,
+        uint256 id,
+        bytes calldata data
+    ) external returns (bytes4) {
+        address ERC721Contract = msg.sender;
+        (address ERC20Contract, bool floor) = abi.decode(data, (address, bool));
+
+        onTokenReceived(from, ERC721Contract, id, ERC20Contract, floor, false);
+
         return this.onERC721Received.selector;
+    }
+
+    function onERC1155Received(
+        address,
+        address from,
+        uint256 id,
+        uint256 amount,
+        bytes calldata data
+    ) external returns (bytes4) {
+        // clones can only represent a single 1155 token
+        if (amount != 1) {
+            revert AmountInvalid();
+        }
+        address ERC1155Contract = msg.sender;
+        (address ERC20Contract, bool floor) = abi.decode(data, (address, bool));
+
+        onTokenReceived(from, ERC1155Contract, id, ERC20Contract, floor, true);
+
+        return this.onERC1155Received.selector;
+    }
+
+    function onERC1155BatchReceived(
+        address,
+        address from,
+        uint256[] calldata ids,
+        uint256[] calldata amounts,
+        bytes calldata data
+    ) external returns (bytes4) {
+        for (uint256 i; i < amounts.length; i++) {
+            if (amounts[i] != 1) {
+                revert AmountInvalid();
+            }
+        }
+        address ERC1155Contract = msg.sender;
+        address[] memory ERC20Contracts = new address[](ids.length);
+        bool[] memory floors = new bool[](ids.length);
+        (ERC20Contracts, floors) = abi.decode(data, (address[], bool[]));
+
+        for (uint256 i; i < ids.length; i++) {
+            onTokenReceived(from, ERC1155Contract, ids[i], ERC20Contracts[i], floors[i], true);
+        }
+
+        return this.onERC1155BatchReceived.selector;
     }
 
     ///////////////////////////////////////////////
