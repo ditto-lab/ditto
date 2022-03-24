@@ -354,11 +354,6 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver {
         bool floor,
         bool ERC1155Contract
     ) private {
-        uint256 balanceBefore;
-        if (ERC1155Contract) {
-            balanceBefore = ERC1155(ERC721Contract).balanceOf(address(this), id);
-        }
-
         uint256 cloneId = uint256(keccak256(abi.encodePacked(
             ERC721Contract,
             id,
@@ -396,7 +391,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver {
         _burn(cloneId);
 
         if (ERC1155Contract) {
-            if (ERC1155(ERC721Contract).balanceOf(address(this), id) != balanceBefore+1) {
+            if (ERC1155(ERC721Contract).balanceOf(address(this), id) > 0) {
                 revert NFTNotReceived();
             }
             ERC1155(ERC721Contract).safeTransferFrom(address(this), owner, id, 1, "");
