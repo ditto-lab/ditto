@@ -355,14 +355,14 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver {
         bool ERC1155Contract
     ) private {
         uint256 cloneId = uint256(keccak256(abi.encodePacked(
-            ERC721Contract,
+            msg.sender, // ERC721Contract
             id,
             ERC20Contract,
             false
         )));
 
         uint256 floorId = uint256(keccak256(abi.encodePacked(
-            ERC721Contract,
+            msg.sender,
             FLOOR_ID,
             ERC20Contract,
             true
@@ -402,8 +402,8 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver {
             ERC721(ERC721Contract).safeTransferFrom(address(this), owner, id);
         }
 
-        if (IERC165(ERC721Contract).supportsInterface(_INTERFACE_ID_ERC2981)) {
-            (address receiver, uint256 royaltyAmount) = IERC2981(ERC721Contract).royaltyInfo(
+        if (IERC165(msg.sender).supportsInterface(_INTERFACE_ID_ERC2981)) {
+            (address receiver, uint256 royaltyAmount) = IERC2981(msg.sender).royaltyInfo(
                 cloneShape.tokenId,
                 cloneShape.worth
             );
