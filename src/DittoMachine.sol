@@ -357,18 +357,17 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
         uint256 id,
         bytes calldata data
     ) external returns (bytes4) {
-        address ERC721Contract = msg.sender;
         (address ERC20Contract, bool floor) = abi.decode(data, (address, bool));
 
         uint256 cloneId = uint256(keccak256(abi.encodePacked(
-            ERC721Contract,
+            msg.sender, // ERC721Contract
             id,
             ERC20Contract,
             false
         )));
 
         uint256 floorId = uint256(keccak256(abi.encodePacked(
-            ERC721Contract,
+            msg.sender,
             FLOOR_ID,
             ERC20Contract,
             true
@@ -396,13 +395,13 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
         delete cloneIdToSubsidy[cloneId];
         _burn(cloneId);
 
-        if (ERC721(ERC721Contract).ownerOf(id) != address(this)) {
+        if (ERC721(msg.sender).ownerOf(id) != address(this)) {
             revert NFTNotReceived();
         }
-        ERC721(ERC721Contract).safeTransferFrom(address(this), owner, id);
+        ERC721(msg.sender).safeTransferFrom(address(this), owner, id);
 
-        if (IERC165(ERC721Contract).supportsInterface(_INTERFACE_ID_ERC2981)) {
-            (address receiver, uint256 royaltyAmount) = IERC2981(ERC721Contract).royaltyInfo(
+        if (IERC165(msg.sender).supportsInterface(_INTERFACE_ID_ERC2981)) {
+            (address receiver, uint256 royaltyAmount) = IERC2981(msg.sender).royaltyInfo(
                 cloneShape.tokenId,
                 cloneShape.worth
             );
