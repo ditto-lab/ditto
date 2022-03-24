@@ -109,7 +109,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
 
     function generateSVGofTokenById(uint256 _tokenId) internal pure returns (string memory) {
         string memory svg = string(abi.encodePacked(
-          '<svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">',
+          '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">',
             renderTokenById(_tokenId),
           '</svg>'
         ));
@@ -121,8 +121,8 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
     function renderTokenById(uint256 _tokenId) public pure returns (string memory) {
         string memory hexColor = toHexString(uint24(_tokenId), 3);
         return string(abi.encodePacked(
-            '<rect width="400" height="400" rx="15" style="fill:#', hexColor, '" />',
-            '<g id="face" transform="matrix(2.12413,0,0,2.12413,-1117.13,-1592.24)">',
+            '<rect width="100" height="100" rx="15" style="fill:#', hexColor, '" />',
+            '<g id="face" transform="matrix(0.531033,0,0,0.531033,-279.283,-398.06)">',
               '<g transform="matrix(0.673529,0,0,0.673529,201.831,282.644)">',
                 '<circle cx="568.403" cy="815.132" r="3.15"/>',
               '</g>',
