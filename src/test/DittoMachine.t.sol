@@ -111,6 +111,24 @@ contract ContractTest is DSTest, DittoMachine {
         assertEq(dm.symbol(), "DTO");
     }
 
+    function testTokenUri() public {
+        uint256 nftId721 = mintNft();
+        string memory uri721 = nft.tokenURI(nftId721);
+        currency.mint(address(this), MIN_AMOUNT_FOR_NEW_CLONE);
+        currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
+        uint256 clone0Id = dm.duplicate(nftAddr, nftId721, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false);
+        assertEq(uri721, dm.tokenURI(clone0Id));
+    }
+
+    function testTokenUri1155() public {
+        uint256 nftId1155 = mintNft1155();
+        string memory uri1155 = nft1155.uri(nftId1155);
+        currency.mint(address(this), MIN_AMOUNT_FOR_NEW_CLONE);
+        currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
+        uint256 clone1Id = dm.duplicate(nft1155Addr, nftId1155, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false);
+        assertEq(uri1155, dm.tokenURI(clone1Id));
+    }
+
     // DittoMachine should revert when ether is sent to it
     function testSendEther() public {
         assertEq(dmAddr.balance, 0);

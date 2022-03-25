@@ -71,7 +71,11 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver {
 
         if (!cloneShape.floor) {
             // if clone is not a floor return underlying token uri
-            return ERC721(cloneShape.ERC721Contract).tokenURI(cloneShape.tokenId);
+            try ERC721(cloneShape.ERC721Contract).tokenURI(cloneShape.tokenId) returns (string memory uri) {
+                return uri;
+            } catch {
+                return ERC1155(cloneShape.ERC721Contract).uri(cloneShape.tokenId);
+            }
         } else {
 
             string memory _name = string(abi.encodePacked('Ditto Floor #', Strings.toString(id)));
