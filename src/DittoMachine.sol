@@ -30,6 +30,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
     ////////////// CONSTANT VARIABLES //////////////
 
     bytes4 private constant _INTERFACE_ID_ERC2981 = 0x2a55205a;
+    bytes16 private constant _HEX_SYMBOLS = "0123456789abcdef";
 
     uint256 public constant FLOOR_ID = uint256(0xfddc260aecba8a66725ee58da4ea3cbfcf4ab6c6ad656c48345a575ca18c45c9);
 
@@ -61,78 +62,91 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
     constructor() ERC721("Ditto", "DTO") { }
 
     ///////////////////////////////////////////
-    ////////////// SVG FUNCTIONS //////////////
+    ////////////// URI FUNCTIONS //////////////
     ///////////////////////////////////////////
 
     function tokenURI(uint256 id) public view override returns (string memory) {
         CloneShape memory cloneShape = cloneIdToShape[id];
 
-        string memory _name = string(abi.encodePacked('Ditto #', Strings.toString(id)));
-        string memory nftTokenId = cloneShape.floor ? "Floor" : Strings.toString(cloneShape.tokenId);
+        if (!cloneShape.floor) {
+            // if clone is not a floor return underlying token uri
+            return ERC721(cloneShape.ERC721Contract).tokenURI(cloneShape.tokenId);
+        } else {
 
-        string memory description = string(abi.encodePacked(
-            'This Ditto gives you a chance to buy ',
-            ERC721(cloneIdToShape[id].ERC721Contract).name(),
-            ' #', nftTokenId,
-            '(', Strings.toHexString(uint160(cloneIdToShape[id].ERC721Contract), 20), ')'
-        ));
+            string memory _name = string(abi.encodePacked('Ditto Floor #', Strings.toString(id)));
 
-        string memory image = Base64.encode(bytes(generateSVGofTokenById(id)));
+            string memory description = string(abi.encodePacked(
+                'This Ditto represents the floor price of tokens at ',
+                Strings.toHexString(uint160(cloneIdToShape[id].ERC721Contract), 20)
+            ));
 
-        return string(abi.encodePacked(
-            'data:application/json;base64,',
-            Base64.encode(
-                bytes(
-                    abi.encodePacked(
-                       '{"name":"',
-                        _name,
-                       '", "description":"',
-                       description,
-                       '", "attributes": [{"trait_type": "Underlying NFT", "value": "',
-                       Strings.toHexString(uint160(cloneIdToShape[id].ERC721Contract), 20),
-                       '"},{"trait_type": "tokenId", "value": ',
-                       Strings.toString(cloneShape.tokenId),
-                       '}], "owner":"',
-                       Strings.toHexString(uint160(ownerOf[id]), 20),
-                       '", "image": "',
-                       'data:image/svg+xml;base64,',
-                       image,
-                       '"}'
+            string memory image = Base64.encode(bytes(generateSVGofTokenById(id)));
+
+            return string(abi.encodePacked(
+                'data:application/json;base64,',
+                Base64.encode(
+                    bytes(
+                        abi.encodePacked(
+                           '{"name":"',
+                            _name,
+                           '", "description":"',
+                           description,
+                           '", "attributes": [{"trait_type": "Underlying NFT", "value": "',
+                           Strings.toHexString(uint160(cloneIdToShape[id].ERC721Contract), 20),
+                           '"},{"trait_type": "tokenId", "value": ',
+                           Strings.toString(cloneShape.tokenId),
+                           '}], "owner":"',
+                           Strings.toHexString(uint160(ownerOf[id]), 20),
+                           '", "image": "',
+                           'data:image/svg+xml;base64,',
+                           image,
+                           '"}'
+                        )
                     )
                 )
-            )
-        ));
+            ));
+        }
     }
 
-    // Visibility is `public` to enable it being called by other contracts for composition.
-    function renderTokenById(uint256 id) public view returns (string memory) {
-        CloneShape memory cloneShape = cloneIdToShape[id];
-        string memory nftTokenId = cloneShape.floor ? "Floor" : Strings.toString(cloneShape.tokenId);
-
-        string memory render = string(abi.encodePacked(
-            '<g>',
-                '<style>',
-                    '.small { font: italic 13px sans-serif; }',
-                    '.Rrrrr { font: italic 40px serif; fill: red; }',
-                '</style>',
-                '<text x="20" y="35" class="small">',Strings.toHexString(uint160(cloneIdToShape[id].ERC721Contract), 20),'</text>',
-                '<text x="55" y="65" class="Rrrrr">',ERC721(cloneShape.ERC721Contract).name(),'</text>',
-                '<text x="250" y="70" class="small">',nftTokenId,'</text>',
-            '</g>'
-        ));
-
-      return render;
-    }
-
-    function generateSVGofTokenById(uint256 id) internal view returns (string memory) {
-
+    function generateSVGofTokenById(uint256 _tokenId) internal pure returns (string memory) {
         string memory svg = string(abi.encodePacked(
-          '<svg viewBox="0 0 340 310" xmlns="http://www.w3.org/2000/svg">',
-            renderTokenById(id),
+          '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">',
+            renderTokenById(_tokenId),
           '</svg>'
         ));
 
         return svg;
+    }
+
+    // Visibility is `public` to enable it being called by other contracts for composition.
+    function renderTokenById(uint256 _tokenId) public pure returns (string memory) {
+        string memory hexColor = toHexString(uint24(_tokenId), 3);
+        return string(abi.encodePacked(
+            '<rect width="100" height="100" rx="15" style="fill:#', hexColor, '" />',
+            '<g id="face" transform="matrix(0.531033,0,0,0.531033,-279.283,-398.06)">',
+              '<g transform="matrix(0.673529,0,0,0.673529,201.831,282.644)">',
+                '<circle cx="568.403" cy="815.132" r="3.15"/>',
+              '</g>',
+              '<g transform="matrix(0.673529,0,0,0.673529,272.214,282.644)">',
+                '<circle cx="568.403" cy="815.132" r="3.15"/>',
+              '</g>',
+              '<g transform="matrix(1,0,0,1,0.0641825,0)">',
+                '<path d="M572.927,854.4C604.319,859.15 635.71,859.166 667.102,854.4" style="fill:none;stroke:black;stroke-width:0.98px;"/>',
+              '</g>',
+            '</g>'
+        ));
+    }
+
+    // same as inspired from @openzeppelin/contracts/utils/Strings.sol except that it doesn't add "0x" as prefix.
+    function toHexString(uint256 value, uint256 length) internal pure returns (string memory) {
+        bytes memory buffer = new bytes(2 * length);
+
+        for (uint256 i = 2 * length; i > 0; --i) {
+            buffer[i - 1] = _HEX_SYMBOLS[value & 0xf];
+            value >>= 4;
+        }
+        require(value == 0, "Strings: hex length insufficient");
+        return string(buffer);
     }
 
     /////////////////////////////////////////////////
