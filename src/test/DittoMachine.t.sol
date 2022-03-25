@@ -86,9 +86,9 @@ contract ContractTest is DSTest, DittoMachine {
 
     function getCloneShape(uint256 cloneId) internal view returns (CloneShape memory) {
         (uint256 tokenId, uint256 worth, address ERC721Contract,
-            address ERC20Contract, uint8 heat, bool floor, uint256 term) = dm.cloneIdToShape(cloneId);
+            address ERC20Contract, uint8 heat, bool floor, uint256 term, uint256 start) = dm.cloneIdToShape(cloneId);
 
-        CloneShape memory shape = CloneShape(tokenId, worth, ERC721Contract, ERC20Contract, heat, floor, term);
+        CloneShape memory shape = CloneShape(tokenId, worth, ERC721Contract, ERC20Contract, heat, floor, term, start);
         return shape;
     }
 

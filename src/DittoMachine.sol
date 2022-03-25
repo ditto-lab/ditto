@@ -51,12 +51,15 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
         uint8 heat;
         bool floor;
         uint256 term;
+        uint256 start;
     }
 
     mapping(uint256 => CloneShape) public cloneIdToShape;
     mapping(uint256 => uint256) public cloneIdToSubsidy;
     mapping(uint256 => uint256) public cloneIdToCumulativePrice;
     mapping(uint256 => uint256) public cloneIdToTimestampLast;
+
+    mapping(uint256 => address) public voucherToAddress; // non transferrable vouchers for reward tokens
 
     constructor() ERC721("Ditto", "DTO") { }
 
@@ -207,7 +210,8 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
                 _ERC20Contract,
                 1,
                 floor,
-                block.timestamp + BASE_TERM
+                block.timestamp + BASE_TERM,
+                block.timestamp
             );
             cloneIdToSubsidy[cloneId] += subsidy;
             SafeTransferLib.safeTransferFrom( // EXTERNAL CALL
@@ -243,7 +247,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
             } else {
                 heat = 1;
             }
-
+            issueVoucher(ownerOf[cloneId], cloneId, value);
             // calculate new clone term values
             cloneIdToShape[cloneId] = CloneShape(
                 _tokenId,
@@ -252,7 +256,8 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
                 cloneShape.ERC20Contract,
                 uint8(heat), // does not inherit heat of floor id
                 floor,
-                block.timestamp + (BASE_TERM-1) + (heat)**2
+                block.timestamp + (BASE_TERM-1) + (heat)**2,
+                block.timestamp
             );
             uint256 subsidyDiv2 = subsidy >> 1;
             // half of fee goes into subsidy pool, half to previous clone owner
@@ -339,6 +344,17 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
         uint256 clonePrice = cloneShape.worth + (cloneShape.worth * timeLeft / termLength);
         // return floor price if greater than clone auction price
         return floorPrice > clonePrice ? floorPrice : clonePrice;
+    }
+
+    function issueVoucher(address to, uint256 cloneId, uint256 value) private {
+        uint256 voucher = uint256(keccak256(abi.encodePacked(
+            cloneId,
+            value - cloneIdToShape[cloneId].worth,
+            cloneIdToShape[cloneId].start,
+            block.timestamp
+        )));
+
+        voucherToAddress[voucher] = to;
     }
 
     ////////////////////////////////////////////////
