@@ -504,14 +504,23 @@ contract ContractTest is DSTest, DittoMachine {
 
         cheats.warp(block.timestamp + 100);
         cheats.startPrank(eoaSeller);
+
+        address[] memory currencyAddrArray = new address[](5);
+        for (uint i=0;i<5;i++) {
+            currencyAddrArray[i] = currencyAddr;
+        }
+        bool[] memory floorArray = new bool[](5);
+        for (uint i=0;i<5;i++) {
+            floorArray[i] = false;
+        }
         nft1155.safeBatchTransferFrom(
             eoaSeller,
             dmAddr,
             nftIds,
             amounts,
             abi.encode(
-                [currencyAddr, currencyAddr, currencyAddr, currencyAddr, currencyAddr],
-                [false, false, false, false, false]
+                currencyAddrArray,
+                floorArray
             )
         );
         cheats.stopPrank();
