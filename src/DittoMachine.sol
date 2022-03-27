@@ -2,6 +2,7 @@ pragma solidity ^0.8.4;
 //SPDX-License-Identifier: MIT
 
 import {ERC721, ERC721TokenReceiver} from "@rari-capital/solmate/src/tokens/ERC721.sol";
+import {ERC1155, ERC1155TokenReceiver} from "@rari-capital/solmate/src/tokens/ERC1155.sol";
 import {SafeTransferLib, ERC20} from "@rari-capital/solmate/src/utils/SafeTransferLib.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {IERC2981, IERC165} from "@openzeppelin/contracts/interfaces/IERC2981.sol";
@@ -14,7 +15,7 @@ import {Base64} from 'base64-sol/base64.sol';
  * the right to ownership when it is sold via this contract. Anybody may buy the
  * token for a higher price and force a transfer from the previous owner to the new buyer.
  */
-contract DittoMachine is ERC721, ERC721TokenReceiver {
+contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver {
     /**
      * @notice Insufficient bid for purchasing a clone.
      * @dev thrown when the number of erc20 tokens sent is lower than
@@ -70,7 +71,11 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
 
         if (!cloneShape.floor) {
             // if clone is not a floor return underlying token uri
-            return ERC721(cloneShape.ERC721Contract).tokenURI(cloneShape.tokenId);
+            try ERC721(cloneShape.ERC721Contract).tokenURI(cloneShape.tokenId) returns (string memory uri) {
+                return uri;
+            } catch {
+                return ERC1155(cloneShape.ERC721Contract).uri(cloneShape.tokenId);
+            }
         } else {
 
             string memory _name = string(abi.encodePacked('Ditto Floor #', Strings.toString(id)));
@@ -356,32 +361,26 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
     }
 
     ////////////////////////////////////////////////
-    ////////////// EXTERNAL FUNCTIONS //////////////
+    ////////////// RECEIVER FUNCTIONS //////////////
     ////////////////////////////////////////////////
 
-    /**
-     * @dev will allow NFT sellers to sell by safeTransferFrom-ing directly to this contract.
-     * @param data will contain ERC20 address that the seller wishes to sell for
-     * allows specifying selling for the floor price
-     * @return returns received selector
-     */
-    function onERC721Received(
-        address,
+    function onTokenReceived(
         address from,
+        address tokenContract,
         uint256 id,
-        bytes calldata data
-    ) external returns (bytes4) {
-        (address ERC20Contract, bool floor) = abi.decode(data, (address, bool));
-
+        address ERC20Contract,
+        bool floor,
+        bool isERC1155
+    ) private {
         uint256 cloneId = uint256(keccak256(abi.encodePacked(
-            msg.sender, // ERC721Contract
+            tokenContract, // ERC721 or ERC1155 Contract address
             id,
             ERC20Contract,
             false
         )));
 
         uint256 floorId = uint256(keccak256(abi.encodePacked(
-            msg.sender,
+            tokenContract,
             FLOOR_ID,
             ERC20Contract,
             true
@@ -409,13 +408,20 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
         delete cloneIdToSubsidy[cloneId];
         _burn(cloneId);
 
-        if (ERC721(msg.sender).ownerOf(id) != address(this)) {
-            revert NFTNotReceived();
+        if (isERC1155) {
+            if (ERC1155(tokenContract).balanceOf(address(this), id) < 1) {
+                revert NFTNotReceived();
+            }
+            ERC1155(tokenContract).safeTransferFrom(address(this), owner, id, 1, "");
+        } else {
+            if (ERC721(tokenContract).ownerOf(id) != address(this)) {
+                revert NFTNotReceived();
+            }
+            ERC721(tokenContract).safeTransferFrom(address(this), owner, id);
         }
-        ERC721(msg.sender).safeTransferFrom(address(this), owner, id);
 
-        if (IERC165(msg.sender).supportsInterface(_INTERFACE_ID_ERC2981)) {
-            (address receiver, uint256 royaltyAmount) = IERC2981(msg.sender).royaltyInfo(
+        if (IERC165(tokenContract).supportsInterface(_INTERFACE_ID_ERC2981)) {
+            (address receiver, uint256 royaltyAmount) = IERC2981(tokenContract).royaltyInfo(
                 cloneShape.tokenId,
                 cloneShape.worth
             );
@@ -433,7 +439,66 @@ contract DittoMachine is ERC721, ERC721TokenReceiver {
             from,
             cloneShape.worth + subsidy
         );
+    }
+
+    /**
+     * @dev will allow NFT sellers to sell by safeTransferFrom-ing directly to this contract.
+     * @param data will contain ERC20 address that the seller wishes to sell for
+     * allows specifying selling for the floor price
+     * @return returns received selector
+     */
+    function onERC721Received(
+        address,
+        address from,
+        uint256 id,
+        bytes calldata data
+    ) external returns (bytes4) {
+        (address ERC20Contract, bool floor) = abi.decode(data, (address, bool));
+
+        onTokenReceived(from, msg.sender /*ERC721 contract address*/, id, ERC20Contract, floor, false);
+
         return this.onERC721Received.selector;
+    }
+
+    function onERC1155Received(
+        address,
+        address from,
+        uint256 id,
+        uint256 amount,
+        bytes calldata data
+    ) external returns (bytes4) {
+        if (amount != 1) {
+            revert AmountInvalid();
+        }
+        // address ERC1155Contract = msg.sender;
+        (address ERC20Contract, bool floor) = abi.decode(data, (address, bool));
+
+        onTokenReceived(from, msg.sender /*ERC1155 contract address*/, id, ERC20Contract, floor, true);
+
+        return this.onERC1155Received.selector;
+    }
+
+    function onERC1155BatchReceived(
+        address,
+        address from,
+        uint256[] calldata ids,
+        uint256[] calldata amounts,
+        bytes calldata data
+    ) external returns (bytes4) {
+        for (uint256 i; i < amounts.length; i++) {
+            if (amounts[i] != 1) {
+                revert AmountInvalid();
+            }
+        }
+        // address[] memory ERC20Contracts = new address[](ids.length);
+        // bool[] memory floors = new bool[](ids.length);
+        (address[] memory ERC20Contracts, bool[] memory floors) = abi.decode(data, (address[], bool[]));
+
+        for (uint256 i; i < ids.length; i++) {
+            onTokenReceived(from, msg.sender /*ERC1155 contract address*/, ids[i], ERC20Contracts[i], floors[i], true);
+        }
+
+        return this.onERC1155BatchReceived.selector;
     }
 
     ///////////////////////////////////////////////
