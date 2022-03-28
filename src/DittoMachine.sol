@@ -61,7 +61,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver {
     mapping(uint256 => uint256) public cloneIdToCumulativePrice;
     mapping(uint256 => uint256) public cloneIdToTimestampLast;
 
-    mapping(uint256 => address) public voucherToAddress; // non transferrable vouchers for reward tokens
+    mapping(uint256 => bool) public voucherValidity; // non transferrable vouchers for reward tokens
 
     constructor() ERC721("Ditto", "DTO") { }
 
@@ -368,12 +368,14 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver {
     function issueVoucher(address to, uint256 cloneId, uint256 value) private {
         uint256 voucher = uint256(keccak256(abi.encodePacked(
             cloneId,
+            to,
+            cloneIdToShape[cloneId].heat,
             value - cloneIdToShape[cloneId].worth,
             cloneIdToShape[cloneId].start,
             block.timestamp
         )));
 
-        voucherToAddress[voucher] = to;
+        voucherValidity[voucher] = true;
     }
 
     ////////////////////////////////////////////////
