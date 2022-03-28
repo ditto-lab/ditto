@@ -1112,4 +1112,48 @@ contract ContractTest is DSTest, DittoMachine {
         assertEq(nft.ownerOf(nftId), eoa2);
         assertEq(currency.balanceOf(eoa1), MIN_AMOUNT_FOR_NEW_CLONE * 2);
     }
+
+    function testChildDissolveClone() public {
+        uint256 nftId = mintNft();
+        address eoa1 = generateAddress("eoa1");
+        address eoa2 = generateAddress("eoa2");
+        currency.mint(eoa1, MIN_AMOUNT_FOR_NEW_CLONE);
+        currency.mint(eoa2, MIN_AMOUNT_FOR_NEW_CLONE);
+
+        cheats.startPrank(eoa1);
+        currency.approve(dmAddr, type(uint256).max);
+
+        // mint a clone
+        uint256 cloneId = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false);
+        assertEq(dm.ownerOf(cloneId), eoa1);
+        uint256 cloneSubsidy = dm.cloneIdToSubsidy(cloneId);
+        cheats.stopPrank();
+
+
+        cheats.startPrank(eoa2);
+        currency.approve(dmAddr, type(uint256).max);
+
+        uint256 childId = dm.duplicate(dmAddr, cloneId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false);
+        assertEq(dm.ownerOf(childId), eoa2);
+        uint256 childSubsidy = dm.cloneIdToSubsidy(childId);
+        cheats.stopPrank();
+
+        assertEq(currency.balanceOf(dmAddr), MIN_AMOUNT_FOR_NEW_CLONE * 2);
+
+
+        cheats.startPrank(eoa1);
+        dm.dissolve(cloneId);
+        cheats.stopPrank();
+
+        uint256 subsidy = dm.cloneIdToSubsidy(cloneId);
+        assertEq(subsidy, cloneSubsidy + childSubsidy);
+
+        assertEq(dm.balanceOf(eoa1), 0);
+        assertEq(dm.balanceOf(eoa2), 1);
+
+        assertEq(dm.ownerOf(cloneId), eoa2);
+        assertEq(dm.ownerOf(childId), address(0));
+        // dissolve does not return subsidy so must be accounted for in balance
+        assertEq(currency.balanceOf(dmAddr), getCloneShape(cloneId).worth + subsidy);
+    }
 }
