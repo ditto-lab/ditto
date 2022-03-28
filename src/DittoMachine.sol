@@ -314,14 +314,35 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver {
         address owner = ownerOf[_cloneId];
         CloneShape memory cloneShape = cloneIdToShape[_cloneId];
 
-        delete cloneIdToShape[_cloneId];
-
-        _burn(_cloneId);
+        _dissolve(_cloneId);
         SafeTransferLib.safeTransfer( // EXTERNAL CALL
             ERC20(cloneShape.ERC20Contract),
             owner,
             cloneShape.worth
         );
+    }
+
+    function _dissolve(uint256 _cloneId) private {
+        uint256 childId = uint256(keccak256(abi.encodePacked(
+            address(this),
+            _cloneId,
+            cloneIdToShape[_cloneId].ERC20Contract,
+            false
+        )));
+        if (ownerOf[childId] == address(0)) {
+            delete cloneIdToShape[_cloneId];
+            _burn(_cloneId);
+        } else {
+            unchecked {
+                balanceOf[ownerOf[_cloneId]]--;
+                balanceOf[ownerOf[childId]]++;
+            }
+            cloneIdToShape[_cloneId] = cloneIdToShape[childId];
+            delete cloneIdToShape[childId];
+            ownerOf[_cloneId] = ownerOf[childId];
+            delete getApproved[_cloneId];
+            _burn(childId);
+        }
     }
 
     function getMinAmountForCloneTransfer(uint256 cloneId) public view returns (uint256) {
@@ -404,9 +425,8 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver {
         CloneShape memory cloneShape = cloneIdToShape[cloneId];
         uint256 subsidy = cloneIdToSubsidy[cloneId];
         address owner = ownerOf[cloneId];
-        delete cloneIdToShape[cloneId];
         delete cloneIdToSubsidy[cloneId];
-        _burn(cloneId);
+        _dissolve(cloneId);
 
         if (isERC1155) {
             if (ERC1155(tokenContract).balanceOf(address(this), id) < 1) {
