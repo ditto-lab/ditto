@@ -338,7 +338,11 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver {
                 balanceOf[ownerOf[childId]]++;
             }
             cloneIdToShape[_cloneId] = cloneIdToShape[childId];
+            cloneIdToSubsidy[_cloneId] += cloneIdToSubsidy[childId];
+            
+            delete cloneIdToSubsidy[childId];
             delete cloneIdToShape[childId];
+
             ownerOf[_cloneId] = ownerOf[childId];
             delete getApproved[_cloneId];
             _burn(childId);
