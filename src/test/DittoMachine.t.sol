@@ -6,7 +6,7 @@ import "../DittoMachine.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import {Bidder, DittoMachine} from "./Bidder.sol";
 import {BidderWithEjector, BidderWithBadEjector, BidderWithGassyEjector} from "./BidderWithEjector.sol";
-import {ERC721, IERC2981, UnderlyingNFTWithRoyalties, UnderlyingNFT} from "./UnderlyingNFTWithRoyalties.sol";
+import {ERC721, IERC2981, UnderlyingNFTWithRoyalties, UnderlyingNFT, UnderlyingNFT1155} from "./UnderlyingNFTWithRoyalties.sol";
 
 
 contract Currency is ERC20 {
@@ -35,6 +35,9 @@ contract ContractTest is DSTest, DittoMachine {
     UnderlyingNFT nft;
     address nftAddr;
 
+    UnderlyingNFT1155 nft1155;
+    address nft1155Addr;
+
     UnderlyingNFTWithRoyalties nftWR;
     address nftWRAddr;
 
@@ -42,6 +45,7 @@ contract ContractTest is DSTest, DittoMachine {
     address currencyAddr;
 
     uint256 nftTokenId = 0;
+    uint256 nftTokenId1155 = 0;
 
     Bidder immutable bidder;
     BidderWithEjector immutable bidderWithEjector;
@@ -66,6 +70,9 @@ contract ContractTest is DSTest, DittoMachine {
         nft = new UnderlyingNFT();
         nftAddr = address(nft);
 
+        nft1155 = new UnderlyingNFT1155();
+        nft1155Addr = address(nft1155);
+
         nftWR = new UnderlyingNFTWithRoyalties(generateAddress("royaltyReceiver"));
         nftWRAddr = address(nftWR);
 
@@ -84,6 +91,13 @@ contract ContractTest is DSTest, DittoMachine {
         return nftTokenId++;
     }
 
+    function mintNft1155() internal returns (uint256) {
+        address nftOwner = generateAddress(bytes(Strings.toString(nftTokenId1155)));
+        nft1155.mint(nftOwner, nftTokenId1155, 1);
+
+        return nftTokenId1155++;
+    }
+
     function getCloneShape(uint256 cloneId) internal view returns (CloneShape memory) {
         (uint256 tokenId, uint256 worth, address ERC721Contract,
             address ERC20Contract, uint8 heat, bool floor, uint256 term, uint256 start) = dm.cloneIdToShape(cloneId);
@@ -95,6 +109,24 @@ contract ContractTest is DSTest, DittoMachine {
     function testNameAndSymbol() public {
         assertEq(dm.name(), "Ditto");
         assertEq(dm.symbol(), "DTO");
+    }
+
+    function testTokenUri() public {
+        uint256 nftId721 = mintNft();
+        string memory uri721 = nft.tokenURI(nftId721);
+        currency.mint(address(this), MIN_AMOUNT_FOR_NEW_CLONE);
+        currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
+        uint256 clone0Id = dm.duplicate(nftAddr, nftId721, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false);
+        assertEq(uri721, dm.tokenURI(clone0Id));
+    }
+
+    function testTokenUri1155() public {
+        uint256 nftId1155 = mintNft1155();
+        string memory uri1155 = nft1155.uri(nftId1155);
+        currency.mint(address(this), MIN_AMOUNT_FOR_NEW_CLONE);
+        currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
+        uint256 clone1Id = dm.duplicate(nft1155Addr, nftId1155, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false);
+        assertEq(uri1155, dm.tokenURI(clone1Id));
     }
 
     // DittoMachine should revert when ether is sent to it
@@ -388,6 +420,116 @@ contract ContractTest is DSTest, DittoMachine {
         // ensure correct oracle related values
         assertEq(dm.cloneIdToCumulativePrice(cloneId1), shape.worth * 100);
         assertEq(dm.cloneIdToTimestampLast(cloneId1), block.timestamp);
+    }
+
+    function testSellUnderlying1155() public {
+        address eoaSeller = generateAddress("eoaSeller");
+        cheats.startPrank(eoaSeller);
+        nft1155.mint(eoaSeller, nftTokenId1155, 1);
+        uint256 nftId = nftTokenId1155++;
+        assertEq(nft1155.balanceOf(eoaSeller, nftId), 1);
+        cheats.stopPrank();
+
+        address eoaBidder = generateAddress("eoaBidder");
+        currency.mint(eoaBidder, MIN_AMOUNT_FOR_NEW_CLONE);
+        cheats.startPrank(eoaBidder);
+        currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
+
+        // buy a clone using the minimum purchase amount
+        uint256 cloneId1 = dm.duplicate(nft1155Addr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false);
+        CloneShape memory shape = getCloneShape(cloneId1);
+        assertEq(dm.ownerOf(cloneId1), eoaBidder);
+
+        // ensure erc20 balances
+        assertEq(currency.balanceOf(eoaBidder), 0);
+        assertEq(currency.balanceOf(dmAddr), MIN_AMOUNT_FOR_NEW_CLONE);
+
+        uint256 subsidy1 = dm.cloneIdToSubsidy(cloneId1);
+        assertEq(subsidy1, MIN_AMOUNT_FOR_NEW_CLONE * MIN_FEE / DNOM);
+
+        CloneShape memory shape1 = getCloneShape(cloneId1);
+        assertEq(shape1.worth, currency.balanceOf(dmAddr) - subsidy1);
+
+        cheats.stopPrank();
+
+        cheats.warp(block.timestamp + 100);
+        cheats.startPrank(eoaSeller);
+        nft1155.safeTransferFrom(eoaSeller, dmAddr, nftId, 1, abi.encode(currencyAddr, false));
+        cheats.stopPrank();
+        assertEq(currency.balanceOf(eoaSeller), shape1.worth + subsidy1);
+        assertEq(currency.balanceOf(dmAddr), 0);
+
+        // ensure correct oracle related values
+        assertEq(dm.cloneIdToCumulativePrice(cloneId1), shape.worth * 100);
+        assertEq(dm.cloneIdToTimestampLast(cloneId1), block.timestamp);
+    }
+
+    function testSellUnderlying1155Batch() public {
+        address eoaSeller = generateAddress("eoaSeller");
+        uint256[] memory nftIds = new uint256[](5);
+        for (uint256 i; i < nftIds.length; i++) {
+            nft1155.mint(eoaSeller, nftTokenId1155, 1);
+            nftIds[i] = nftTokenId1155++;
+            assertEq(nft1155.balanceOf(eoaSeller, nftIds[i]), 1);
+        }
+
+        address eoaBidder = generateAddress("eoaBidder");
+        cheats.startPrank(eoaBidder);
+
+        // buy a clone using the minimum purchase amount
+        uint256[] memory cloneIds = new uint256[](nftIds.length);
+        uint256[] memory amounts = new uint256[](nftIds.length);
+        CloneShape[] memory shapes = new CloneShape[](nftIds.length);
+        for (uint256 j; j < cloneIds.length; j++) {
+            currency.mint(eoaBidder, MIN_AMOUNT_FOR_NEW_CLONE);
+            currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
+
+            cloneIds[j] = dm.duplicate(nft1155Addr, nftIds[j], currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false);
+            shapes[j] = getCloneShape(cloneIds[j]);
+            assertEq(dm.ownerOf(cloneIds[j]), eoaBidder);
+            amounts[j] = 1;
+        }
+
+        // ensure erc20 balances
+        assertEq(currency.balanceOf(eoaBidder), 0);
+        assertEq(currency.balanceOf(dmAddr), MIN_AMOUNT_FOR_NEW_CLONE * cloneIds.length);
+
+        uint256 subsidy1 = dm.cloneIdToSubsidy(cloneIds[0]);
+        assertEq(subsidy1, MIN_AMOUNT_FOR_NEW_CLONE * MIN_FEE / DNOM);
+
+        CloneShape memory shape1 = getCloneShape(cloneIds[0]);
+        assertEq(shape1.worth, MIN_AMOUNT_FOR_NEW_CLONE - subsidy1);
+
+        cheats.stopPrank();
+
+        cheats.warp(block.timestamp + 100);
+        cheats.startPrank(eoaSeller);
+
+        address[] memory currencyAddrArray = new address[](5);
+        for (uint i=0;i<5;i++) {
+            currencyAddrArray[i] = currencyAddr;
+        }
+        bool[] memory floorArray = new bool[](5);
+        for (uint i=0;i<5;i++) {
+            floorArray[i] = false;
+        }
+        nft1155.safeBatchTransferFrom(
+            eoaSeller,
+            dmAddr,
+            nftIds,
+            amounts,
+            abi.encode(
+                currencyAddrArray,
+                floorArray
+            )
+        );
+        cheats.stopPrank();
+        assertEq(currency.balanceOf(eoaSeller), (shape1.worth + subsidy1)*5);
+        assertEq(currency.balanceOf(dmAddr), 0);
+
+        // ensure correct oracle related values
+        assertEq(dm.cloneIdToCumulativePrice(cloneIds[0]), shapes[0].worth * 100);
+        assertEq(dm.cloneIdToTimestampLast(cloneIds[0]), block.timestamp);
     }
 
     function testSellUnderlyingWithRoyalties() public {
