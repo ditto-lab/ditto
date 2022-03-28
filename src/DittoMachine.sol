@@ -233,13 +233,13 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver {
                 block.timestamp
             );
             cloneIdToSubsidy[cloneId] += subsidy;
+            _mint(msg.sender, cloneId);
             SafeTransferLib.safeTransferFrom( // EXTERNAL CALL
                 ERC20(_ERC20Contract),
                 msg.sender,
                 address(this),
                 _amount
             );
-            _mint(msg.sender, cloneId);
 
         } else {
 
