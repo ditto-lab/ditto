@@ -57,7 +57,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver {
 
     //protoId is a precursor hash to a cloneId used to identify tokenId/erc20 pairs
     mapping(uint256 => uint256) public protoIdToIndex;
-
+    mapping(uint256 => uint256) public protoIdToDepth;
     mapping(uint256 => uint256) public protoIdToSubsidy;
     mapping(uint256 => uint256) public protoIdToCumulativePrice;
     mapping(uint256 => uint256) public protoIdToTimestampLast;
@@ -209,6 +209,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver {
 
         uint256 value;
         uint256 subsidy;
+        uint256 elderId;
 
         if (ownerOf[cloneId] == address(0)) {
 
@@ -230,6 +231,12 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver {
                     revert AmountInvalid();
                 }
             }
+            if (depth > 0) {
+                elderId = uint256(keccak256(abi.encodePacked(protoId, protoIdToIndex[protoId] + depth - 1)));
+                if (value > cloneIdToShape[elderId].worth) {
+                    revert AmountInvalid();
+                }
+            }
 
             cloneIdToShape[cloneId] = CloneShape(
                 _tokenId,
@@ -241,6 +248,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver {
                 block.timestamp + BASE_TERM
             );
             protoIdToSubsidy[protoId] += subsidy;
+            unchecked {protoIdToDepth[protoId]++;}
             SafeTransferLib.safeTransferFrom( // EXTERNAL CALL
                 ERC20(_ERC20Contract),
                 msg.sender,
@@ -258,6 +266,12 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver {
             // calculate subsidy and worth values
             subsidy = minAmount * (MIN_FEE * (1 + heat)) / DNOM;
             value = _amount - subsidy; // will be applied to cloneShape.worth
+            if (depth > 0) {
+                elderId = uint256(keccak256(abi.encodePacked(protoId, protoIdToIndex[protoId] + depth - 1)));
+                if (value > cloneIdToShape[elderId].worth) {
+                    revert AmountInvalid();
+                }
+            }
             if (value < minAmount) {
                 revert AmountInvalid();
             }
@@ -315,26 +329,32 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver {
 
     /**
      * @notice unwind a position in a clone.
-     * @param _protoId specifies the tokenId/erc20 pair.
+     * @param cloneId specifies the clone to be burned.
      * @dev will refund funds held in a position, subsidy will remain for sellers in the future.
      */
-    function dissolve(uint256 _protoId, uint256 index) public {
-        uint256 _cloneId = uint256(keccak256(abi.encodePacked(_protoId, index)));
-        if (!(msg.sender == ownerOf[_cloneId]
-                || msg.sender == getApproved[_cloneId]
-                || isApprovedForAll[ownerOf[_cloneId]][msg.sender])) {
+    function dissolve(uint256 cloneId) public {
+        CloneShape memory cloneShape = cloneIdToShape[cloneId];
+        uint256 protoId = uint256(keccak256(abi.encodePacked(
+            cloneShape.ERC721Contract,
+            cloneShape.tokenId,
+            cloneShape.ERC20Contract,
+            cloneShape.floor
+        )));
+        if (!(msg.sender == ownerOf[cloneId]
+                || msg.sender == getApproved[cloneId]
+                || isApprovedForAll[ownerOf[cloneId]][msg.sender])) {
             revert NotAuthorized();
         }
 
-        _updatePrice(_protoId);
-        unchecked { protoIdToIndex[_protoId]++; }
+        _updatePrice(protoId);
+        unchecked { protoIdToIndex[protoId]++; }
+        unchecked { protoIdToDepth[protoId]--; }
 
-        address owner = ownerOf[_cloneId];
-        CloneShape memory cloneShape = cloneIdToShape[_cloneId];
+        address owner = ownerOf[cloneId];
 
-        delete cloneIdToShape[_cloneId];
+        delete cloneIdToShape[cloneId];
 
-        _burn(_cloneId);
+        _burn(cloneId);
         SafeTransferLib.safeTransfer( // EXTERNAL CALL
             ERC20(cloneShape.ERC20Contract),
             owner,
@@ -430,6 +450,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver {
         delete protoIdToSubsidy[protoId];
         _burn(cloneId);
         unchecked { protoIdToIndex[protoId]++; }
+        unchecked { protoIdToDepth[protoId]--; }
 
         if (isERC1155) {
             if (ERC1155(tokenContract).balanceOf(address(this), id) < 1) {
