@@ -14,7 +14,7 @@ contract EjectorTests is TestBase {
         cheats.startPrank(address(bidderWithEjector));
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
 
-        uint256 cloneId = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false);
+        (uint256 cloneId, /*uint256 protoId*/, /*uint256 protoId*/) = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
         cheats.stopPrank();
 
         address eoa1 = generateAddress("eoa1");
@@ -23,7 +23,7 @@ contract EjectorTests is TestBase {
 
         cheats.startPrank(eoa1);
         currency.approve(dmAddr, minAmountToBuyClone);
-        dm.duplicate(nftAddr, nftId, currencyAddr, minAmountToBuyClone, false);
+        dm.duplicate(nftAddr, nftId, currencyAddr, minAmountToBuyClone, false, 0);
         cheats.stopPrank();
 
         uint256 ejections = bidderWithEjector.ejections();
@@ -38,7 +38,7 @@ contract EjectorTests is TestBase {
         cheats.startPrank(address(bidderWithBadEjector));
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
 
-        uint256 cloneId = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false);
+        (uint256 cloneId, /*uint256 protoId*/, /*uint256 protoId*/) = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
         cheats.stopPrank();
 
         address eoa1 = generateAddress("eoa1");
@@ -47,7 +47,7 @@ contract EjectorTests is TestBase {
 
         cheats.startPrank(eoa1);
         currency.approve(dmAddr, minAmountToBuyClone);
-        dm.duplicate(nftAddr, nftId, currencyAddr, minAmountToBuyClone, false);
+        dm.duplicate(nftAddr, nftId, currencyAddr, minAmountToBuyClone, false, 0);
         cheats.stopPrank();
 
         uint256 ejections = bidderWithBadEjector.ejections();
@@ -62,7 +62,7 @@ contract EjectorTests is TestBase {
         cheats.startPrank(address(bidderWithGassyEjector));
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
 
-        uint256 cloneId = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false);
+        (uint256 cloneId, /*uint256 protoId*/, /*uint256 protoId*/) = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
         cheats.stopPrank();
 
         address eoa1 = generateAddress("eoa1");
@@ -71,7 +71,7 @@ contract EjectorTests is TestBase {
 
         cheats.startPrank(eoa1);
         currency.approve(dmAddr, minAmountToBuyClone);
-        dm.duplicate(nftAddr, nftId, currencyAddr, minAmountToBuyClone, false);
+        dm.duplicate(nftAddr, nftId, currencyAddr, minAmountToBuyClone, false, 0);
         cheats.stopPrank();
 
         uint256 ejections = bidderWithGassyEjector.ejections();
