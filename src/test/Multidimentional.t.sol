@@ -261,7 +261,7 @@ contract MultidimensionalTest is TestBase {
 
 
         cheats.startPrank(eoa1);
-        dm.dissolve(cloneId0, protoId0, index0);
+        dm.dissolve(/*cloneId0,*/ protoId0, index0);
         cheats.stopPrank();
         assertEq(dm.ownerOf(cloneId0), address(0));
         assertEq(dm.protoIdToIndexHead(protoId2), 1);
@@ -269,7 +269,7 @@ contract MultidimensionalTest is TestBase {
 
 
         cheats.startPrank(eoa3);
-        dm.dissolve(cloneId2, protoId2, index2);
+        dm.dissolve(/*cloneId0,*/ protoId2, index2);
         cheats.stopPrank();
         assertEq(dm.ownerOf(cloneId2), address(0));
         // this dissolve should not move the index head
@@ -278,7 +278,7 @@ contract MultidimensionalTest is TestBase {
 
 
         cheats.startPrank(eoa2);
-        dm.dissolve(cloneId1, protoId1, index1);
+        dm.dissolve(/*cloneId0,*/ protoId1, index1);
         cheats.stopPrank();
         assertEq(dm.ownerOf(cloneId1), address(0));
         assertEq(dm.protoIdToIndexHead(protoId2), 3);

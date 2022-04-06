@@ -72,7 +72,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver {
 
     // protoId cumulative price for TWAP
     mapping(uint256 => uint256) public protoIdToCumulativePrice;
-    // lat timestamp recorded for protoId TWAP 
+    // lat timestamp recorded for protoId TWAP
     mapping(uint256 => uint256) public protoIdToTimestampLast;
 
     // hash protoId with the index placement to get cloneId
@@ -223,7 +223,6 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver {
 
         uint256 value;
         uint256 subsidy;
-        uint256 elderId;
 
         if (ownerOf[cloneId] == address(0)) {
             // check that index references have been set
@@ -251,13 +250,13 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver {
                     revert AmountInvalid();
                 }
             }
-            unchecked { if (index - protoIdToIndexHead[protoId] != 0) { // check cloneId at prior index
+            if (index != protoIdToIndexHead[protoId]) { // check cloneId at prior index
                 // prev <- index
-                elderId = uint256(keccak256(abi.encodePacked(protoId, protoIdToIndexToPrior[protoId][index])));
+                uint256 elderId = uint256(keccak256(abi.encodePacked(protoId, protoIdToIndexToPrior[protoId][index])));
                 if (value > cloneIdToShape[elderId].worth) {
                     revert AmountInvalid(); // check value is less than clone closer to the index head
                 }
-            } }
+            }
 
             cloneIdToShape[cloneId] = CloneShape(
                 _tokenId,
@@ -296,13 +295,13 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver {
             // calculate subsidy and worth values
             subsidy = minAmount * (MIN_FEE * (1 + heat)) / DNOM;
             value = _amount - subsidy; // will be applied to cloneShape.worth
-            unchecked { if (index - protoIdToIndexHead[protoId] != 0) { // check cloneId at prior index
+            if (index != protoIdToIndexHead[protoId]) { // check cloneId at prior index
                 // prev <- index
-                elderId = uint256(keccak256(abi.encodePacked(protoId, protoIdToIndexToPrior[protoId][index])));
+                uint256 elderId = uint256(keccak256(abi.encodePacked(protoId, protoIdToIndexToPrior[protoId][index])));
                 if (value > cloneIdToShape[elderId].worth) {
                     revert AmountInvalid();
                 }
-            } }
+            }
             if (value < minAmount) {
                 revert AmountInvalid();
             }
@@ -360,13 +359,11 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver {
 
     /**
      * @notice unwind a position in a clone.
-     * @param cloneId specifies the clone to be burned.
+     * @param protoId specifies the clone to be burned.
      * @dev will refund funds held in a position, subsidy will remain for sellers in the future.
      */
-    function dissolve(uint256 cloneId, uint256 protoId, uint256 index) public {
-        if (cloneId != uint256(keccak256(abi.encodePacked(protoId, index)))) { // check valid clone
-            revert CloneNotFound();
-        }
+    function dissolve(/*uint256 cloneId, */uint256 protoId, uint256 index) public {
+        uint256 cloneId = uint256(keccak256(abi.encodePacked(protoId, index)));
         if (!(msg.sender == ownerOf[cloneId]
                 || msg.sender == getApproved[cloneId]
                 || isApprovedForAll[ownerOf[cloneId]][msg.sender])) {
