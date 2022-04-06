@@ -249,7 +249,7 @@ contract FloorTest is TestBase {
         cheats.startPrank(eoa1);
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE * 2);
 
-        (uint256 floorId, /*uint256 flotoId*//*uint256 protoId*/, /*uint256 flotoId*//*uint256 protoId*/) = dm.duplicate(nftAddr, 0, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE * 2, true, 0);
+        (uint256 floorId, /*uint256 flotoId*//*uint256 protoId*/, uint256 fIndex) = dm.duplicate(nftAddr, 0, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE * 2, true, 0);
         cheats.stopPrank();
 
         // eoaSeller sells nft specifying floor clone as recipient
@@ -263,7 +263,7 @@ contract FloorTest is TestBase {
         cheats.startPrank(eoa3);
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE * 2);
 
-        dm.duplicate(nftAddr, 0, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE * 2, true, 0);
+        dm.duplicate(nftAddr, 0, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE * 2, true, fIndex+1);
         cheats.stopPrank();
 
         cheats.startPrank(eoa1);
@@ -299,14 +299,14 @@ contract FloorTest is TestBase {
         cheats.startPrank(eoa1);
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
 
-        (uint256 floorId, /*uint256 flotoId*//*uint256 flotoId*//*uint256 protoId*/, /*uint256 flotoId*//*uint256 flotoId*//*uint256 protoId*/) = dm.duplicate(nftAddr, 0, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, true, 0);
+        (uint256 floorId, /*uint256 flotoId*/, uint256 fIndex) = dm.duplicate(nftAddr, 0, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, true, 0);
         cheats.stopPrank();
 
         // eoa2 purchases nft clone for higher price
         cheats.startPrank(eoa2);
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE * 2);
 
-        (uint256 cloneId, /*uint256 protoId*/, /*uint256 cloneIndex*/) = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE * 2, false, 0);
+        (uint256 cloneId, /*uint256 protoId*/, /*uint256 cIndex*/) = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE * 2, false, 0);
         cheats.stopPrank();
 
         // eoaSeller sells nft, specifying floor clone as recipient
@@ -322,7 +322,7 @@ contract FloorTest is TestBase {
         cheats.startPrank(eoa3);
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
 
-        dm.duplicate(nftAddr, 0, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, true, 0);
+        dm.duplicate(nftAddr, 0, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, true, fIndex+1);
         cheats.stopPrank();
 
         // eoa1 sells nft for nft clone

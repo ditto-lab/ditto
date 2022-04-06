@@ -88,7 +88,7 @@ contract ContractTest is TestBase {
         );
         assertEq(
             cloneId,
-            uint256(keccak256(abi.encodePacked(protoId, dm.protoIdToIndex(protoId))))
+            uint256(keccak256(abi.encodePacked(protoId, dm.protoIdToIndexHead(protoId))))
         );
         assertEq(currency.balanceOf(dmAddr), MIN_AMOUNT_FOR_NEW_CLONE);
         assertEq(dm.protoIdToSubsidy(protoId), MIN_AMOUNT_FOR_NEW_CLONE * MIN_FEE / DNOM);
@@ -218,7 +218,7 @@ contract ContractTest is TestBase {
         // mint a clone
         (uint256 cloneId, uint256 protoId, uint256 index) = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
         // eoa1 should be able to dissolve the clone it owns
-        dm.dissolve(cloneId);
+        dm.dissolve(cloneId, protoId, index);
         // ensure the clone is burned
         assertEq(dm.ownerOf(cloneId), address(0));
         // ensure correct oracle related values
@@ -228,7 +228,7 @@ contract ContractTest is TestBase {
         cheats.warp(block.timestamp + 100);
         // mint another clone with the same `cloneId` since we are passing the same arguments as before
 
-        (cloneId, protoId, index) = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
+        (cloneId, protoId, index) = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, index+1);
         // ensure correct oracle related values
         assertEq(dm.protoIdToCumulativePrice(protoId), 0);
         assertEq(dm.protoIdToTimestampLast(protoId), block.timestamp);
@@ -241,7 +241,7 @@ contract ContractTest is TestBase {
         cheats.startPrank(eoa2);
         // eoa2 should not able to dissolve someeone else's clone
         cheats.expectRevert(abi.encodeWithSelector(DittoMachine.NotAuthorized.selector));
-        dm.dissolve(cloneId);
+        dm.dissolve(cloneId, protoId, index);
         cheats.stopPrank();
 
         cheats.prank(eoa1);
@@ -250,7 +250,7 @@ contract ContractTest is TestBase {
         cheats.prank(eoa2);
         cheats.warp(block.timestamp + 100);
         // eoa2 should be able to dissolve the clone when it's owner has given approval for `cloneId`
-        dm.dissolve(cloneId);
+        dm.dissolve(cloneId, protoId, index);
         assertEq(dm.ownerOf(cloneId), address(0));
 
         // ensure correct oracle related values
@@ -262,7 +262,7 @@ contract ContractTest is TestBase {
 
         cheats.startPrank(eoa1);
         cheats.warp(block.timestamp + 200);
-        (cloneId, protoId, index) = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
+        (cloneId, protoId, index) = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, index+1);
 
         // ensure correct oracle related values
         assertEq(dm.protoIdToCumulativePrice(protoId), lastCumulativePrice + (shape.worth * 200));
@@ -277,7 +277,7 @@ contract ContractTest is TestBase {
         cheats.prank(eoa2);
         cheats.warp(block.timestamp + 10);
         // eoa2 should be able to dissolve the clone when it's owner has given approval for all the clones it owns
-        dm.dissolve(cloneId);
+        dm.dissolve(cloneId, protoId, index);
         // ensure correct oracle related values
         assertEq(dm.protoIdToCumulativePrice(protoId), lastCumulativePrice + (shape.worth * 10));
         assertEq(dm.protoIdToTimestampLast(protoId), block.timestamp);
