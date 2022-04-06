@@ -57,15 +57,22 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver {
 
     //protoId is a precursor hash to a cloneId used to identify tokenId/erc20 pairs
     mapping(uint256 => uint256) public protoIdToIndexHead;
-    // mapping to track the next index after the index head
-    mapping(uint256 => mapping(uint256 => uint256)) public protoIdToIndexToPrior;
-    // mapping to track the index before the index head
-    mapping(uint256 => mapping(uint256 => uint256)) public protoIdToIndexToAfter;
 
+    // mapping to track the index before a specified index
+    // 0 <- 1 <- 2 <- 3
+    mapping(uint256 => mapping(uint256 => uint256)) public protoIdToIndexToPrior;
+
+    // mapping to track the next index after a specified index
+    // 0 -> 1 -> 2 -> 3
+    mapping(uint256 => mapping(uint256 => uint256)) public protoIdToIndexToAfter;
+    // tracks the number of clones in circulation under a protoId
     mapping(uint256 => uint256) public protoIdToDepth;
+    // tracks balance of subsidy for a protoId
     mapping(uint256 => uint256) public protoIdToSubsidy;
 
+    // protoId cumulative price for TWAP
     mapping(uint256 => uint256) public protoIdToCumulativePrice;
+    // lat timestamp recorded for protoId TWAP 
     mapping(uint256 => uint256) public protoIdToTimestampLast;
 
     // hash protoId with the index placement to get cloneId
@@ -222,6 +229,8 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver {
             // check that index references have been set
             if (protoIdToIndexToAfter[protoId][protoIdToIndexToPrior[protoId][index]] != index) {
                 // if references have not been set by a previous clone this clone cannot be minted
+                // prev <- index
+                // prev -> index
                 revert CloneNotFound();
             }
             uint256 floorId = uint256(keccak256(abi.encodePacked(
@@ -243,6 +252,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver {
                 }
             }
             unchecked { if (index - protoIdToIndexHead[protoId] != 0) { // check cloneId at prior index
+                // prev <- index
                 elderId = uint256(keccak256(abi.encodePacked(protoId, protoIdToIndexToPrior[protoId][index])));
                 if (value > cloneIdToShape[elderId].worth) {
                     revert AmountInvalid(); // check value is less than clone closer to the index head
@@ -260,7 +270,11 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver {
             );
             unchecked {
                 protoIdToDepth[protoId]++; // increase depth counter
+
+                // index -> next
                 protoIdToIndexToAfter[protoId][index] = index+1; // set reference **to** the next index
+
+                // index <- next
                 protoIdToIndexToPrior[protoId][index+1] = index; // set the next index's reference to previous index
             }
             protoIdToSubsidy[protoId] += subsidy;
@@ -283,6 +297,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver {
             subsidy = minAmount * (MIN_FEE * (1 + heat)) / DNOM;
             value = _amount - subsidy; // will be applied to cloneShape.worth
             unchecked { if (index - protoIdToIndexHead[protoId] != 0) { // check cloneId at prior index
+                // prev <- index
                 elderId = uint256(keccak256(abi.encodePacked(protoId, protoIdToIndexToPrior[protoId][index])));
                 if (value > cloneIdToShape[elderId].worth) {
                     revert AmountInvalid();
@@ -364,9 +379,19 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver {
             protoIdToDepth[protoId]--;
         }
         if (index == protoIdToIndexHead[protoId]) { // if index == indexHead move head to next index
+            // index -> next
+            // head = next
             protoIdToIndexHead[protoId] = protoIdToIndexToAfter[protoId][index];
         }
+        // index pointers will change:
+        // prev -> index -> next
+        // becomes:
+        // prev ----------> next
         protoIdToIndexToAfter[protoId][protoIdToIndexToPrior[protoId][index]] = protoIdToIndexToAfter[protoId][index];
+
+        // prev <- index <- next
+        // becomes:
+        // prev <---------- next
         protoIdToIndexToPrior[protoId][protoIdToIndexToAfter[protoId][index]] = protoIdToIndexToPrior[protoId][index];
 
         address owner = ownerOf[cloneId];
@@ -438,7 +463,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver {
         )));
         uint256 cloneId = uint256(keccak256(abi.encodePacked(protoId, protoIdToIndexHead[protoId])));
 
-        uint256 flotoId = uint256(keccak256(abi.encodePacked(
+        uint256 flotoId = uint256(keccak256(abi.encodePacked( // floorId + protoId = flotoId
             tokenContract,
             FLOOR_ID,
             ERC20Contract,
@@ -470,7 +495,9 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver {
         _burn(cloneId);
         // token can only be sold to the clone at the index head
         uint256 head = protoIdToIndexHead[protoId];
-        protoIdToIndexHead[protoId] = protoIdToIndexToAfter[protoId][head]; // move hea to next index 
+        // indexHead -> next
+        // head = next
+        protoIdToIndexHead[protoId] = protoIdToIndexToAfter[protoId][head]; // move head to next index
         unchecked { protoIdToDepth[protoId]--; }
 
         if (isERC1155) {
