@@ -25,6 +25,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver {
     error AmountInvalidMin();
     error CloneNotFound();
     error FromInvalid();
+    error IndexInvalid();
     error NFTNotReceived();
     error NotAuthorized();
 
@@ -230,7 +231,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver {
                 // if references have not been set by a previous clone this clone cannot be minted
                 // prev <- index
                 // prev -> index
-                revert CloneNotFound();
+                revert IndexInvalid();
             }
             uint256 floorId = uint256(keccak256(abi.encodePacked(
                 _ERC721Contract,

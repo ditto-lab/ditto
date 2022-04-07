@@ -41,7 +41,7 @@ contract MultidimensionalCloneTest is TestBase {
         cheats.expectRevert(abi.encodeWithSelector(DittoMachine.AmountInvalid.selector));
         dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE+1, false, 1);
         // mint clone with invalid depth
-        cheats.expectRevert(abi.encodeWithSelector(DittoMachine.CloneNotFound.selector));
+        cheats.expectRevert(abi.encodeWithSelector(DittoMachine.IndexInvalid.selector));
         dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE+1, false, 2);
         // mint clone
         (uint256 cloneId1, uint256 protoId1, uint256 index1) = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 1);
@@ -60,7 +60,7 @@ contract MultidimensionalCloneTest is TestBase {
         cheats.expectRevert(abi.encodeWithSelector(DittoMachine.AmountInvalid.selector));
         dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE+1, false, 2);
         // mint clone with invalid depth
-        cheats.expectRevert(abi.encodeWithSelector(DittoMachine.CloneNotFound.selector));
+        cheats.expectRevert(abi.encodeWithSelector(DittoMachine.IndexInvalid.selector));
         dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE+1, false, 3);
         // mint clone
         (uint256 cloneId2, uint256 protoId2, uint256 index2) = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 2);
@@ -135,7 +135,7 @@ contract MultidimensionalCloneTest is TestBase {
         cheats.expectRevert(abi.encodeWithSelector(DittoMachine.AmountInvalid.selector));
         dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE+1, true, 1);
         // mint clone with invalid depth
-        cheats.expectRevert(abi.encodeWithSelector(DittoMachine.CloneNotFound.selector));
+        cheats.expectRevert(abi.encodeWithSelector(DittoMachine.IndexInvalid.selector));
         dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE+1, true, 2);
         // mint clone
         (uint256 cloneId1, uint256 protoId1, uint256 index1) = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, true, 1);
@@ -154,7 +154,7 @@ contract MultidimensionalCloneTest is TestBase {
         cheats.expectRevert(abi.encodeWithSelector(DittoMachine.AmountInvalid.selector));
         dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE+1, true, 2);
         // mint clone with invalid depth
-        cheats.expectRevert(abi.encodeWithSelector(DittoMachine.CloneNotFound.selector));
+        cheats.expectRevert(abi.encodeWithSelector(DittoMachine.IndexInvalid.selector));
         dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE+1, true, 3);
         // mint clone
         (uint256 cloneId2, uint256 protoId2, uint256 index2) = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, true, 2);
@@ -229,7 +229,7 @@ contract MultidimensionalCloneTest is TestBase {
         cheats.expectRevert(abi.encodeWithSelector(DittoMachine.AmountInvalid.selector));
         dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE+1, true, 1);
         // mint clone with invalid depth
-        cheats.expectRevert(abi.encodeWithSelector(DittoMachine.CloneNotFound.selector));
+        cheats.expectRevert(abi.encodeWithSelector(DittoMachine.IndexInvalid.selector));
         dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE+1, true, 2);
         // mint clone
         (uint256 cloneId1, uint256 protoId1, uint256 index1) = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, true, 1);
@@ -248,7 +248,7 @@ contract MultidimensionalCloneTest is TestBase {
         cheats.expectRevert(abi.encodeWithSelector(DittoMachine.AmountInvalid.selector));
         dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE+1, true, 2);
         // mint clone with invalid depth
-        cheats.expectRevert(abi.encodeWithSelector(DittoMachine.CloneNotFound.selector));
+        cheats.expectRevert(abi.encodeWithSelector(DittoMachine.IndexInvalid.selector));
         dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE+1, true, 3);
         // mint clone
         (uint256 cloneId2, uint256 protoId2, uint256 index2) = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, true, 2);
