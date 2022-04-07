@@ -17,8 +17,8 @@ contract ContractTest is TestBase {
         string memory uri721 = nft.tokenURI(nftId721);
         currency.mint(address(this), MIN_AMOUNT_FOR_NEW_CLONE);
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
-        (uint256 clone0Id, , ) = dm.duplicate(nftAddr, nftId721, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
-        assertEq(uri721, dm.tokenURI(clone0Id));
+        (uint256 cloneId0, , ) = dm.duplicate(nftAddr, nftId721, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
+        assertEq(uri721, dm.tokenURI(cloneId0));
     }
 
     function testTokenUri1155() public {

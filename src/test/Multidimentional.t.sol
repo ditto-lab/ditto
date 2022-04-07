@@ -3,7 +3,7 @@ pragma solidity ^0.8.4;
 
 import "./TestBase.sol";
 
-contract MultidimensionalTest is TestBase {
+contract MultidimensionalCloneTest is TestBase {
 
     constructor() {}
 
