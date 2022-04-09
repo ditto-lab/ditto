@@ -69,7 +69,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver {
     // tracks the number of clones in circulation under a protoId
     mapping(uint256 => uint256) public protoIdToDepth;
     // tracks balance of subsidy for a protoId
-    mapping(uint256 => uint256) public protoIdToSubsidy;
+    mapping(uint256 => uint256) public cloneIdToSubsidy;
 
     // protoId cumulative price for TWAP
     mapping(uint256 => uint256) public protoIdToCumulativePrice;
@@ -277,7 +277,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver {
                 // index <- next
                 protoIdToIndexToPrior[protoId][index+1] = index; // set the next index's reference to previous index
             }
-            protoIdToSubsidy[protoId] += subsidy;
+            cloneIdToSubsidy[cloneId] += subsidy;
 
             SafeTransferLib.safeTransferFrom( // EXTERNAL CALL
                 ERC20(_ERC20Contract),
@@ -332,7 +332,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver {
             );
             uint256 subsidyDiv2 = subsidy >> 1;
             // half of fee goes into subsidy pool, half to previous clone owner
-            protoIdToSubsidy[protoId] += subsidy >> 1;
+            cloneIdToSubsidy[cloneId] += subsidyDiv2;
 
             // paying required funds to this contract
             SafeTransferLib.safeTransferFrom( // EXTERNAL CALL
@@ -486,10 +486,10 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver {
         _updatePrice(protoId);
 
         CloneShape memory cloneShape = cloneIdToShape[cloneId];
-        uint256 subsidy = protoIdToSubsidy[protoId];
+        uint256 subsidy = cloneIdToSubsidy[cloneId];
         address owner = ownerOf[cloneId];
         delete cloneIdToShape[cloneId];
-        delete protoIdToSubsidy[protoId];
+        delete cloneIdToSubsidy[cloneId];
         _burn(cloneId);
         // token can only be sold to the clone at the index head
         uint256 head = protoIdToIndexHead[protoId];

@@ -91,7 +91,7 @@ contract ContractTest is TestBase {
             uint256(keccak256(abi.encodePacked(protoId, dm.protoIdToIndexHead(protoId))))
         );
         assertEq(currency.balanceOf(dmAddr), MIN_AMOUNT_FOR_NEW_CLONE);
-        assertEq(dm.protoIdToSubsidy(protoId), MIN_AMOUNT_FOR_NEW_CLONE * MIN_FEE / DNOM);
+        assertEq(dm.cloneIdToSubsidy(cloneId), MIN_AMOUNT_FOR_NEW_CLONE * MIN_FEE / DNOM);
         assertEq(dm.protoIdToCumulativePrice(protoId), 0);
         assertEq(dm.protoIdToTimestampLast(protoId), INIT_TIME);
     }
@@ -121,7 +121,7 @@ contract ContractTest is TestBase {
             uint256(keccak256(abi.encodePacked(protoId, index)))
         );
         assertEq(currency.balanceOf(dmAddr), MIN_AMOUNT_FOR_NEW_CLONE);
-        assertEq(dm.protoIdToSubsidy(protoId), MIN_AMOUNT_FOR_NEW_CLONE * MIN_FEE / DNOM);
+        assertEq(dm.cloneIdToSubsidy(cloneId), MIN_AMOUNT_FOR_NEW_CLONE * MIN_FEE / DNOM);
         assertEq(dm.protoIdToCumulativePrice(protoId), 0);
         assertEq(dm.protoIdToTimestampLast(protoId), INIT_TIME);
     }
@@ -146,7 +146,7 @@ contract ContractTest is TestBase {
         assertEq(dm.protoIdToCumulativePrice(protoId1), 0);
         assertEq(dm.protoIdToTimestampLast(protoId1), INIT_TIME);
 
-        uint256 subsidy1 = dm.protoIdToSubsidy(protoId1);
+        uint256 subsidy1 = dm.cloneIdToSubsidy(cloneId1);
         assertEq(subsidy1, MIN_AMOUNT_FOR_NEW_CLONE * MIN_FEE / DNOM);
 
         CloneShape memory shape1 = getCloneShape(cloneId1);
@@ -184,7 +184,7 @@ contract ContractTest is TestBase {
         assertEq(dm.protoIdToTimestampLast(protoId2), block.timestamp);
 
         CloneShape memory shape2 = getCloneShape(cloneId2);
-        uint256 subsidy2 = dm.protoIdToSubsidy(protoId2);
+        uint256 subsidy2 = dm.cloneIdToSubsidy(cloneId2);
 
         // ensure complete purchase amount is taken from `eoa2`
         assertEq(currency.balanceOf(eoa2), 0);
@@ -312,7 +312,7 @@ contract ContractTest is TestBase {
         assertEq(currency.balanceOf(eoaBidder), 0);
         assertEq(currency.balanceOf(dmAddr), MIN_AMOUNT_FOR_NEW_CLONE);
 
-        uint256 subsidy1 = dm.protoIdToSubsidy(protoId1);
+        uint256 subsidy1 = dm.cloneIdToSubsidy(cloneId1);
         assertEq(subsidy1, MIN_AMOUNT_FOR_NEW_CLONE * MIN_FEE / DNOM);
 
         CloneShape memory shape1 = getCloneShape(cloneId1);
@@ -354,7 +354,7 @@ contract ContractTest is TestBase {
         assertEq(currency.balanceOf(eoaBidder), 0);
         assertEq(currency.balanceOf(dmAddr), MIN_AMOUNT_FOR_NEW_CLONE);
 
-        uint256 subsidy1 = dm.protoIdToSubsidy(protoId1);
+        uint256 subsidy1 = dm.cloneIdToSubsidy(cloneId1);
         assertEq(subsidy1, MIN_AMOUNT_FOR_NEW_CLONE * MIN_FEE / DNOM);
 
         CloneShape memory shape1 = getCloneShape(cloneId1);
@@ -406,7 +406,7 @@ contract ContractTest is TestBase {
         assertEq(currency.balanceOf(eoaBidder), 0);
         assertEq(currency.balanceOf(dmAddr), MIN_AMOUNT_FOR_NEW_CLONE * cloneIds.length);
 
-        uint256 subsidy1 = dm.protoIdToSubsidy(protoIds[0]);
+        uint256 subsidy1 = dm.cloneIdToSubsidy(cloneIds[0]);
         assertEq(subsidy1, MIN_AMOUNT_FOR_NEW_CLONE * MIN_FEE / DNOM);
 
         CloneShape memory shape1 = getCloneShape(cloneIds[0]);
@@ -465,7 +465,7 @@ contract ContractTest is TestBase {
         assertEq(currency.balanceOf(eoaBidder), 0);
         assertEq(currency.balanceOf(dmAddr), MIN_AMOUNT_FOR_NEW_CLONE);
 
-        uint256 subsidy1 = dm.protoIdToSubsidy(protoId1);
+        uint256 subsidy1 = dm.cloneIdToSubsidy(cloneId1);
         assertEq(subsidy1, MIN_AMOUNT_FOR_NEW_CLONE * MIN_FEE / DNOM);
 
         CloneShape memory shape1 = getCloneShape(cloneId1);

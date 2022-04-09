@@ -118,7 +118,7 @@ contract FloorTest is TestBase {
         assertEq(currency.balanceOf(eoaBidder), 0);
         assertEq(currency.balanceOf(dmAddr), MIN_AMOUNT_FOR_NEW_CLONE);
 
-        uint256 subsidy1 = dm.protoIdToSubsidy(protoId1);
+        uint256 subsidy1 = dm.cloneIdToSubsidy(cloneId1);
         assertEq(subsidy1, MIN_AMOUNT_FOR_NEW_CLONE * MIN_FEE / DNOM);
 
         CloneShape memory shape1 = getCloneShape(cloneId1);
