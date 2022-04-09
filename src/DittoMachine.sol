@@ -425,7 +425,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver {
                 cloneShape.tokenId,
                 cloneShape.worth
             );
-            if (royaltyAmount > 0) {
+            if (royaltyAmount > 0 && royaltyAmount < cloneShape.worth) {
                 cloneShape.worth -= royaltyAmount;
                 SafeTransferLib.safeTransfer(
                     ERC20(ERC20Contract),
