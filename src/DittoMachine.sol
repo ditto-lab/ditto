@@ -68,7 +68,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver {
     mapping(uint256 => mapping(uint256 => uint256)) public protoIdToIndexToAfter;
     // tracks the number of clones in circulation under a protoId
     mapping(uint256 => uint256) public protoIdToDepth;
-    // tracks balance of subsidy for a protoId
+    // tracks balance of subsidy for a specific cloneId
     mapping(uint256 => uint256) public cloneIdToSubsidy;
 
     // protoId cumulative price for TWAP
@@ -268,7 +268,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver {
                 floor,
                 block.timestamp + BASE_TERM
             );
-            unchecked {
+            unchecked { // ethereum will be irrelevant if this ever overflows
                 protoIdToDepth[protoId]++; // increase depth counter
 
                 // index -> next
@@ -373,8 +373,8 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver {
         CloneShape memory cloneShape = cloneIdToShape[cloneId];
 
         _updatePrice(protoId);
-        unchecked { // decrement clone depth counter
-            protoIdToDepth[protoId]--;
+        unchecked { // if clone deoesn't exist an error will throw above. should not underflow
+            protoIdToDepth[protoId]--; // decrement clone depth counter
         }
         if (index == protoIdToIndexHead[protoId]) { // if index == indexHead move head to next index
             // index -> next
@@ -496,7 +496,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver {
         // indexHead -> next
         // head = next
         protoIdToIndexHead[protoId] = protoIdToIndexToAfter[protoId][head]; // move head to next index
-        unchecked { protoIdToDepth[protoId]--; }
+        unchecked { protoIdToDepth[protoId]--; } // should not underflow, will error above if clone does not exist
 
         if (isERC1155) {
             if (ERC1155(tokenContract).balanceOf(address(this), id) < 1) {
