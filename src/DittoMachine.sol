@@ -498,6 +498,17 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver {
         protoIdToIndexHead[protoId] = protoIdToIndexToAfter[protoId][head]; // move head to next index
         unchecked { protoIdToDepth[protoId]--; } // should not underflow, will error above if clone does not exist
 
+        // index pointers will change:
+        // prev -> index -> next
+        // becomes:
+        // prev ----------> next
+        protoIdToIndexToAfter[protoId][protoIdToIndexToPrior[protoId][head]] = protoIdToIndexToAfter[protoId][head];
+
+        // prev <- index <- next
+        // becomes:
+        // prev <---------- next
+        protoIdToIndexToPrior[protoId][protoIdToIndexToAfter[protoId][head]] = protoIdToIndexToPrior[protoId][head];
+
         if (isERC1155) {
             if (ERC1155(tokenContract).balanceOf(address(this), id) < 1) {
                 revert NFTNotReceived();
