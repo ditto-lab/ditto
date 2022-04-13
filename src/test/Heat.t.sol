@@ -16,7 +16,7 @@ contract HeatTests is TestBase {
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
 
         // buy a clone using the minimum purchase amount
-        uint256 cloneId = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false);
+        (uint256 cloneId, uint256 protoId, /*uint256 index*/) = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
         assertEq(dm.ownerOf(cloneId), eoa1);
 
         // ensure erc20 balances
@@ -38,12 +38,12 @@ contract HeatTests is TestBase {
             currency.mint(eoa1, minAmountToBuyClone);
             currency.approve(dmAddr, minAmountToBuyClone);
 
-            uint256 lastCumulativePrice = dm.cloneIdToCumulativePrice(cloneId);
-            dm.duplicate(nftAddr, nftId, currencyAddr, minAmountToBuyClone, false);
+            uint256 lastCumulativePrice = dm.protoIdToCumulativePrice(protoId);
+            dm.duplicate(nftAddr, nftId, currencyAddr, minAmountToBuyClone, false, 0);
 
             // ensure correct oracle related values
-            assertEq(dm.cloneIdToCumulativePrice(cloneId), lastCumulativePrice + (shape.worth * i));
-            assertEq(dm.cloneIdToTimestampLast(cloneId), block.timestamp);
+            assertEq(dm.protoIdToCumulativePrice(protoId), lastCumulativePrice + (shape.worth * i));
+            assertEq(dm.protoIdToTimestampLast(protoId), block.timestamp);
 
             shape = getCloneShape(cloneId);
             assertEq(shape.heat, 1+i);
@@ -62,7 +62,7 @@ contract HeatTests is TestBase {
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
 
         // buy a clone using the minimum purchase amount
-        uint256 cloneId = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false);
+        (uint256 cloneId, uint256 protoId, /*uint256 index*/) = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
         assertEq(dm.ownerOf(cloneId), eoa1);
 
         // ensure erc20 balances
@@ -83,12 +83,12 @@ contract HeatTests is TestBase {
             currency.mint(eoa1, minAmountToBuyClone);
             currency.approve(dmAddr, minAmountToBuyClone);
 
-            uint256 lastCumulativePrice = dm.cloneIdToCumulativePrice(cloneId);
-            dm.duplicate(nftAddr, nftId, currencyAddr, minAmountToBuyClone, false);
+            uint256 lastCumulativePrice = dm.protoIdToCumulativePrice(protoId);
+            dm.duplicate(nftAddr, nftId, currencyAddr, minAmountToBuyClone, false, 0);
 
             // ensure correct oracle related values
-            assertEq(dm.cloneIdToCumulativePrice(cloneId), lastCumulativePrice + (shape.worth * ((BASE_TERM-1) + shape.heat**2)));
-            assertEq(dm.cloneIdToTimestampLast(cloneId), block.timestamp);
+            assertEq(dm.protoIdToCumulativePrice(protoId), lastCumulativePrice + (shape.worth * ((BASE_TERM-1) + shape.heat**2)));
+            assertEq(dm.protoIdToTimestampLast(protoId), block.timestamp);
 
             shape = getCloneShape(cloneId);
             assertEq(shape.heat, 1);
@@ -108,7 +108,7 @@ contract HeatTests is TestBase {
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
 
         // buy a clone using the minimum purchase amount
-        uint256 cloneId = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false);
+        (uint256 cloneId, uint256 protoId, /*uint256 index*/) = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
         assertEq(dm.ownerOf(cloneId), eoa1);
 
         // ensure erc20 balances
@@ -137,12 +137,12 @@ contract HeatTests is TestBase {
 
             assertEq(minAmountToBuyClone, (auctionPrice + (auctionPrice * MIN_FEE * (1+shape.heat) / DNOM)), "price");
 
-            uint256 lastCumulativePrice = dm.cloneIdToCumulativePrice(cloneId);
-            dm.duplicate(nftAddr, nftId, currencyAddr, minAmountToBuyClone, false);
+            uint256 lastCumulativePrice = dm.protoIdToCumulativePrice(protoId);
+            dm.duplicate(nftAddr, nftId, currencyAddr, minAmountToBuyClone, false, 0);
 
             // ensure correct oracle related values
-            assertEq(dm.cloneIdToCumulativePrice(cloneId), lastCumulativePrice + (shape.worth * time));
-            assertEq(dm.cloneIdToTimestampLast(cloneId), block.timestamp);
+            assertEq(dm.protoIdToCumulativePrice(protoId), lastCumulativePrice + (shape.worth * time));
+            assertEq(dm.protoIdToTimestampLast(protoId), block.timestamp);
             shape = getCloneShape(cloneId);
 
             cheats.stopPrank();
