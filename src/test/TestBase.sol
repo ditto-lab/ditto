@@ -4,6 +4,7 @@ pragma solidity ^0.8.4;
 import "ds-test/test.sol";
 import "../DittoMachine.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
+import {ERC20} from "@rari-capital/solmate/src/utils/SafeTransferLib.sol";
 import {Bidder, DittoMachine} from "./Bidder.sol";
 import {BidderWithEjector, BidderWithBadEjector, BidderWithGassyEjector} from "./BidderWithEjector.sol";
 import {ERC721, IERC2981, UnderlyingNFTWithRoyalties, UnderlyingNFT, UnderlyingNFT1155} from "./UnderlyingNFTWithRoyalties.sol";
@@ -98,11 +99,11 @@ contract TestBase is DSTest, DittoMachine {
         return nftTokenId1155++;
     }
 
-    function getCloneShape(uint256 cloneId) internal view returns (CloneShape memory) {
-        (uint256 tokenId, uint256 worth, address ERC721Contract,
-            address ERC20Contract, uint8 heat, bool floor, uint256 term) = dm.cloneIdToShape(cloneId);
+    // function getCloneShape(uint256 cloneId) internal view returns (CloneShape memory) {
+    //     (uint256 tokenId, uint256 worth, address ERC721Contract,
+    //         address ERC20Contract, uint8 heat, bool floor, uint256 term) = dm.cloneIdToShape(cloneId);
 
-        CloneShape memory shape = CloneShape(tokenId, worth, ERC721Contract, ERC20Contract, heat, floor, term);
-        return shape;
-    }
+    //     CloneShape memory shape = CloneShape(tokenId, worth, ERC721Contract, ERC20Contract, heat, floor, term);
+    //     return shape;
+    // }
 }
