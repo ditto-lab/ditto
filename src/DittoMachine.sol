@@ -448,10 +448,11 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver {
 
     function issueVoucher(address to, uint256 cloneId, uint256 value) private {
         uint256 voucher = uint256(keccak256(abi.encodePacked(
-            cloneId,
+            cloneId, // encodes: protoId (nft contract, token id, erc20 contract, if floor), index
             to,
             cloneIdToShape[cloneId].heat,
-            value - cloneIdToShape[cloneId].worth,
+            cloneIdToShape[cloneId].worth, // old value of the clone
+            value, // new value of the clone
             cloneIdToShape[cloneId].start,
             block.timestamp
         )));
