@@ -7,6 +7,7 @@ import {SafeTransferLib, ERC20} from "@rari-capital/solmate/src/utils/SafeTransf
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {IERC2981, IERC165} from "@openzeppelin/contracts/interfaces/IERC2981.sol";
 import {Base64} from 'base64-sol/base64.sol';
+import "./TimeCurve.sol";
 
 /**
  * @title NFT derivative exchange inspired by the SALSA concept.
@@ -309,7 +310,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver {
 
             // reduce heat relative to amount of time elapsed by auction
             if (cloneIdToShape[cloneId].term > block.timestamp) {
-                uint256 termLength = (BASE_TERM-1) + heat**2;
+                uint256 termLength = (BASE_TERM) + TimeCurve.calc(heat);
                 uint256 termStart = cloneIdToShape[cloneId].term - termLength;
                 uint256 elapsed = block.timestamp - termStart;
                 // add 1 to current heat so heat is not stuck at low value with anything but extreme demand for a clone
@@ -328,7 +329,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver {
                 cloneShape.ERC20Contract,
                 uint8(heat), // does not inherit heat of floor id
                 floor,
-                block.timestamp + (BASE_TERM-1) + (heat)**2
+                block.timestamp + (BASE_TERM) + TimeCurve.calc(heat)
             );
             uint256 subsidyDiv2 = subsidy >> 1;
             // half of fee goes into subsidy pool, half to previous clone owner
@@ -435,7 +436,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver {
                 timeLeft = cloneShape.term - block.timestamp;
             }
         }
-        uint256 termLength = (BASE_TERM-1) + uint256(cloneShape.heat)**2;
+        uint256 termLength = (BASE_TERM) + TimeCurve.calc(cloneShape.heat);
         uint256 clonePrice = cloneShape.worth + (cloneShape.worth * timeLeft / termLength);
         // return floor price if greater than clone auction price
         return floorPrice > clonePrice ? floorPrice : clonePrice;
