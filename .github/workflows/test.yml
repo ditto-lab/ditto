@@ -2,6 +2,9 @@ on: [push]
 
 name: test
 
+env:
+  SOLCVER: 0.8.13
+
 jobs:
   check:
     name: Foundry project
@@ -18,3 +21,7 @@ jobs:
 
       - name: Run tests
         run: forge test --via-ir -vvv
+
+      - name: Slither static analyser
+        uses: crytic/slither-action@v0.1.1
+        continue-on-error: true
