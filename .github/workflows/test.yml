@@ -22,6 +22,19 @@ jobs:
       - name: Run tests
         run: forge test --via-ir -vvv
 
-      - name: Slither static analyser
+      - name: Run Slither
         uses: crytic/slither-action@v0.1.1
+        id: slither
         continue-on-error: true
+        with:
+          # foundry-rs/foundry-toolchain@v1 will install foundry outside of the slither-action container.
+          # As a result, we need to run `forge build` before running slither, and then run slither with
+          # `ignore-compile: true`
+          # The action might eventually package Foundry: https://github.com/crytic/slither-action/issues/5
+          ignore-compile: true
+          sarif: results.sarif
+
+      - name: Upload SARIF file
+        uses: github/codeql-action/upload-sarif@v1
+        with:
+          sarif_file: ${{ steps.slither.outputs.sarif }}
