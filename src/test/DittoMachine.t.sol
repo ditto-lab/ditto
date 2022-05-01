@@ -17,7 +17,7 @@ contract ContractTest is TestBase {
         string memory uri721 = nft.tokenURI(nftId721);
         currency.mint(address(this), MIN_AMOUNT_FOR_NEW_CLONE);
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
-        (uint256 cloneId0, , ) = dm.duplicate(nftAddr, nftId721, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
+        (uint256 cloneId0, ) = dm.duplicate(nftAddr, nftId721, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
         assertEq(uri721, dm.tokenURI(cloneId0));
     }
 
@@ -26,7 +26,7 @@ contract ContractTest is TestBase {
         string memory uri1155 = nft1155.uri(nftId1155);
         currency.mint(address(this), MIN_AMOUNT_FOR_NEW_CLONE);
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
-        (uint256 clone1Id, , ) = dm.duplicate(nft1155Addr, nftId1155, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
+        (uint256 clone1Id, ) = dm.duplicate(nft1155Addr, nftId1155, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
         assertEq(uri1155, dm.tokenURI(clone1Id));
     }
 
@@ -56,14 +56,17 @@ contract ContractTest is TestBase {
         // MIN_AMOUNT_FOR_NEW_CLONE is the minimum amount for a clone
         dm.duplicate(nftAddr, nftId, currencyAddr, 1, false, 0);
 
+        cheats.expectRevert(abi.encodeWithSelector(DittoMachine.InvalidFloorId.selector));
+        dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, true, 0);
+
         cheats.stopPrank();
         // TODO: test revert when clone has been minted.
     }
 
-    function testFailProveDuplicateForFloor(uint256 _currAmount) public {
+    function testFailDuplicateForFloor(uint256 _currAmount) public {
         uint256 nftId = mintNft();
 
-        dm.duplicate(nftAddr, nftId, currencyAddr, _currAmount, true, 0);
+        dm.duplicate(nftAddr, FLOOR_ID, currencyAddr, _currAmount, true, 0);
     }
 
     // test that a floor clone is minted
@@ -73,7 +76,7 @@ contract ContractTest is TestBase {
         cheats.startPrank(address(bidder));
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
 
-        (uint256 cloneId, uint256 protoId, /*uint256 index*/) = dm.duplicate(nftAddr, FLOOR_ID, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, true, 0);
+        (uint256 cloneId, uint256 protoId) = dm.duplicate(nftAddr, FLOOR_ID, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, true, 0);
         cheats.stopPrank();
 
         assertEq(dm.ownerOf(cloneId), address(bidder));
@@ -103,7 +106,8 @@ contract ContractTest is TestBase {
         cheats.startPrank(address(bidder));
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
 
-        (uint256 cloneId, uint256 protoId, uint256 index)  = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
+        uint256 index = 0;
+        (uint256 cloneId, uint256 protoId)  = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, index);
         cheats.stopPrank();
 
         assertEq(dm.ownerOf(cloneId), address(bidder));
@@ -135,7 +139,7 @@ contract ContractTest is TestBase {
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
 
         // buy a clone using the minimum purchase amount
-        (uint256 cloneId1, uint256 protoId1, /*uint256 index1*/) = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
+        (uint256 cloneId1, uint256 protoId1) = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
         assertEq(dm.ownerOf(cloneId1), eoa1);
 
         // ensure erc20 balances
@@ -171,7 +175,7 @@ contract ContractTest is TestBase {
         // this reverts as we pass lower than minimum purchase amount
         dm.duplicate(nftAddr, nftId, currencyAddr, minAmountToBuyClone - 1, false, 0);
 
-        (uint256 cloneId2, uint256 protoId2, /*uint256 index2*/) = dm.duplicate(nftAddr, nftId, currencyAddr, minAmountToBuyClone, false, 0);
+        (uint256 cloneId2, uint256 protoId2) = dm.duplicate(nftAddr, nftId, currencyAddr, minAmountToBuyClone, false, 0);
         cheats.stopPrank();
 
         assertEq(dm.ownerOf(cloneId2), eoa2);
@@ -216,7 +220,8 @@ contract ContractTest is TestBase {
         currency.approve(dmAddr, type(uint256).max);
 
         // mint a clone
-        (uint256 cloneId, uint256 protoId, uint256 index) = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
+        uint256 index = 0;
+        (uint256 cloneId, uint256 protoId) = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, index);
         // eoa1 should be able to dissolve the clone it owns
         dm.dissolve(/*cloneId,*/ protoId, index);
         // ensure the clone is burned
@@ -228,7 +233,7 @@ contract ContractTest is TestBase {
         cheats.warp(block.timestamp + 100);
         // mint another clone with the same `cloneId` since we are passing the same arguments as before
 
-        (cloneId, protoId, index) = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, index+1);
+        (cloneId, protoId) = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, ++index);
         // ensure correct oracle related values
         assertEq(dm.protoIdToCumulativePrice(protoId), 0);
         assertEq(dm.protoIdToTimestampLast(protoId), block.timestamp);
@@ -262,7 +267,7 @@ contract ContractTest is TestBase {
 
         cheats.startPrank(eoa1);
         cheats.warp(block.timestamp + 200);
-        (cloneId, protoId, index) = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, index+1);
+        (cloneId, protoId) = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, ++index);
 
         // ensure correct oracle related values
         assertEq(dm.protoIdToCumulativePrice(protoId), lastCumulativePrice + (shape.worth * 200));
@@ -304,7 +309,7 @@ contract ContractTest is TestBase {
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
 
         // buy a clone using the minimum purchase amount
-        (uint256 cloneId1, uint256 protoId1, /*uint256 index1*/) = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
+        (uint256 cloneId1, uint256 protoId1) = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
         CloneShape memory shape = getCloneShape(cloneId1);
         assertEq(dm.ownerOf(cloneId1), eoaBidder);
 
@@ -346,7 +351,7 @@ contract ContractTest is TestBase {
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
 
         // buy a clone using the minimum purchase amount
-        (uint256 cloneId1, uint256 protoId1, /*uint256 index1*/) = dm.duplicate(nft1155Addr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
+        (uint256 cloneId1, uint256 protoId1) = dm.duplicate(nft1155Addr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
         CloneShape memory shape = getCloneShape(cloneId1);
         assertEq(dm.ownerOf(cloneId1), eoaBidder);
 
@@ -389,14 +394,13 @@ contract ContractTest is TestBase {
         // buy a clone using the minimum purchase amount
         uint256[] memory cloneIds = new uint256[](nftIds.length);
         uint256[] memory protoIds = new uint256[](nftIds.length);
-        uint256[] memory indices = new uint256[](nftIds.length);
         uint256[] memory amounts = new uint256[](nftIds.length);
         CloneShape[] memory shapes = new CloneShape[](nftIds.length);
         for (uint256 j; j < cloneIds.length; j++) {
             currency.mint(eoaBidder, MIN_AMOUNT_FOR_NEW_CLONE);
             currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
 
-            (cloneIds[j], protoIds[j], indices[j]) = dm.duplicate(nft1155Addr, nftIds[j], currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
+            (cloneIds[j], protoIds[j]) = dm.duplicate(nft1155Addr, nftIds[j], currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
             shapes[j] = getCloneShape(cloneIds[j]);
             assertEq(dm.ownerOf(cloneIds[j]), eoaBidder);
             amounts[j] = 1;
@@ -458,7 +462,7 @@ contract ContractTest is TestBase {
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
 
         // buy a clone using the minimum purchase amount
-        (uint256 cloneId1, uint256 protoId1, /*uint256 index1*/) = dm.duplicate(nftWRAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
+        (uint256 cloneId1, uint256 protoId1) = dm.duplicate(nftWRAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
         assertEq(dm.ownerOf(cloneId1), eoaBidder);
 
         // ensure erc20 balances

@@ -6,6 +6,7 @@ import {ERC1155, ERC1155TokenReceiver} from "@rari-capital/solmate/src/tokens/ER
 import {SafeTransferLib, ERC20} from "@rari-capital/solmate/src/utils/SafeTransferLib.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {IERC2981, IERC165} from "@openzeppelin/contracts/interfaces/IERC2981.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {Base64} from 'base64-sol/base64.sol';
 import {CloneList} from "./CloneList.sol";
 
@@ -188,8 +189,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
         uint256 index // index at which to mint the clone
     ) public returns (
         uint256, // cloneId
-        uint256, // protoId
-        uint256  // index
+        uint256 // protoId
     ) {
         // ensure enough funds to do some math on
         if (_amount < MIN_AMOUNT_FOR_NEW_CLONE) {
@@ -212,9 +212,6 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
 
         _updatePrice(protoId);
 
-        uint256 value;
-        uint256 subsidy;
-
         if (ownerOf[cloneId] == address(0)) {
             // check that index references have been set
             if (!validIndex(protoId, index)) {
@@ -229,8 +226,8 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
             )));
             floorId = uint256(keccak256(abi.encodePacked(floorId, index)));
 
-            subsidy = _amount * MIN_FEE / DNOM; // with current constants subsidy <= _amount
-            value = _amount - subsidy;
+            uint256 subsidy = _amount * MIN_FEE / DNOM; // with current constants subsidy <= _amount
+            uint256 value = _amount - subsidy;
 
             if (cloneId != floorId && ownerOf[floorId] != address(0)) {
                 // check price of floor clone to get price floor
@@ -270,54 +267,44 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
         } else {
 
             CloneShape memory cloneShape = cloneIdToShape[cloneId];
+            uint256 heat = cloneShape.heat;
 
             uint256 minAmount = _getMinAmount(cloneShape);
-            uint256 heat = cloneShape.heat;
             // calculate subsidy and worth values
-            subsidy = minAmount * (MIN_FEE * (1 + heat)) / DNOM;
-            value = _amount - subsidy; // will be applied to cloneShape.worth
-            if (index != protoIdToIndexHead[protoId]) { // check cloneId at prior index
-                // prev <- index
-                uint256 elderId = uint256(keccak256(abi.encodePacked(protoId, protoIdToIndexToPrior[protoId][index])));
-                if (value > cloneIdToShape[elderId].worth) {
-                    revert AmountInvalid();
-                }
-            }
-            if (value < minAmount) {
-                revert AmountInvalid();
-            }
-
-            // reduce heat relative to amount of time elapsed by auction
-            uint256 termLength = (BASE_TERM-1) + heat**2;
-            if (cloneShape.term > block.timestamp) {
-                uint256 elapsed = block.timestamp - (cloneShape.term - termLength); // current time - time when the current term started
-                // add 1 to current heat so heat is not stuck at low value with anything but extreme demand for a clone
-                uint256 cool = (heat+1) * elapsed / termLength;
-                if (cool > heat) {
-                    heat = 1;
-                } else {
-                    heat = heat - cool + 1;
-                    if (heat > type(uint8).max) {
-                        heat = type(uint8).max;
+            uint256 subsidy = minAmount * (MIN_FEE * (1 + heat)) / DNOM;
+            {
+                uint256 value = _amount - subsidy; // will be applied to cloneShape.worth
+                if (index != protoIdToIndexHead[protoId]) { // check cloneId at prior index
+                    // prev <- index
+                    uint256 elderId = uint256(keccak256(abi.encodePacked(protoId, protoIdToIndexToPrior[protoId][index])));
+                    if (value > cloneIdToShape[elderId].worth) {
+                        revert AmountInvalid();
                     }
                 }
-            } else {
-                heat = 1;
-            }
+                if (value < minAmount) {
+                    revert AmountInvalid();
+                }
 
-            // calculate new clone term values
-            cloneIdToShape[cloneId] = CloneShape(
-                _tokenId,
-                value,
-                cloneShape.ERC721Contract,
-                cloneShape.ERC20Contract,
-                uint8(heat), // does not inherit heat of floor id
-                floor,
-                block.timestamp + termLength
-            );
-            uint256 subsidyDiv2 = subsidy >> 1;
-            // half of fee goes into subsidy pool, half to previous clone owner
-            cloneIdToSubsidy[cloneId] += subsidyDiv2;
+                // reduce heat relative to amount of time elapsed by auction
+                uint256 termLength = (BASE_TERM-1) + cloneShape.heat**2;
+                if (cloneShape.term > block.timestamp) {
+                    uint256 elapsed = block.timestamp - (cloneShape.term - termLength); // current time - time when the current term started
+                    // add 1 to current heat so heat is not stuck at low value with anything but extreme demand for a clone
+                    uint256 cool = (heat+1) * elapsed / termLength;
+                    if (cool > heat) {
+                        heat = 1;
+                    } else {
+                        heat = Math.min(heat - cool + 1, type(uint8).max);
+                    }
+                } else {
+                    heat = 1;
+                }
+
+                // calculate new clone term values
+                cloneIdToShape[cloneId].worth = value;
+                cloneIdToShape[cloneId].heat = uint8(heat); // does not inherit heat of floor id
+                cloneIdToShape[cloneId].term = block.timestamp + termLength;
+            }
 
             // paying required funds to this contract
             SafeTransferLib.safeTransferFrom( // EXTERNAL CALL
@@ -328,6 +315,9 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
             );
             // buying out the previous clone owner
             address curOwner = ownerOf[cloneId];
+            uint256 subsidyDiv2 = subsidy >> 1;
+            // half of fee goes into subsidy pool, half to previous clone owner
+            cloneIdToSubsidy[cloneId] += subsidyDiv2;
             SafeTransferLib.safeTransfer( // EXTERNAL CALL
                 ERC20(_ERC20Contract),
                 curOwner,
@@ -339,8 +329,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
 
         return (
             cloneId,
-            protoId,
-            index
+            protoId
         );
     }
 
