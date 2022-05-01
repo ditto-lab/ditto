@@ -64,8 +64,6 @@ contract ContractTest is TestBase {
     }
 
     function testFailDuplicateForFloor(uint256 _currAmount) public {
-        uint256 nftId = mintNft();
-
         dm.duplicate(nftAddr, FLOOR_ID, currencyAddr, _currAmount, true, 0);
     }
 
