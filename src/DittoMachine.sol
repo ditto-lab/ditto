@@ -24,6 +24,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
      */
     error AmountInvalid();
     error AmountInvalidMin();
+    error InvalidFloorId();
     error CloneNotFound();
     error FromInvalid();
     error IndexInvalid();
@@ -195,8 +196,8 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
             revert AmountInvalidMin();
         }
 
-        if (floor) {
-            _tokenId = FLOOR_ID;
+        if (floor && _tokenId != FLOOR_ID) {
+            revert InvalidFloorId();
         }
 
         // calculate protoId by hashing identifiying information, precursor to cloneId
@@ -271,7 +272,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
             CloneShape memory cloneShape = cloneIdToShape[cloneId];
 
             uint256 minAmount = _getMinAmount(cloneShape);
-            uint256 heat = cloneIdToShape[cloneId].heat;
+            uint256 heat = cloneShape.heat;
             // calculate subsidy and worth values
             subsidy = minAmount * (MIN_FEE * (1 + heat)) / DNOM;
             value = _amount - subsidy; // will be applied to cloneShape.worth
@@ -287,14 +288,19 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
             }
 
             // reduce heat relative to amount of time elapsed by auction
-            if (cloneIdToShape[cloneId].term > block.timestamp) {
-                uint256 termLength = (BASE_TERM-1) + heat**2;
-                uint256 termStart = cloneIdToShape[cloneId].term - termLength;
-                uint256 elapsed = block.timestamp - termStart;
+            uint256 termLength = (BASE_TERM-1) + heat**2;
+            if (cloneShape.term > block.timestamp) {
+                uint256 elapsed = block.timestamp - (cloneShape.term - termLength); // current time - time when the current term started
                 // add 1 to current heat so heat is not stuck at low value with anything but extreme demand for a clone
                 uint256 cool = (heat+1) * elapsed / termLength;
-                heat -= cool > heat ? heat : cool;
-                heat = heat < type(uint8).max ? uint8(heat+1) : type(uint8).max; // does not exceed 2**16-1
+                if (cool > heat) {
+                    heat = 1;
+                } else {
+                    heat = heat - cool + 1;
+                    if (heat > type(uint8).max) {
+                        heat = type(uint8).max;
+                    }
+                }
             } else {
                 heat = 1;
             }
@@ -307,7 +313,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
                 cloneShape.ERC20Contract,
                 uint8(heat), // does not inherit heat of floor id
                 floor,
-                block.timestamp + (BASE_TERM-1) + (heat)**2
+                block.timestamp + termLength
             );
             uint256 subsidyDiv2 = subsidy >> 1;
             // half of fee goes into subsidy pool, half to previous clone owner
@@ -321,13 +327,14 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
                 _amount
             );
             // buying out the previous clone owner
+            address curOwner = ownerOf[cloneId];
             SafeTransferLib.safeTransfer( // EXTERNAL CALL
                 ERC20(_ERC20Contract),
-                ownerOf[cloneId],
+                curOwner,
                 (cloneShape.worth + subsidyDiv2 + (subsidy & 1)) // previous clone value + half of subsidy sent to prior clone owner
             );
             // force transfer from current owner to new highest bidder
-            forceTransferFrom(ownerOf[cloneId], msg.sender, cloneId); // EXTERNAL CALL
+            forceTransferFrom(curOwner, msg.sender, cloneId); // EXTERNAL CALL
         }
 
         return (
@@ -367,13 +374,13 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
         );
     }
 
-    function getMinAmountForCloneTransfer(uint256 cloneId) public view returns (uint256) {
+    function getMinAmountForCloneTransfer(uint256 cloneId) external view returns (uint256) {
         if(ownerOf[cloneId] == address(0)) {
             return MIN_AMOUNT_FOR_NEW_CLONE;
         }
-        uint256 heat = cloneIdToShape[cloneId].heat;
-        uint256 _minAmount = _getMinAmount(cloneIdToShape[cloneId]);
-        return _minAmount + (_minAmount * MIN_FEE * (1 + heat) / DNOM);
+        CloneShape memory cloneShape = cloneIdToShape[cloneId];
+        uint256 _minAmount = _getMinAmount(cloneShape);
+        return _minAmount + (_minAmount * MIN_FEE * (1 + cloneShape.heat) / DNOM);
     }
 
     /**
