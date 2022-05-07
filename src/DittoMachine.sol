@@ -7,6 +7,7 @@ import {SafeTransferLib, ERC20} from "@rari-capital/solmate/src/utils/SafeTransf
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {IERC2981, IERC165} from "@openzeppelin/contracts/interfaces/IERC2981.sol";
 import {Base64} from 'base64-sol/base64.sol';
+import {CloneList} from "./CloneList.sol";
 
 /**
  * @title NFT derivative exchange inspired by the SALSA concept.
@@ -15,7 +16,7 @@ import {Base64} from 'base64-sol/base64.sol';
  * the right to ownership when it is sold via this contract. Anybody may buy the
  * token for a higher price and force a transfer from the previous owner to the new buyer.
  */
-contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver {
+contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, CloneList {
     /**
      * @notice Insufficient bid for purchasing a clone.
      * @dev thrown when the number of erc20 tokens sent is lower than
@@ -56,18 +57,6 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver {
         uint256 term;
     }
 
-    //protoId is a precursor hash to a cloneId used to identify tokenId/erc20 pairs
-    mapping(uint256 => uint256) public protoIdToIndexHead;
-
-    // mapping to track the index before a specified index
-    // 0 <- 1 <- 2 <- 3
-    mapping(uint256 => mapping(uint256 => uint256)) public protoIdToIndexToPrior;
-
-    // mapping to track the next index after a specified index
-    // 0 -> 1 -> 2 -> 3
-    mapping(uint256 => mapping(uint256 => uint256)) public protoIdToIndexToAfter;
-    // tracks the number of clones in circulation under a protoId
-    mapping(uint256 => uint256) public protoIdToDepth;
     // tracks balance of subsidy for a specific cloneId
     mapping(uint256 => uint256) public cloneIdToSubsidy;
 
@@ -227,10 +216,8 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver {
 
         if (ownerOf[cloneId] == address(0)) {
             // check that index references have been set
-            if (protoIdToIndexToAfter[protoId][protoIdToIndexToPrior[protoId][index]] != index) {
+            if (!validIndex(protoId, index)) {
                 // if references have not been set by a previous clone this clone cannot be minted
-                // prev <- index
-                // prev -> index
                 revert IndexInvalid();
             }
             uint256 floorId = uint256(keccak256(abi.encodePacked(
@@ -268,15 +255,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver {
                 floor,
                 block.timestamp + BASE_TERM
             );
-            unchecked { // ethereum will be irrelevant if this ever overflows
-                protoIdToDepth[protoId]++; // increase depth counter
-
-                // index -> next
-                protoIdToIndexToAfter[protoId][index] = index+1; // set reference **to** the next index
-
-                // index <- next
-                protoIdToIndexToPrior[protoId][index+1] = index; // set the next index's reference to previous index
-            }
+            pushListTail(protoId, index);
             cloneIdToSubsidy[cloneId] += subsidy;
 
             SafeTransferLib.safeTransferFrom( // EXTERNAL CALL
@@ -373,24 +352,8 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver {
         CloneShape memory cloneShape = cloneIdToShape[cloneId];
 
         _updatePrice(protoId);
-        unchecked { // if clone deoesn't exist an error will throw above. should not underflow
-            protoIdToDepth[protoId]--; // decrement clone depth counter
-        }
-        if (index == protoIdToIndexHead[protoId]) { // if index == indexHead move head to next index
-            // index -> next
-            // head = next
-            protoIdToIndexHead[protoId] = protoIdToIndexToAfter[protoId][index];
-        }
-        // index pointers will change:
-        // prev -> index -> next
-        // becomes:
-        // prev ----------> next
-        protoIdToIndexToAfter[protoId][protoIdToIndexToPrior[protoId][index]] = protoIdToIndexToAfter[protoId][index];
 
-        // prev <- index <- next
-        // becomes:
-        // prev <---------- next
-        protoIdToIndexToPrior[protoId][protoIdToIndexToAfter[protoId][index]] = protoIdToIndexToPrior[protoId][index];
+        popListIndex(protoId, index);
 
         address owner = ownerOf[cloneId];
 
@@ -492,22 +455,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver {
         delete cloneIdToSubsidy[cloneId];
         _burn(cloneId);
         // token can only be sold to the clone at the index head
-        uint256 head = protoIdToIndexHead[protoId];
-        // indexHead -> next
-        // head = next
-        protoIdToIndexHead[protoId] = protoIdToIndexToAfter[protoId][head]; // move head to next index
-        unchecked { protoIdToDepth[protoId]--; } // should not underflow, will error above if clone does not exist
-
-        // index pointers will change:
-        // prev -> index -> next
-        // becomes:
-        // prev ----------> next
-        protoIdToIndexToAfter[protoId][protoIdToIndexToPrior[protoId][head]] = protoIdToIndexToAfter[protoId][head];
-
-        // prev <- index <- next
-        // becomes:
-        // prev <---------- next
-        protoIdToIndexToPrior[protoId][protoIdToIndexToAfter[protoId][head]] = protoIdToIndexToPrior[protoId][head];
+        popListHead(protoId);
 
         if (isERC1155) {
             if (ERC1155(tokenContract).balanceOf(address(this), id) < 1) {
