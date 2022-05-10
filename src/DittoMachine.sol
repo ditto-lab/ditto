@@ -244,6 +244,8 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
                 }
             }
 
+            _mint(msg.sender, cloneId);
+
             cloneIdToShape[cloneId] = CloneShape(
                 _tokenId,
                 value,
@@ -262,7 +264,6 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
                 address(this),
                 _amount
             );
-            _mint(msg.sender, cloneId);
 
         } else {
 
