@@ -29,7 +29,7 @@ contract HeatTests is TestBase {
         cheats.stopPrank();
 
         for (uint256 i = 1; i < 215; i++) {
-            // after 215 worth*timleft will overflow error when caclulating fees
+            // after 215 worth*timleft will overflow error when calculating fees
 
             cheats.warp(block.timestamp + i);
             cheats.startPrank(eoa1);

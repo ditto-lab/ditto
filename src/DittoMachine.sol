@@ -310,10 +310,15 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver {
 
             // reduce heat relative to amount of time elapsed by auction
             if (cloneIdToShape[cloneId].term > block.timestamp) {
+                // calculate clone term length
                 uint256 termLength = (BASE_TERM) + TimeCurve.calc(heat);
+                // calculate when clone term began
                 uint256 termStart = cloneIdToShape[cloneId].term - termLength;
+                // calculate time elapsed during term
                 uint256 elapsed = block.timestamp - termStart;
-                // add 1 to current heat so heat is not stuck at low value with anything but extreme demand for a clone
+                // add 1 to current heat so heat is not stuck at low value
+                // with anything but extreme demand for a clone
+                // reduce heat by percentage of time passed during clone term
                 uint256 cool = (heat+1) * elapsed / termLength;
                 heat -= cool > heat ? heat : cool;
                 heat = heat < type(uint8).max ? uint8(heat+1) : type(uint8).max; // does not exceed 2**16-1
