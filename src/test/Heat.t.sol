@@ -28,8 +28,8 @@ contract HeatTests is TestBase {
 
         cheats.stopPrank();
 
-        for (uint256 i = 1; i < 221; i++) {
-            // after 221 overflow error
+        for (uint256 i = 1; i < 215; i++) {
+            // after 215 worth*timleft will overflow error when calculating fees
 
             cheats.warp(block.timestamp + i);
             cheats.startPrank(eoa1);
@@ -75,7 +75,7 @@ contract HeatTests is TestBase {
         cheats.stopPrank();
 
         for (uint256 i = 1; i < 256; i++) {
-            cheats.warp(block.timestamp + (BASE_TERM-1) + shape.heat**2);
+            cheats.warp(block.timestamp + (BASE_TERM) + TimeCurve.calc(shape.heat));
 
             cheats.startPrank(eoa1);
 
@@ -120,7 +120,7 @@ contract HeatTests is TestBase {
 
         cheats.stopPrank();
 
-        for (uint256 i = 1; i < 30; i++) {
+        for (uint256 i = 1; i < 50; i++) {
             cheats.warp(block.timestamp + uint256(time));
 
             cheats.startPrank(eoa1);
@@ -130,7 +130,7 @@ contract HeatTests is TestBase {
             currency.approve(dmAddr, minAmountToBuyClone);
 
             uint256 timeLeft = shape.term > block.timestamp ? shape.term - block.timestamp : 0;
-            uint256 termStart = shape.term - ((BASE_TERM-1) + uint256(shape.heat)**2);
+            uint256 termStart = shape.term - ((BASE_TERM) + TimeCurve.calc(shape.heat));
             uint256 termLength = shape.term - termStart;
 
             uint256 auctionPrice = shape.worth + (shape.worth * timeLeft / termLength);
