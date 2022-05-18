@@ -289,7 +289,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
 
                 // reduce heat relative to amount of time elapsed by auction
                 if (cloneShape.term > block.timestamp) {
-                    uint256 termLength = (BASE_TERM) + TimeCurve.calc(heat);
+                    uint256 termLength = BASE_TERM + TimeCurve.calc(heat);
                     uint256 elapsed = block.timestamp - (cloneShape.term - termLength); // current time - time when the current term started
                     // add 1 to current heat so heat is not stuck at low value with anything but extreme demand for a clone
                     uint256 cool = (heat+1) * elapsed / termLength;
@@ -301,7 +301,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
                 // calculate new clone term values
                 cloneIdToShape[cloneId].worth = value;
                 cloneIdToShape[cloneId].heat = uint8(heat); // does not inherit heat of floor id
-                cloneIdToShape[cloneId].term = block.timestamp + (BASE_TERM) + TimeCurve.calc(heat);
+                cloneIdToShape[cloneId].term = block.timestamp + BASE_TERM + TimeCurve.calc(heat);
             }
 
             // paying required funds to this contract
@@ -392,7 +392,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
                 timeLeft = cloneShape.term - block.timestamp;
             }
         }
-        uint256 termLength = (BASE_TERM) + TimeCurve.calc(cloneShape.heat);
+        uint256 termLength = BASE_TERM + TimeCurve.calc(cloneShape.heat);
         uint256 clonePrice = cloneShape.worth + (cloneShape.worth * timeLeft / termLength);
         // return floor price if greater than clone auction price
         return floorPrice > clonePrice ? floorPrice : clonePrice;
