@@ -307,6 +307,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
                 cloneIdToShape[cloneId].worth = value;
                 cloneIdToShape[cloneId].heat = uint8(heat); // does not inherit heat of floor id
                 cloneIdToShape[cloneId].term = block.timestamp + BASE_TERM + TimeCurve.calc(heat);
+                cloneIdToShape[cloneId].start = block.timestamp;
             }
 
             // paying required funds to this contract
