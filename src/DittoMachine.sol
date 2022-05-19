@@ -6,6 +6,7 @@ import {ERC1155, ERC1155TokenReceiver} from "@rari-capital/solmate/src/tokens/ER
 import {SafeTransferLib, ERC20} from "@rari-capital/solmate/src/utils/SafeTransferLib.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {IERC2981, IERC165} from "@openzeppelin/contracts/interfaces/IERC2981.sol";
+import {IERC3156FlashLender, IERC3156FlashBorrower} from "@openzeppelin/contracts/interfaces/IERC3156FlashLender.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {Base64} from 'base64-sol/base64.sol';
 import {CloneList} from "./CloneList.sol";
@@ -18,7 +19,7 @@ import {TimeCurve} from "./TimeCurve.sol";
  * the right to ownership when it is sold via this contract. Anybody may buy the
  * token for a higher price and force a transfer from the previous owner to the new buyer.
  */
-contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, CloneList {
+contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, IERC3156FlashLender, CloneList {
     /**
      * @notice Insufficient bid for purchasing a clone.
      * @dev thrown when the number of erc20 tokens sent is lower than
@@ -32,6 +33,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
     error IndexInvalid();
     error NFTNotReceived();
     error NotAuthorized();
+    error FlashLoanFailed();
 
     ////////////// CONSTANT VARIABLES //////////////
 
@@ -542,6 +544,62 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
         }
 
         return this.onERC1155BatchReceived.selector;
+    }
+
+    /////////////////////////////////////////////////
+    ///////////// FLASH LOAN FUNCTIONS //////////////
+    /////////////////////////////////////////////////
+
+   /**
+    * @notice fee for a flash loan; always returns 0.
+    * @return The amount of `token` to be charged for the loan, on top of the returned principal; always 0.
+    * @dev there is no fee to take a flash loan.
+    */
+    function flashFee(address, uint256) external pure returns(uint256) {
+        return 0;
+    }
+
+    /**
+     * @dev The amount of currency available to be lended.
+     * @param token The loan currency.
+     * @return The amount of `token` that can be borrowed.
+     * @dev contract can lend all the token it owns.
+     */
+    function maxFlashLoan(address token) public view returns(uint256) {
+        return ERC20(token).balanceOf(address(this));
+    }
+
+    function flashLoan(
+        IERC3156FlashBorrower receiver,
+        address token,
+        uint256 amount,
+        bytes calldata data
+    ) external returns (bool) {
+        uint256 preBalance = ERC20(token).balanceOf(address(this));
+        SafeTransferLib.safeTransfer( // EXTERNAL CALL
+            ERC20(token),
+            address(receiver),
+            amount
+        );
+
+        if (receiver.onFlashLoan(msg.sender, token, amount, 0, data) // EXTERNAL CALL
+                != keccak256("ERC3156FlashBorrower.onFlashLoan")) {
+            revert FlashLoanFailed();
+        }
+
+        SafeTransferLib.safeTransferFrom( // EXTERNAL CALL
+            ERC20(token),
+            address(receiver),
+            address(this),
+            amount
+        );
+
+        // this check is required as some tokens can take a fee on transfer.
+        if (ERC20(token).balanceOf(address(this)) < preBalance) {
+            revert FlashLoanFailed();
+        }
+
+        return true;
     }
 
     ///////////////////////////////////////////////
