@@ -1,6 +1,7 @@
 pragma solidity ^0.8.4;
 
-import {IERC2981, IERC165} from "@openzeppelin/contracts/interfaces/IERC2981.sol";
+import {IERC2981} from "@openzeppelin/contracts/interfaces/IERC2981.sol";
+import {IERC165} from "@openzeppelin/contracts/interfaces/IERC165.sol";
 import {ERC721, UnderlyingNFT, UnderlyingNFT1155} from "./UnderlyingNFT.sol";
 
 contract UnderlyingNFTWithRoyalties is UnderlyingNFT, IERC2981 {

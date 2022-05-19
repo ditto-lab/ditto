@@ -19,9 +19,6 @@ jobs:
         with:
           version: nightly
 
-      - name: Run tests
-        run: forge test --via-ir -vvv
-
       - name: Run Slither
         uses: crytic/slither-action@main
         id: slither
