@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.4;
 
-import "ds-test/test.sol";
+import "forge-std/Test.sol";
 import "../DittoMachine.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import {Bidder, DittoMachine} from "./Bidder.sol";
@@ -25,7 +25,7 @@ interface CheatCodes {
     function warp(uint256) external;
 }
 
-contract TestBase is DSTest, DittoMachine {
+contract TestBase is Test, DittoMachine {
     uint256 constant INIT_TIME = 1644911858;
     CheatCodes constant cheats = CheatCodes(HEVM_ADDRESS);
 
