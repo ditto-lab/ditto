@@ -6,7 +6,7 @@ library TimeCurve {
 
     // use 7 as abdk 64.64 int for math
     int128 private constant SEVEN = 7<<64;
-    int128 private constant T = 86400<<64;
+    int128 private constant SECONDS_IN_DAY = 86400<<64;
 
     // I'm so sorry for this absolutely ass ugly beast of function -calvbore
     // returns the cube root of a uint < 256 as an abdk 64x64 decimal int128
@@ -281,7 +281,7 @@ library TimeCurve {
 
         int128 log7   = ABDKMath64x64.mul(SEVEN, hCbLg); // multiply log by 7
         int128 base   = ABDKMath64x64.mul(log7, hSqrt);  // multiply log by sqrt of heat
-        int128 length = ABDKMath64x64.mul(T, base);      // multiply base by 1 day
+        int128 length = ABDKMath64x64.mul(SECONDS_IN_DAY, base);      // multiply base by 1 day
 
         return ABDKMath64x64.toUInt(length);  // convert from abdk 64.64 to uint256
     }
