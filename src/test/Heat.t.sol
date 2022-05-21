@@ -12,7 +12,7 @@ contract HeatTests is TestBase {
         address eoa1 = generateAddress("eoa1");
         currency.mint(eoa1, MIN_AMOUNT_FOR_NEW_CLONE);
 
-        cheats.startPrank(eoa1);
+        vm.startPrank(eoa1);
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
 
         // buy a clone using the minimum purchase amount
@@ -26,13 +26,13 @@ contract HeatTests is TestBase {
         CloneShape memory shape = getCloneShape(cloneId);
         assertEq(shape.heat, 1);
 
-        cheats.stopPrank();
+        vm.stopPrank();
 
         for (uint256 i = 1; i < 215; i++) {
             // after 215 worth*timleft will overflow error when calculating fees
 
-            cheats.warp(block.timestamp + i);
-            cheats.startPrank(eoa1);
+            vm.warp(block.timestamp + i);
+            vm.startPrank(eoa1);
 
             uint256 minAmountToBuyClone = dm.getMinAmountForCloneTransfer(cloneId);
             currency.mint(eoa1, minAmountToBuyClone);
@@ -48,7 +48,7 @@ contract HeatTests is TestBase {
             shape = getCloneShape(cloneId);
             assertEq(shape.heat, 1+i);
 
-            cheats.stopPrank();
+            vm.stopPrank();
         }
     }
 
@@ -58,7 +58,7 @@ contract HeatTests is TestBase {
 
         currency.mint(eoa1, MIN_AMOUNT_FOR_NEW_CLONE);
 
-        cheats.startPrank(eoa1);
+        vm.startPrank(eoa1);
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
 
         // buy a clone using the minimum purchase amount
@@ -72,12 +72,12 @@ contract HeatTests is TestBase {
         CloneShape memory shape = getCloneShape(cloneId);
         assertEq(shape.heat, 1);
 
-        cheats.stopPrank();
+        vm.stopPrank();
 
         for (uint256 i = 1; i < 256; i++) {
-            cheats.warp(block.timestamp + (BASE_TERM) + TimeCurve.calc(shape.heat));
+            vm.warp(block.timestamp + (BASE_TERM) + TimeCurve.calc(shape.heat));
 
-            cheats.startPrank(eoa1);
+            vm.startPrank(eoa1);
 
             uint256 minAmountToBuyClone = dm.getMinAmountForCloneTransfer(cloneId);
             currency.mint(eoa1, minAmountToBuyClone);
@@ -94,7 +94,7 @@ contract HeatTests is TestBase {
             assertEq(shape.heat, 1);
             assertEq(shape.term, block.timestamp + (BASE_TERM-1) + shape.heat**2);
 
-            cheats.stopPrank();
+            vm.stopPrank();
         }
     }
 
@@ -104,7 +104,7 @@ contract HeatTests is TestBase {
 
         currency.mint(eoa1, MIN_AMOUNT_FOR_NEW_CLONE);
 
-        cheats.startPrank(eoa1);
+        vm.startPrank(eoa1);
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
 
         // buy a clone using the minimum purchase amount
@@ -118,12 +118,12 @@ contract HeatTests is TestBase {
         CloneShape memory shape = getCloneShape(cloneId);
         assertEq(shape.heat, 1);
 
-        cheats.stopPrank();
+        vm.stopPrank();
 
         for (uint256 i = 1; i < 50; i++) {
-            cheats.warp(block.timestamp + uint256(time));
+            vm.warp(block.timestamp + uint256(time));
 
-            cheats.startPrank(eoa1);
+            vm.startPrank(eoa1);
 
             uint256 minAmountToBuyClone = dm.getMinAmountForCloneTransfer(cloneId);
             currency.mint(eoa1, minAmountToBuyClone);
@@ -145,7 +145,7 @@ contract HeatTests is TestBase {
             assertEq(dm.protoIdToTimestampLast(protoId), block.timestamp);
             shape = getCloneShape(cloneId);
 
-            cheats.stopPrank();
+            vm.stopPrank();
         }
     }
 }

@@ -17,17 +17,8 @@ contract Currency is ERC20 {
     }
 }
 
-interface CheatCodes {
-    function prank(address) external;
-    function startPrank(address) external;
-    function stopPrank() external;
-    function expectRevert(bytes calldata) external;
-    function warp(uint256) external;
-}
-
 contract TestBase is Test, DittoMachine {
     uint256 constant INIT_TIME = 1644911858;
-    CheatCodes constant cheats = CheatCodes(HEVM_ADDRESS);
 
     DittoMachine dm;
     address dmAddr;
@@ -62,7 +53,7 @@ contract TestBase is Test, DittoMachine {
     }
 
     function setUp() public {
-        cheats.warp(INIT_TIME); // bring timestamp to a realistic number
+        vm.warp(INIT_TIME); // bring timestamp to a realistic number
 
         dm = new DittoMachine();
         dmAddr = address(dm);
