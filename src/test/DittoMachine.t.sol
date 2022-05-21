@@ -191,12 +191,15 @@ contract ContractTest is TestBase {
         // ensure complete purchase amount is taken from `eoa2`
         assertEq(currency.balanceOf(eoa2), 0);
 
-        uint256 subsidyFundsToDitto = subsidy2 - subsidy1;
         uint256 subsidyFundsToEoa1 = currency.balanceOf(eoa1) - shape1.worth;
 
-        // ensure the difference between bid amount and clone's worth is distributed
-        // between subsidy and `eoa1` (from which the clone was taken)
-        assertEq(subsidyFundsToDitto + subsidyFundsToEoa1, minAmountToBuyClone - shape2.worth);
+        {
+            uint256 subsidyFundsToDitto = subsidy2 - subsidy1;
+
+            // ensure the difference between bid amount and clone's worth is distributed
+            // between subsidy and `eoa1` (from which the clone was taken)
+            assertEq(subsidyFundsToDitto + subsidyFundsToEoa1, minAmountToBuyClone - shape2.worth);
+        }
         // ensure DittoMachine's complete erc20 balance is accounted for
         assertEq(currency.balanceOf(dmAddr), subsidy2 + shape2.worth);
         // ensure every erc20 token is accounted for
