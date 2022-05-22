@@ -346,7 +346,10 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
         // move its subsidy to the next clone in the linked list.
         // for the last index, the subsidy will be added the head clone.
         uint256 nextCloneId = uint256(keccak256(abi.encodePacked(protoId, protoIdToIndexToAfter[protoId][index])));
-        cloneIdToSubsidy[nextCloneId] += cloneIdToSubsidy[cloneId];
+        if (cloneId != nextCloneId) {
+            cloneIdToSubsidy[nextCloneId] += cloneIdToSubsidy[cloneId];
+            delete cloneIdToSubsidy[cloneId];
+        }
 
         CloneShape memory cloneShape = cloneIdToShape[cloneId];
 
