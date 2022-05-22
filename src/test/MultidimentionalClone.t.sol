@@ -5,33 +5,32 @@ import "./TestBase.sol";
 
 contract MultidimensionalCloneTest is TestBase {
 
+    uint256 nftId;
     constructor() {}
 
-    function testMultiClones() public {
-        address eoaSeller = generateAddress("eoaSeller");
+    function setUp() public override {
+        super.setUp();
+
         vm.startPrank(eoaSeller);
-        nft.mint(eoaSeller, nftTokenId);
-        uint256 nftId = nftTokenId++;
+        nftId = nft.mint(eoaSeller);
         assertEq(nft.ownerOf(nftId), eoaSeller);
         vm.stopPrank();
-
-        address eoa1 = generateAddress("eoa1");
-        address eoa2 = generateAddress("eoa2");
-        address eoa3 = generateAddress("eoa3");
 
         currency.mint(eoa1, MIN_AMOUNT_FOR_NEW_CLONE);
         currency.mint(eoa2, MIN_AMOUNT_FOR_NEW_CLONE);
         currency.mint(eoa3, MIN_AMOUNT_FOR_NEW_CLONE);
+        currency.mint(eoa4, MIN_AMOUNT_FOR_NEW_CLONE);
+    }
 
+    function testMultiClones() public {
         // mint clone at head
         vm.startPrank(eoa1);
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
         (uint256 cloneId0, uint256 protoId0) = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
         vm.stopPrank();
-        // check succesful mint
+        // check successful mint
         assertEq(dm.ownerOf(cloneId0), eoa1);
         assertEq(dm.protoIdToDepth(protoId0), 1);
-
 
         // mint clone at depth 1
         vm.startPrank(eoa2);
@@ -45,7 +44,7 @@ contract MultidimensionalCloneTest is TestBase {
         // mint clone
         (uint256 cloneId1, uint256 protoId1) = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 1);
         vm.stopPrank();
-        // check succesful mint
+        // check successful mint
         assertEq(dm.ownerOf(cloneId1), eoa2);
         assertEq(protoId1, protoId0);
         assertEq(dm.protoIdToDepth(protoId1), 2);
@@ -63,7 +62,7 @@ contract MultidimensionalCloneTest is TestBase {
         // mint clone
         (uint256 cloneId2, uint256 protoId2) = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 2);
         vm.stopPrank();
-        // check succesful mint
+        // check successful mint
         assertEq(dm.ownerOf(cloneId2), eoa3);
         assertEq(protoId2, protoId1);
         assertEq(dm.protoIdToDepth(protoId2), 3);
@@ -99,27 +98,12 @@ contract MultidimensionalCloneTest is TestBase {
     }
 
     function testMultiFloors() public {
-        address eoaSeller = generateAddress("eoaSeller");
-        vm.startPrank(eoaSeller);
-        nft.mint(eoaSeller, nftTokenId);
-        uint256 nftId = nftTokenId++;
-        assertEq(nft.ownerOf(nftId), eoaSeller);
-        vm.stopPrank();
-
-        address eoa1 = generateAddress("eoa1");
-        address eoa2 = generateAddress("eoa2");
-        address eoa3 = generateAddress("eoa3");
-
-        currency.mint(eoa1, MIN_AMOUNT_FOR_NEW_CLONE);
-        currency.mint(eoa2, MIN_AMOUNT_FOR_NEW_CLONE);
-        currency.mint(eoa3, MIN_AMOUNT_FOR_NEW_CLONE);
-
         // mint clone at head
         vm.startPrank(eoa1);
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
         (uint256 cloneId0, uint256 protoId0) = dm.duplicate(nftAddr, FLOOR_ID, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, true, 0);
         vm.stopPrank();
-        // check succesful mint
+        // check successful mint
         assertEq(dm.ownerOf(cloneId0), eoa1);
         assertEq(dm.protoIdToDepth(protoId0), 1);
 
@@ -136,7 +120,7 @@ contract MultidimensionalCloneTest is TestBase {
         // mint clone
         (uint256 cloneId1, uint256 protoId1) = dm.duplicate(nftAddr, FLOOR_ID, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, true, 1);
         vm.stopPrank();
-        // check succesful mint
+        // check successful mint
         assertEq(dm.ownerOf(cloneId1), eoa2);
         assertEq(protoId1, protoId0);
         assertEq(dm.protoIdToDepth(protoId1), 2);
@@ -154,7 +138,7 @@ contract MultidimensionalCloneTest is TestBase {
         // mint clone
         (uint256 cloneId2, uint256 protoId2) = dm.duplicate(nftAddr, FLOOR_ID, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, true, 2);
         vm.stopPrank();
-        // check succesful mint
+        // check successful mint
         assertEq(dm.ownerOf(cloneId2), eoa3);
         assertEq(protoId2, protoId1);
         assertEq(dm.protoIdToDepth(protoId2), 3);
@@ -190,29 +174,13 @@ contract MultidimensionalCloneTest is TestBase {
     }
 
     function testMultiDissolve() public {
-        address eoaSeller = generateAddress("eoaSeller");
-        vm.startPrank(eoaSeller);
-        nft.mint(eoaSeller, nftTokenId);
-        uint256 nftId = nftTokenId++;
-        assertEq(nft.ownerOf(nftId), eoaSeller);
-        vm.stopPrank();
-
-        address eoa1 = generateAddress("eoa1");
-        address eoa2 = generateAddress("eoa2");
-        address eoa3 = generateAddress("eoa3");
-
-        currency.mint(eoa1, MIN_AMOUNT_FOR_NEW_CLONE);
-        currency.mint(eoa2, MIN_AMOUNT_FOR_NEW_CLONE);
-        currency.mint(eoa3, MIN_AMOUNT_FOR_NEW_CLONE);
-
-
         // mint clone at head
         vm.startPrank(eoa1);
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
         uint256 index0 = 0;
         (uint256 cloneId0, uint256 protoId0) = dm.duplicate(nftAddr, FLOOR_ID, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, true, index0);
         vm.stopPrank();
-        // check succesful mint
+        // check successful mint
         assertEq(dm.ownerOf(cloneId0), eoa1);
         assertEq(dm.protoIdToDepth(protoId0), 1);
 
@@ -230,7 +198,7 @@ contract MultidimensionalCloneTest is TestBase {
         uint256 index1 = 1;
         (uint256 cloneId1, uint256 protoId1) = dm.duplicate(nftAddr, FLOOR_ID, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, true, index1);
         vm.stopPrank();
-        // check succesful mint
+        // check successful mint
         assertEq(dm.ownerOf(cloneId1), eoa2);
         assertEq(protoId1, protoId0);
         assertEq(dm.protoIdToDepth(protoId1), 2);
@@ -249,14 +217,14 @@ contract MultidimensionalCloneTest is TestBase {
         uint256 index2 = 2;
         (uint256 cloneId2, uint256 protoId2) = dm.duplicate(nftAddr, FLOOR_ID, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, true, index2);
         vm.stopPrank();
-        // check succesful mint
+        // check successful mint
         assertEq(dm.ownerOf(cloneId2), eoa3);
         assertEq(protoId2, protoId1);
         assertEq(dm.protoIdToDepth(protoId2), 3);
 
 
         vm.startPrank(eoa1);
-        dm.dissolve(/*cloneId0,*/ protoId0, 0);
+        dm.dissolve(protoId0, 0);
         vm.stopPrank();
         assertEq(dm.ownerOf(cloneId0), address(0));
         assertEq(dm.protoIdToIndexHead(protoId2), 1);
@@ -264,7 +232,7 @@ contract MultidimensionalCloneTest is TestBase {
 
 
         vm.startPrank(eoa3);
-        dm.dissolve(/*cloneId0,*/ protoId2, index2);
+        dm.dissolve(protoId2, index2);
         vm.stopPrank();
         assertEq(dm.ownerOf(cloneId2), address(0));
         // this dissolve should not move the index head
@@ -273,7 +241,7 @@ contract MultidimensionalCloneTest is TestBase {
 
 
         vm.startPrank(eoa2);
-        dm.dissolve(/*cloneId0,*/ protoId1, index1);
+        dm.dissolve(protoId1, index1);
         vm.stopPrank();
         assertEq(dm.ownerOf(cloneId1), address(0));
         assertEq(dm.protoIdToIndexHead(protoId2), 3);
@@ -281,31 +249,12 @@ contract MultidimensionalCloneTest is TestBase {
     }
 
     function testMultiNFTSellsAfterDissolve() public {
-        address eoaSeller = generateAddress("eoaSeller");
-        vm.startPrank(eoaSeller);
-        nft.mint(eoaSeller, nftTokenId);
-        uint256 nftId = nftTokenId++;
-        assertEq(nft.ownerOf(nftId), eoaSeller);
-        vm.stopPrank();
-
-        address eoa1 = generateAddress("eoa1");
-        address eoa2 = generateAddress("eoa2");
-        address eoa3 = generateAddress("eoa3");
-        address eoa4 = generateAddress("eoa4");
-
-
-        currency.mint(eoa1, MIN_AMOUNT_FOR_NEW_CLONE);
-        currency.mint(eoa2, MIN_AMOUNT_FOR_NEW_CLONE);
-        currency.mint(eoa3, MIN_AMOUNT_FOR_NEW_CLONE);
-        currency.mint(eoa4, MIN_AMOUNT_FOR_NEW_CLONE);
-
-
         // mint clone at head
         vm.startPrank(eoa1);
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
         (uint256 cloneId0, uint256 protoId0) = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
         vm.stopPrank();
-        // check succesful mint
+        // check successful mint
         assertEq(dm.ownerOf(cloneId0), eoa1);
         assertEq(dm.protoIdToDepth(protoId0), 1);
 
@@ -323,7 +272,7 @@ contract MultidimensionalCloneTest is TestBase {
         uint256 index1 = 1;
         (uint256 cloneId1, uint256 protoId1) = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, index1);
         vm.stopPrank();
-        // check succesful mint
+        // check successful mint
         assertEq(dm.ownerOf(cloneId1), eoa2);
         assertEq(protoId1, protoId0);
         assertEq(dm.protoIdToDepth(protoId1), 2);
@@ -341,7 +290,7 @@ contract MultidimensionalCloneTest is TestBase {
         // mint clone
         (uint256 cloneId2, uint256 protoId2) = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 2);
         vm.stopPrank();
-        // check succesful mint
+        // check successful mint
         assertEq(dm.ownerOf(cloneId2), eoa3);
         assertEq(protoId2, protoId1);
         assertEq(dm.protoIdToDepth(protoId2), 3);
@@ -349,7 +298,7 @@ contract MultidimensionalCloneTest is TestBase {
 
         // dissolve middle clone sibling
         vm.startPrank(eoa2);
-        dm.dissolve(/*cloneId0,*/ protoId1, index1);
+        dm.dissolve(protoId1, index1);
         vm.stopPrank();
         assertEq(dm.ownerOf(cloneId1), address(0));
         assertEq(dm.protoIdToIndexHead(protoId2), 0);
@@ -376,29 +325,12 @@ contract MultidimensionalCloneTest is TestBase {
     }
 
     function testMultiCannotMintCloneAtPrevIndex() public {
-        address eoaSeller = generateAddress("eoaSeller");
-        vm.startPrank(eoaSeller);
-        nft.mint(eoaSeller, nftTokenId);
-        uint256 nftId = nftTokenId++;
-        assertEq(nft.ownerOf(nftId), eoaSeller);
-        vm.stopPrank();
-
-        address eoa1 = generateAddress("eoa1");
-        address eoa2 = generateAddress("eoa2");
-        address eoa3 = generateAddress("eoa3");
-        address eoa4 = generateAddress("eoa4");
-
-        currency.mint(eoa1, MIN_AMOUNT_FOR_NEW_CLONE);
-        currency.mint(eoa2, MIN_AMOUNT_FOR_NEW_CLONE);
-        currency.mint(eoa3, MIN_AMOUNT_FOR_NEW_CLONE);
-        currency.mint(eoa4, MIN_AMOUNT_FOR_NEW_CLONE);
-
         // mint clone at head
         vm.startPrank(eoa1);
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
         (uint256 cloneId0, uint256 protoId0) = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
         vm.stopPrank();
-        // check succesful mint
+        // check successful mint
         assertEq(dm.ownerOf(cloneId0), eoa1);
         assertEq(dm.protoIdToDepth(protoId0), 1);
 
@@ -415,7 +347,7 @@ contract MultidimensionalCloneTest is TestBase {
         // mint clone
         (uint256 cloneId1, uint256 protoId1) = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 1);
         vm.stopPrank();
-        // check succesful mint
+        // check successful mint
         assertEq(dm.ownerOf(cloneId1), eoa2);
         assertEq(protoId1, protoId0);
         assertEq(dm.protoIdToDepth(protoId1), 2);
@@ -433,7 +365,7 @@ contract MultidimensionalCloneTest is TestBase {
         // mint clone
         (uint256 cloneId2, uint256 protoId2) = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 2);
         vm.stopPrank();
-        // check succesful mint
+        // check successful mint
         assertEq(dm.ownerOf(cloneId2), eoa3);
         assertEq(protoId2, protoId1);
         assertEq(dm.protoIdToDepth(protoId2), 3);
@@ -482,7 +414,7 @@ contract MultidimensionalCloneTest is TestBase {
 
         (uint256 cloneId3, uint256 protoId3) = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 3);
         vm.stopPrank();
-        // check succesful mint
+        // check successful mint
         assertEq(dm.ownerOf(cloneId3), eoa4);
         assertEq(dm.protoIdToIndexHead(protoId3), 3);
         assertEq(dm.protoIdToDepth(protoId0), 1);

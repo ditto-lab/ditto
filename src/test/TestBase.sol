@@ -12,8 +12,8 @@ import {ERC721, IERC2981, UnderlyingNFTWithRoyalties, UnderlyingNFT, UnderlyingN
 contract Currency is ERC20 {
     constructor() ERC20("Currency", "CRY", 18) {}
 
-    function mint(address to, uint256 id) external {
-        _mint(to, id);
+    function mint(address to, uint256 amount) external {
+        _mint(to, amount);
     }
 }
 
@@ -35,13 +35,16 @@ contract TestBase is Test, DittoMachine {
     Currency currency;
     address currencyAddr;
 
-    uint256 nftTokenId = 0;
-    uint256 nftTokenId1155 = 0;
-
     Bidder immutable bidder;
     BidderWithEjector immutable bidderWithEjector;
     BidderWithBadEjector immutable bidderWithBadEjector;
     BidderWithGassyEjector immutable bidderWithGassyEjector;
+
+    address eoaSeller;
+    address eoa1;
+    address eoa2;
+    address eoa3;
+    address eoa4;
 
     constructor() {
         dm = new DittoMachine();
@@ -52,7 +55,7 @@ contract TestBase is Test, DittoMachine {
         bidderWithGassyEjector = new BidderWithGassyEjector();
     }
 
-    function setUp() public {
+    function setUp() public virtual {
         vm.warp(INIT_TIME); // bring timestamp to a realistic number
 
         dm = new DittoMachine();
@@ -69,24 +72,16 @@ contract TestBase is Test, DittoMachine {
 
         currency = new Currency();
         currencyAddr = address(currency);
+
+        eoaSeller = generateAddress("eoaSeller");
+        eoa1 = generateAddress("eoa1");
+        eoa2 = generateAddress("eoa2");
+        eoa3 = generateAddress("eoa3");
+        eoa4 = generateAddress("eoa3");
     }
 
     function generateAddress(bytes memory str) internal pure returns (address) {
         return address(bytes20(keccak256(str)));
-    }
-
-    function mintNft() internal returns (uint256) {
-        address nftOwner = generateAddress(bytes(Strings.toString(nftTokenId)));
-        nft.mint(nftOwner, nftTokenId);
-
-        return nftTokenId++;
-    }
-
-    function mintNft1155() internal returns (uint256) {
-        address nftOwner = generateAddress(bytes(Strings.toString(nftTokenId1155)));
-        nft1155.mint(nftOwner, nftTokenId1155, 1);
-
-        return nftTokenId1155++;
     }
 
     function getCloneShape(uint256 cloneId) internal view returns (CloneShape memory) {

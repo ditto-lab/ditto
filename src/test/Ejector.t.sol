@@ -3,12 +3,12 @@ pragma solidity ^0.8.4;
 
 import "./TestBase.sol";
 
-contract EjectorTests is TestBase {
+contract EjectorTest is TestBase {
 
     constructor() {}
 
     function testEjector() public {
-        uint256 nftId = mintNft();
+        uint256 nftId = nft.mint();
         currency.mint(address(bidderWithEjector), MIN_AMOUNT_FOR_NEW_CLONE);
 
         vm.startPrank(address(bidderWithEjector));
@@ -17,7 +17,6 @@ contract EjectorTests is TestBase {
         (uint256 cloneId, /*uint256 protoId*/) = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
         vm.stopPrank();
 
-        address eoa1 = generateAddress("eoa1");
         uint256 minAmountToBuyClone = dm.getMinAmountForCloneTransfer(cloneId);
         currency.mint(eoa1, minAmountToBuyClone);
 
@@ -32,7 +31,7 @@ contract EjectorTests is TestBase {
     }
 
     function testEjectorWithRevert() public {
-        uint256 nftId = mintNft();
+        uint256 nftId = nft.mint();
         currency.mint(address(bidderWithBadEjector), MIN_AMOUNT_FOR_NEW_CLONE);
 
         vm.startPrank(address(bidderWithBadEjector));
@@ -41,7 +40,6 @@ contract EjectorTests is TestBase {
         (uint256 cloneId, /*uint256 protoId*/) = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
         vm.stopPrank();
 
-        address eoa1 = generateAddress("eoa1");
         uint256 minAmountToBuyClone = dm.getMinAmountForCloneTransfer(cloneId);
         currency.mint(eoa1, minAmountToBuyClone);
 
@@ -56,7 +54,7 @@ contract EjectorTests is TestBase {
     }
 
     function testEjectorWithOOG() public {
-        uint256 nftId = mintNft();
+        uint256 nftId = nft.mint();
         currency.mint(address(bidderWithGassyEjector), MIN_AMOUNT_FOR_NEW_CLONE);
 
         vm.startPrank(address(bidderWithGassyEjector));
@@ -65,7 +63,6 @@ contract EjectorTests is TestBase {
         (uint256 cloneId, /*uint256 protoId*/) = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
         vm.stopPrank();
 
-        address eoa1 = generateAddress("eoa1");
         uint256 minAmountToBuyClone = dm.getMinAmountForCloneTransfer(cloneId);
         currency.mint(eoa1, minAmountToBuyClone);
 
