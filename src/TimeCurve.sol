@@ -12,7 +12,6 @@ library TimeCurve {
     // I'm so sorry for this absolutely ass ugly beast of function -calvbore
     // returns the cube root of a uint < 256 as an abdk 64x64 decimal int128
     function cbrt(uint256 x) internal pure returns(int128) {
-        require(x >= 0);
         if (x == 0) {return 0;} // this line may never be used within ditto?
         if (x == 1) {return 18446744073709551616;} // 1<<64
         if (x == 2) {return 23241441162429415667;}
