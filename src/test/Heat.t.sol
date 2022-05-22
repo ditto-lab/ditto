@@ -3,15 +3,18 @@ pragma solidity ^0.8.4;
 
 import "./TestBase.sol";
 
-contract HeatTests is TestBase {
+contract HeatTest is TestBase {
 
     constructor() {}
 
-    function testHeatIncrease() public {
-        uint256 nftId = mintNft();
-        address eoa1 = generateAddress("eoa1");
-        currency.mint(eoa1, MIN_AMOUNT_FOR_NEW_CLONE);
+    function setUp() public override {
+        super.setUp();
 
+        currency.mint(eoa1, MIN_AMOUNT_FOR_NEW_CLONE);
+    }
+
+    function testHeatIncrease() public {
+        uint256 nftId = nft.mint();
         vm.startPrank(eoa1);
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
 
@@ -53,11 +56,7 @@ contract HeatTests is TestBase {
     }
 
     function testHeatStatic() public {
-        uint256 nftId = mintNft();
-        address eoa1 = generateAddress("eoa1");
-
-        currency.mint(eoa1, MIN_AMOUNT_FOR_NEW_CLONE);
-
+        uint256 nftId = nft.mint();
         vm.startPrank(eoa1);
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
 
@@ -99,11 +98,7 @@ contract HeatTests is TestBase {
     }
 
     function testHeatDuplicatePrice(uint16 time) public {
-        uint256 nftId = mintNft();
-        address eoa1 = generateAddress("eoa1");
-
-        currency.mint(eoa1, MIN_AMOUNT_FOR_NEW_CLONE);
-
+        uint256 nftId = nft.mint();
         vm.startPrank(eoa1);
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
 

@@ -8,9 +8,7 @@ contract FloorTest is TestBase {
     constructor() {}
 
     function testFloorCloneSetsNewClonePrice() public {
-        uint256 nftId = mintNft();
-        address eoa1 = generateAddress("eoa1");
-        address eoa2 = generateAddress("eoa2");
+        uint256 nftId = nft.mint();
 
         currency.mint(eoa1, MIN_AMOUNT_FOR_NEW_CLONE * 2);
         currency.mint(eoa2, MIN_AMOUNT_FOR_NEW_CLONE * 2);
@@ -51,9 +49,7 @@ contract FloorTest is TestBase {
     }
 
     function testFloorCloneSetsExistingClonePrice() public {
-        uint256 nftId = mintNft();
-        address eoa1 = generateAddress("eoa1");
-        address eoa2 = generateAddress("eoa2");
+        uint256 nftId = nft.mint();
 
         currency.mint(eoa1, MIN_AMOUNT_FOR_NEW_CLONE);
         currency.mint(eoa2, MIN_AMOUNT_FOR_NEW_CLONE * 3);
@@ -97,10 +93,8 @@ contract FloorTest is TestBase {
 
     function testFloorSellUnderlyingForFloor() public {
         // test selling nft when only floor clone exits
-        address eoaSeller = generateAddress("eoaSeller");
         vm.startPrank(eoaSeller);
-        nft.mint(eoaSeller, nftTokenId);
-        uint256 nftId = nftTokenId++;
+        uint256 nftId = nft.mint(eoaSeller);
         assertEq(nft.ownerOf(nftId), eoaSeller);
         vm.stopPrank();
 
@@ -141,15 +135,10 @@ contract FloorTest is TestBase {
     function testFloorSellUnderlyingForCloneWhileFloorExists() public {
         // test selling nft when floor clone is worth is same as the nft clone
         // should sell to clone owner with true passed throughnft.safeTransferFrom
-        address eoaSeller = generateAddress("eoaSeller");
         vm.startPrank(eoaSeller);
-        nft.mint(eoaSeller, nftTokenId);
-        uint256 nftId = nftTokenId++;
+        uint256 nftId = nft.mint(eoaSeller);
         assertEq(nft.ownerOf(nftId), eoaSeller);
         vm.stopPrank();
-
-        address eoa1 = generateAddress("eoa1");
-        address eoa2 = generateAddress("eoa2");
 
         currency.mint(eoa1, MIN_AMOUNT_FOR_NEW_CLONE);
         currency.mint(eoa2, MIN_AMOUNT_FOR_NEW_CLONE);
@@ -181,15 +170,10 @@ contract FloorTest is TestBase {
     function testFloorSellUnderlyingForFloorWhileCloneExists() public {
         // test selling nft when floor clone's worth is same as the nft clone
         // should sell to floor owner with true passed through nft.safeTransferFrom
-        address eoaSeller = generateAddress("eoaSeller");
         vm.startPrank(eoaSeller);
-        nft.mint(eoaSeller, nftTokenId);
-        uint256 nftId = nftTokenId++;
+        uint256 nftId = nft.mint(eoaSeller);
         assertEq(nft.ownerOf(nftId), eoaSeller);
         vm.stopPrank();
-
-        address eoa1 = generateAddress("eoa1");
-        address eoa2 = generateAddress("eoa2");
 
         currency.mint(eoa1, MIN_AMOUNT_FOR_NEW_CLONE);
         currency.mint(eoa2, MIN_AMOUNT_FOR_NEW_CLONE);
@@ -223,16 +207,10 @@ contract FloorTest is TestBase {
     function testFloorSellUnderlyingForFloorWithCheaperClone() public {
         // test selling nft when floor clone is worth more than nft clone
         // should sell to floor owner whenever the floor is worth more
-        address eoaSeller = generateAddress("eoaSeller");
         vm.startPrank(eoaSeller);
-        nft.mint(eoaSeller, nftTokenId);
-        uint256 nftId = nftTokenId++;
+        uint256 nftId = nft.mint(eoaSeller);
         assertEq(nft.ownerOf(nftId), eoaSeller);
         vm.stopPrank();
-
-        address eoa1 = generateAddress("eoa1");
-        address eoa2 = generateAddress("eoa2");
-        address eoa3 = generateAddress("eoa3");
 
         currency.mint(eoa1, MIN_AMOUNT_FOR_NEW_CLONE * 2);
         currency.mint(eoa2, MIN_AMOUNT_FOR_NEW_CLONE);
@@ -280,16 +258,10 @@ contract FloorTest is TestBase {
         // test selling nft when floor clone is worth less than nft clone
         // should sell to clone if "floor" is set to "false" in safeTransferFrom
         // should sell to floor if "floor" is set to "true" in safeTransferFrom
-        address eoaSeller = generateAddress("eoaSeller");
         vm.startPrank(eoaSeller);
-        nft.mint(eoaSeller, nftTokenId);
-        uint256 nftId = nftTokenId++;
+        uint256 nftId = nft.mint(eoaSeller);
         assertEq(nft.ownerOf(nftId), eoaSeller);
         vm.stopPrank();
-
-        address eoa1 = generateAddress("eoa1");
-        address eoa2 = generateAddress("eoa2");
-        address eoa3 = generateAddress("eoa3");
 
         currency.mint(eoa1, MIN_AMOUNT_FOR_NEW_CLONE);
         currency.mint(eoa2, MIN_AMOUNT_FOR_NEW_CLONE * 2);
