@@ -183,6 +183,8 @@ contract MultidimensionalCloneTest is TestBase {
         // check successful mint
         assertEq(dm.ownerOf(cloneId0), eoa1);
         assertEq(dm.protoIdToDepth(protoId0), 1);
+        uint256 cloneId0Subsidy = MIN_AMOUNT_FOR_NEW_CLONE * MIN_FEE / DNOM;
+        assertEq(dm.cloneIdToSubsidy(cloneId0), cloneId0Subsidy);
 
 
         // mint clone at depth 1
@@ -202,6 +204,7 @@ contract MultidimensionalCloneTest is TestBase {
         assertEq(dm.ownerOf(cloneId1), eoa2);
         assertEq(protoId1, protoId0);
         assertEq(dm.protoIdToDepth(protoId1), 2);
+        uint256 cloneId1Subsidy = dm.cloneIdToSubsidy(cloneId1);
 
 
         // mint clone at depth 2
@@ -221,14 +224,20 @@ contract MultidimensionalCloneTest is TestBase {
         assertEq(dm.ownerOf(cloneId2), eoa3);
         assertEq(protoId2, protoId1);
         assertEq(dm.protoIdToDepth(protoId2), 3);
+        uint256 cloneId2Subsidy = dm.cloneIdToSubsidy(cloneId2);
 
 
         vm.startPrank(eoa1);
-        dm.dissolve(protoId0, 0);
+        dm.dissolve(protoId0, index0);
         vm.stopPrank();
         assertEq(dm.ownerOf(cloneId0), address(0));
         assertEq(dm.protoIdToIndexHead(protoId2), 1);
         assertEq(dm.protoIdToDepth(protoId2), 2);
+        assertEq(dm.cloneIdToSubsidy(cloneId0), 0);
+
+        // subsidy is passed to the next clone in the linked list.
+        assertEq(dm.cloneIdToSubsidy(cloneId1), cloneId0Subsidy + cloneId1Subsidy);
+        cloneId1Subsidy = dm.cloneIdToSubsidy(cloneId1);
 
 
         vm.startPrank(eoa3);
@@ -239,6 +248,10 @@ contract MultidimensionalCloneTest is TestBase {
         assertEq(dm.protoIdToIndexHead(protoId2), 1);
         assertEq(dm.protoIdToDepth(protoId2), 1);
 
+        uint256 cloneId3 = uint256(keccak256(abi.encodePacked(protoId2,uint256(3))));
+        // subsidy is passed to the next clone in the linked list, even if it's not minted yet.
+        assertEq(dm.cloneIdToSubsidy(cloneId3), cloneId2Subsidy);
+
 
         vm.startPrank(eoa2);
         dm.dissolve(protoId1, index1);
@@ -246,6 +259,12 @@ contract MultidimensionalCloneTest is TestBase {
         assertEq(dm.ownerOf(cloneId1), address(0));
         assertEq(dm.protoIdToIndexHead(protoId2), 3);
         assertEq(dm.protoIdToDepth(protoId2), 0);
+        assertEq(dm.cloneIdToSubsidy(cloneId2), 0);
+
+        // since cloneId2 has already been burnt,
+        // index corresponding to cloneId3 comes after index1 in the linked list instead of index2.
+        // hence, the cloneId1's subsidy is passed to cloneId3.
+        assertEq(dm.cloneIdToSubsidy(cloneId3), cloneId2Subsidy + cloneId1Subsidy);
     }
 
     function testMultiNFTSellsAfterDissolve() public {

@@ -71,10 +71,10 @@ contract CloneList {
         protoIdToIndexToPrior[protoId][protoIdToIndexToAfter[protoId][head]] = protoIdToIndexToPrior[protoId][head];
     }
 
-    function validIndex(uint256 protoId, uint256 index) internal returns(bool) {
+    function validIndex(uint256 protoId, uint256 index) internal view returns(bool) {
         // prev <- index
         // prev -> index
-        return (protoIdToIndexToAfter[protoId][protoIdToIndexToPrior[protoId][index]] == index);
+        return protoIdToIndexToAfter[protoId][protoIdToIndexToPrior[protoId][index]] == index;
     }
 
 }

@@ -228,7 +228,6 @@ contract ContractTest is TestBase {
         assertEq(dm.protoIdToTimestampLast(protoId), INIT_TIME);
 
         vm.warp(block.timestamp + 100);
-        // mint another clone with the same `cloneId` since we are passing the same arguments as before
 
         (cloneId, protoId) = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, ++index);
         // ensure correct oracle related values
