@@ -274,6 +274,8 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
             uint256 minAmount = _getMinAmount(cloneShape);
             // calculate subsidy and worth values
             uint256 subsidy = minAmount * (MIN_FEE * (1 + heat)) / DNOM;
+
+            // scoping to prevent "stack too deep" errors
             {
                 uint256 value = _amount - subsidy; // will be applied to cloneShape.worth
                 if (index != protoIdToIndexHead[protoId]) { // check cloneId at prior index
@@ -325,10 +327,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
             forceTransferFrom(curOwner, msg.sender, cloneId); // EXTERNAL CALL
         }
 
-        return (
-            cloneId,
-            protoId
-        );
+        return (cloneId, protoId);
     }
 
     /**
@@ -336,13 +335,20 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
      * @param protoId specifies the clone to be burned.
      * @dev will refund funds held in a position, subsidy will remain for sellers in the future.
      */
-    function dissolve(/*uint256 cloneId, */uint256 protoId, uint256 index) external {
+    function dissolve(uint256 protoId, uint256 index) external {
         uint256 cloneId = uint256(keccak256(abi.encodePacked(protoId, index)));
         if (!(msg.sender == ownerOf[cloneId]
                 || msg.sender == getApproved[cloneId]
                 || isApprovedForAll[ownerOf[cloneId]][msg.sender])) {
             revert NotAuthorized();
         }
+
+        // move its subsidy to the next clone in the linked list even if it's not minted yet.
+        uint256 nextCloneId = uint256(keccak256(abi.encodePacked(protoId, protoIdToIndexToAfter[protoId][index])));
+        // invariant: cloneId != nextCloneId
+        cloneIdToSubsidy[nextCloneId] += cloneIdToSubsidy[cloneId];
+        delete cloneIdToSubsidy[cloneId];
+
         CloneShape memory cloneShape = cloneIdToShape[cloneId];
 
         _updatePrice(protoId);
