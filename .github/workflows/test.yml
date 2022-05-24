@@ -17,4 +17,4 @@ jobs:
           version: nightly
 
       - name: Run tests
-        run: forge test --via-ir -vvv
+        run: forge test -vvv
