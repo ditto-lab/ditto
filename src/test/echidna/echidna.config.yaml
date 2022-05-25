@@ -1,0 +1,11 @@
+# coverage: false
+# corpusDir: echidna-corpus
+# seqLen: 3
+# testLimit: 50000
+# shrinkLimit: 1000
+
+cryticArgs:
+  [
+    "--solc-remaps",
+    "ds-test/=lib/ds-test/src/ forge-std/=lib/forge-std/src/ @openzeppelin/=lib/openzeppelin-contracts/ @rari-capital/solmate/=lib/solmate/ abdk-libraries-solidity/=lib/abdk-libraries-solidity/ base64-sol/=lib/base64/",
+  ]
