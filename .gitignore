@@ -1,3 +1,4 @@
 cache/
 out/
 .gas-snapshot
+crytic-export/
