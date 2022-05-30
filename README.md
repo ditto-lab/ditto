@@ -23,6 +23,12 @@ After cloning, run the tests:
 forge test
 ```
 
+## Slither
+`slither src/DittoMachine.sol`
+
+## Echidna
+`echidna-test --test-mode assertion --config src/test/echidna/echidna.config.yaml --contract DittoMachineTest src/test/echidna/DittoMachineTest.sol`
+
 ## Simplified Lifecycle of a Ditto
 
 
