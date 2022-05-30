@@ -58,6 +58,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
         uint8 heat;
         bool floor;
         uint256 term;
+        uint256 start;
     }
 
     // tracks balance of subsidy for a specific cloneId
@@ -70,6 +71,8 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
 
     // hash protoId with the index placement to get cloneId
     mapping(uint256 => CloneShape) public cloneIdToShape;
+
+    mapping(uint256 => bool) public voucherValidity; // non transferrable vouchers for reward tokens
 
     constructor() ERC721("Ditto", "DTO") { }
 
@@ -254,7 +257,8 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
                 _ERC20Contract,
                 1,
                 floor,
-                block.timestamp + BASE_TERM
+                block.timestamp + BASE_TERM,
+                block.timestamp
             );
             pushListTail(protoId, index);
             cloneIdToSubsidy[cloneId] += subsidy;
@@ -299,6 +303,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
                 } else {
                     heat = 1;
                 }
+                issueVoucher(ownerOf[cloneId], cloneId, value);
 
                 // calculate new clone term values
                 cloneIdToShape[cloneId].worth = value;
@@ -402,6 +407,20 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
         uint256 clonePrice = cloneShape.worth + (cloneShape.worth * timeLeft / termLength);
         // return floor price if greater than clone auction price
         return floorPrice > clonePrice ? floorPrice : clonePrice;
+    }
+
+    function issueVoucher(address to, uint256 cloneId, uint256 value) private {
+        uint256 voucher = uint256(keccak256(abi.encodePacked(
+            cloneId, // encodes: protoId (nft contract, token id, erc20 contract, if floor), index
+            to,
+            cloneIdToShape[cloneId].heat,
+            cloneIdToShape[cloneId].worth, // old value of the clone
+            value, // new value of the clone
+            cloneIdToShape[cloneId].start,
+            block.timestamp
+        )));
+
+        voucherValidity[voucher] = true;
     }
 
     ////////////////////////////////////////////////
