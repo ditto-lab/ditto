@@ -5,9 +5,9 @@ import {DittoMachine} from "../../DittoMachine.sol";
 import {UnderlyingNFT} from "../UnderlyingNFT.sol";
 import {Currency} from "../TestBase.sol";
 
-contract DittoMachineTest {
+contract DittoMachineEchidna {
 
-    DittoMachine dm;
+    DittoMachine public dm;
     UnderlyingNFT nft;
     Currency cry;
 
