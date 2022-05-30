@@ -189,7 +189,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
         uint256 _amount,
         bool floor,
         uint256 index // index at which to mint the clone
-    ) public returns (
+    ) external returns (
         uint256, // cloneId
         uint256 // protoId
     ) {
@@ -333,7 +333,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
                 curOwner,
                 // previous clone value + half of subsidy sent to prior clone owner
                 // if feeReceiver is set fees are sent in the _setBlockReceiver call above
-                // clone's worth is refunded here 
+                // clone's worth is refunded here
                 (cloneShape.worth + (feeReceiver != address(0) ? subsidyDiv2 + (subsidy & 1) : 0))
             );
             // force transfer from current owner to new highest bidder
@@ -348,7 +348,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
      * @param protoId specifies the clone to be burned.
      * @dev will refund funds held in a position, subsidy will remain for sellers in the future.
      */
-    function dissolve(uint256 protoId, uint256 index) public {
+    function dissolve(uint256 protoId, uint256 index) external {
         uint256 cloneId = uint256(keccak256(abi.encodePacked(protoId, index)));
         if (!(msg.sender == ownerOf[cloneId]
                 || msg.sender == getApproved[cloneId]
@@ -410,7 +410,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
             return floorPrice > cloneShape.worth ? floorPrice : cloneShape.worth;
         }
 
-        uint256 timeLeft;
+        uint256 timeLeft = 0;
         unchecked {
             if (cloneShape.term > block.timestamp) {
                 timeLeft = cloneShape.term - block.timestamp;
@@ -552,7 +552,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
         uint256[] calldata amounts,
         bytes calldata data
     ) external returns (bytes4) {
-        for (uint256 i; i < amounts.length; i++) {
+        for (uint256 i=0; i < amounts.length; i++) {
             if (amounts[i] != 1) {
                 revert AmountInvalid();
             }
@@ -561,7 +561,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
         // bool[] memory floors = new bool[](ids.length);
         (address[] memory ERC20Contracts, bool[] memory floors) = abi.decode(data, (address[], bool[]));
 
-        for (uint256 i; i < ids.length; i++) {
+        for (uint256 i=0; i < ids.length; i++) {
             onTokenReceived(from, msg.sender /*ERC1155 contract address*/, ids[i], ERC20Contracts[i], floors[i], true);
         }
 
@@ -601,6 +601,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
         ownerOf[id] = to;
 
         delete getApproved[id];
+        emit Transfer(from, to, id);
 
         // give contracts the option to account for a forced transfer.
         // if they don't implement the ejector we're stll going to move the token.
@@ -609,8 +610,6 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
             try IERC721TokenEjector(from).onERC721Ejected{gas: 30000}(address(this), to, id, "") {} // EXTERNAL CALL
             catch {}
         }
-
-        emit Transfer(from, to, id);
     }
 
     // @dev: this function is not prod ready
