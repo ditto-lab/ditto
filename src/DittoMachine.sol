@@ -10,6 +10,7 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {Base64} from 'base64-sol/base64.sol';
 import {CloneList} from "./CloneList.sol";
 import {TimeCurve} from "./TimeCurve.sol";
+import {BlockAuction} from "./BlockAuction.sol";
 
 /**
  * @title NFT derivative exchange inspired by the SALSA concept.
@@ -18,7 +19,7 @@ import {TimeCurve} from "./TimeCurve.sol";
  * the right to ownership when it is sold via this contract. Anybody may buy the
  * token for a higher price and force a transfer from the previous owner to the new buyer.
  */
-contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, CloneList {
+contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, CloneList, BlockAuction {
     /**
      * @notice Insufficient bid for purchasing a clone.
      * @dev thrown when the number of erc20 tokens sent is lower than
@@ -271,7 +272,8 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
             CloneShape memory cloneShape = cloneIdToShape[cloneId];
             uint256 heat = cloneShape.heat;
 
-            uint256 minAmount = _getMinAmount(cloneShape);
+            address feeReceiver = _getBlockReceiver(cloneId); // checl if bids have occured within the current block
+            uint256 minAmount = _getMinAmount(cloneShape, feeReceiver != address(0));
             // calculate subsidy and worth values
             uint256 subsidy = minAmount * (MIN_FEE * (1 + heat)) / DNOM;
 
@@ -316,12 +318,23 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
             // buying out the previous clone owner
             address curOwner = ownerOf[cloneId];
             uint256 subsidyDiv2 = subsidy >> 1;
+
+            {
+                address token = _ERC20Contract;
+                // set fee receiver to the last clone owner before the current block to reduce front running incentive
+                // if feeReceiver == 0 then this is the first bin in the block
+                feeReceiver = feeReceiver != address(0) ? feeReceiver : curOwner;
+                _setBlockReceiver(cloneId, feeReceiver, token, subsidyDiv2 + (subsidy & 1));
+            }
             // half of fee goes into subsidy pool, half to previous clone owner
             cloneIdToSubsidy[cloneId] += subsidyDiv2;
             SafeTransferLib.safeTransfer( // EXTERNAL CALL
                 ERC20(_ERC20Contract),
                 curOwner,
-                (cloneShape.worth + subsidyDiv2 + (subsidy & 1)) // previous clone value + half of subsidy sent to prior clone owner
+                // previous clone value + half of subsidy sent to prior clone owner
+                // if feeReceiver is set fees are sent in the _setBlockReceiver call above
+                // clone's worth is refunded here 
+                (cloneShape.worth + (feeReceiver != address(0) ? subsidyDiv2 + (subsidy & 1) : 0))
             );
             // force transfer from current owner to new highest bidder
             forceTransferFrom(curOwner, msg.sender, cloneId); // EXTERNAL CALL
@@ -372,7 +385,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
             return MIN_AMOUNT_FOR_NEW_CLONE;
         }
         CloneShape memory cloneShape = cloneIdToShape[cloneId];
-        uint256 _minAmount = _getMinAmount(cloneShape);
+        uint256 _minAmount = _getMinAmount(cloneShape, _getBlockReceiver(cloneId) != address(0));
         return _minAmount + (_minAmount * MIN_FEE * (1 + cloneShape.heat) / DNOM);
     }
 
@@ -382,7 +395,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
      * @param cloneShape clone for which to compute the minimum amount.
      * @dev only use it for a minted clone.
      */
-    function _getMinAmount(CloneShape memory cloneShape) internal view returns (uint256) {
+    function _getMinAmount(CloneShape memory cloneShape, bool intraBlock) internal view returns (uint256) {
         uint256 floorId = uint256(keccak256(abi.encodePacked(
             cloneShape.ERC721Contract,
             FLOOR_ID,
@@ -391,6 +404,11 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
         )));
         floorId = uint256(keccak256(abi.encodePacked(floorId, protoIdToIndexHead[floorId])));
         uint256 floorPrice = cloneIdToShape[floorId].worth;
+
+        if (intraBlock) {
+            // return clone or floor worth without dutch auction pricing if there has been a bid in the current blcok
+            return floorPrice > cloneShape.worth ? floorPrice : cloneShape.worth;
+        }
 
         uint256 timeLeft;
         unchecked {
