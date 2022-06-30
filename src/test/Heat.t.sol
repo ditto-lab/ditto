@@ -118,6 +118,8 @@ contract HeatTest is TestBase {
         for (uint256 i = 1; i < 50; i++) {
             vm.warp(block.timestamp + uint256(time));
 
+            bool sameBlock = dm._getBlockReceiver(cloneId) != address(0);
+
             vm.startPrank(eoa1);
 
             uint256 minAmountToBuyClone = dm.getMinAmountForCloneTransfer(cloneId);
@@ -130,7 +132,13 @@ contract HeatTest is TestBase {
 
             uint256 auctionPrice = shape.worth + (shape.worth * timeLeft / termLength);
 
-            assertEq(minAmountToBuyClone, (auctionPrice + (auctionPrice * MIN_FEE * (1+shape.heat) / DNOM)), "price");
+            assertEq(
+                minAmountToBuyClone,
+                (sameBlock ?
+                    (shape.worth + (shape.worth * MIN_FEE * (1+shape.heat) / DNOM)):
+                    (auctionPrice + (auctionPrice * MIN_FEE * (1+shape.heat) / DNOM))),
+                "price"
+            );
 
             uint256 lastCumulativePrice = dm.protoIdToCumulativePrice(protoId);
             dm.duplicate(nftAddr, nftId, currencyAddr, minAmountToBuyClone, false, 0);
