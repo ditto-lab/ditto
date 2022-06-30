@@ -259,6 +259,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
             );
             pushListTail(protoId, index);
             cloneIdToSubsidy[cloneId] += subsidy;
+            _setBlockReceiver(cloneId, msg.sender, _ERC20Contract, subsidy, subsidy);
 
             SafeTransferLib.safeTransferFrom( // EXTERNAL CALL
                 ERC20(_ERC20Contract),
@@ -316,25 +317,33 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
                 _amount
             );
             // buying out the previous clone owner
-            address curOwner = ownerOf[cloneId];
-            uint256 subsidyDiv2 = subsidy >> 1;
 
+            address curOwner = ownerOf[cloneId];
+            uint256 feeRefund = _getBlockRefund(cloneId);
+
+            // subtract subsidy refund from subsidy pool
+            // require(_getBlockSubRefund(cloneId) <= cloneIdToSubsidy[cloneId], "refund went wrong");
+            cloneIdToSubsidy[cloneId] -= _getBlockSubRefund(cloneId);
+
+            // uint256 subRefund = _getBlockSubRefund(cloneId);
+            // uint256 subsidyDiv2 = (subsidy >> 1);
             {
                 address token = _ERC20Contract;
                 // set fee receiver to the last clone owner before the current block to reduce front running incentive
-                // if feeReceiver == 0 then this is the first bin in the block
+                // if feeReceiver == 0 then this is the first bid in the block
                 feeReceiver = feeReceiver != address(0) ? feeReceiver : curOwner;
-                _setBlockReceiver(cloneId, feeReceiver, token, subsidyDiv2 + (subsidy & 1));
+                _setBlockReceiver(cloneId, feeReceiver, token, subsidy, (subsidy >> 1) );
             }
             // half of fee goes into subsidy pool, half to previous clone owner
-            cloneIdToSubsidy[cloneId] += subsidyDiv2;
+            cloneIdToSubsidy[cloneId] += (subsidy >> 1);
+
             SafeTransferLib.safeTransfer( // EXTERNAL CALL
                 ERC20(_ERC20Contract),
                 curOwner,
                 // previous clone value + half of subsidy sent to prior clone owner
                 // if feeReceiver is set fees are sent in the _setBlockReceiver call above
                 // clone's worth is refunded here
-                (cloneShape.worth + (feeReceiver != address(0) ? subsidyDiv2 + (subsidy & 1) : 0))
+                (cloneShape.worth + (feeReceiver != address(0) ? (subsidy >> 1) + (subsidy & 1) : feeRefund) )
             );
             // force transfer from current owner to new highest bidder
             forceTransferFrom(curOwner, msg.sender, cloneId); // EXTERNAL CALL
@@ -385,7 +394,8 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
             return MIN_AMOUNT_FOR_NEW_CLONE;
         }
         CloneShape memory cloneShape = cloneIdToShape[cloneId];
-        uint256 _minAmount = _getMinAmount(cloneShape, _getBlockReceiver(cloneId) != address(0));
+        bool intraBlock = _getBlockReceiver(cloneId) != address(0);
+        uint256 _minAmount = _getMinAmount(cloneShape, intraBlock);
         return _minAmount + (_minAmount * MIN_FEE * (1 + cloneShape.heat) / DNOM);
     }
 

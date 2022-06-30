@@ -60,9 +60,12 @@ contract FloorTest is TestBase {
         (uint256 cloneId, /*uint256 protoId*/) = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
         vm.stopPrank();
 
+        // vm.roll(block.number+1); // vm.roll will preserve behaviour previous to the block refund mechanism
+
         uint256 clonePrice = dm.getMinAmountForCloneTransfer(cloneId);
         assertEq(
-            MIN_AMOUNT_FOR_NEW_CLONE * 2 + ((MIN_AMOUNT_FOR_NEW_CLONE * 2) * MIN_FEE / DNOM),
+            MIN_AMOUNT_FOR_NEW_CLONE + (MIN_AMOUNT_FOR_NEW_CLONE * MIN_FEE / DNOM), // if within a block
+            // MIN_AMOUNT_FOR_NEW_CLONE * 2 + ((MIN_AMOUNT_FOR_NEW_CLONE * 2) * MIN_FEE / DNOM), // if block has passed
             clonePrice
         );
 
