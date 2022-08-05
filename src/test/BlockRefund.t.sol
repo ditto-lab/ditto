@@ -53,7 +53,7 @@ contract BlockRefundTest is TestBase {
         uint256 nftId = nft.mint();
 
         // eoa0 enters clone position
-        address eoa0 = generateAddress("eoa00");
+        address eoa0 = generateAddress("eoa0");
         currency.mint(eoa0, amount0);
 
         vm.startPrank(eoa0);
@@ -67,7 +67,7 @@ contract BlockRefundTest is TestBase {
 
 
         // eoa1 takes clone position in same block
-        address eoa1 = generateAddress("eoa01");
+        address eoa1 = generateAddress("eoa1");
         currency.mint(eoa1, amount1);
 
         vm.startPrank(eoa1);
@@ -85,6 +85,69 @@ contract BlockRefundTest is TestBase {
 
         // console.log(eoa0);
         // console.log(eoa1);
+    }
+
+    function testRefundSelf() public {
+        uint256 nftId = nft.mint();
+
+        address eoa0 = generateAddress("eoa0");
+        currency.mint(eoa0, MIN_AMOUNT_FOR_NEW_CLONE);
+
+        vm.startPrank(eoa0);
+        currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
+        // open initial clone position
+        (uint256 cloneId, ) = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
+        uint256 sub1 = dm.cloneIdToSubsidy(cloneId);
+        console.log(sub1);
+
+        uint256 minAmountToBuyClone = dm.getMinAmountForCloneTransfer(cloneId);
+        currency.mint(eoa0, minAmountToBuyClone);
+        currency.approve(dmAddr, minAmountToBuyClone);
+
+        CloneShape memory shape = getCloneShape(cloneId);
+        console.log(shape.worth);
+
+        dm.duplicate(nftAddr, nftId, currencyAddr, minAmountToBuyClone, false, 0);
+        uint256 sub2 = dm.cloneIdToSubsidy(cloneId);
+        console.log(sub2);
+
+        shape = getCloneShape(cloneId);
+        console.log(shape.worth);
+
+        uint256 balance = currency.balanceOf(eoa0);
+        console.log(MIN_AMOUNT_FOR_NEW_CLONE);
+        console.log(balance);
+        assertEq(balance, MIN_AMOUNT_FOR_NEW_CLONE);
+
+        vm.stopPrank();
+    }
+
+    function testRefundSelfFuzz(uint256 amount) public {
+        vm.assume(amount >= MIN_AMOUNT_FOR_NEW_CLONE);
+        vm.assume(amount < 2**250);
+
+        uint256 nftId = nft.mint();
+
+        address eoa0 = generateAddress("eoa0");
+        currency.mint(eoa0, amount);
+
+        vm.startPrank(eoa0);
+        currency.approve(dmAddr, amount);
+        // open initial clone position
+        (uint256 cloneId, ) = dm.duplicate(nftAddr, nftId, currencyAddr, amount, false, 0);
+
+        uint256 minAmountToBuyClone = dm.getMinAmountForCloneTransfer(cloneId);
+        currency.mint(eoa0, minAmountToBuyClone);
+        currency.approve(dmAddr, minAmountToBuyClone);
+
+        dm.duplicate(nftAddr, nftId, currencyAddr, minAmountToBuyClone, false, 0);
+
+        uint256 balance = currency.balanceOf(eoa0);
+        console.log(amount);
+        console.log(balance);
+        assertEq(balance, amount);
+
+        vm.stopPrank();
     }
 
 }
