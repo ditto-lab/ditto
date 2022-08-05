@@ -28,12 +28,14 @@ contract HeatTest is TestBase {
 
         CloneShape memory shape = getCloneShape(cloneId);
         assertEq(shape.heat, 1);
+        console.log(dm.cloneIdToSubsidy(cloneId));
 
         vm.stopPrank();
 
         for (uint256 i = 1; i < 215; i++) {
             // after 215 worth*timleft will overflow error when calculating fees
 
+            vm.roll(block.number+1);
             vm.warp(block.timestamp + i);
             vm.startPrank(eoa1);
 
@@ -47,6 +49,7 @@ contract HeatTest is TestBase {
             // ensure correct oracle related values
             assertEq(dm.protoIdToCumulativePrice(protoId), lastCumulativePrice + (shape.worth * i));
             assertEq(dm.protoIdToTimestampLast(protoId), block.timestamp);
+            console.log(dm.cloneIdToSubsidy(cloneId));
 
             shape = getCloneShape(cloneId);
             assertEq(shape.heat, 1+i);
@@ -118,7 +121,7 @@ contract HeatTest is TestBase {
         for (uint256 i = 1; i < 50; i++) {
             vm.warp(block.timestamp + uint256(time));
 
-            bool sameBlock = dm._getBlockReceiver(cloneId) != address(0);
+            bool sameBlock = dm._getBlockRefund(cloneId) != 0;
 
             vm.startPrank(eoa1);
 

@@ -147,15 +147,19 @@ contract ContractTest is TestBase {
         assertEq(dm.protoIdToTimestampLast(protoId1), INIT_TIME);
 
         uint256 subsidy1 = dm.cloneIdToSubsidy(cloneId1);
+        console.log(subsidy1);
         assertEq(subsidy1, MIN_AMOUNT_FOR_NEW_CLONE * MIN_FEE / DNOM);
 
         CloneShape memory shape1 = getCloneShape(cloneId1);
         assertEq(shape1.worth + subsidy1, currency.balanceOf(dmAddr));
 
         vm.stopPrank();
-
+        console.log(dm.blockToCloneToReceiver(block.number, cloneId1));
         // increment time so that clone's term is in past
+        vm.roll(block.number+1);
         vm.warp(block.timestamp + BASE_TERM);
+        console.log(dm.blockToCloneToReceiver(block.number, cloneId1));
+
         assertEq(shape1.term, block.timestamp);
 
         uint256 minAmountToBuyClone = dm.getMinAmountForCloneTransfer(cloneId1);
@@ -184,6 +188,7 @@ contract ContractTest is TestBase {
 
         CloneShape memory shape2 = getCloneShape(cloneId2);
         uint256 subsidy2 = dm.cloneIdToSubsidy(cloneId2);
+        console.log(subsidy2);
 
         // ensure complete purchase amount is taken from `eoa2`
         assertEq(currency.balanceOf(eoa2), 0);
@@ -193,12 +198,15 @@ contract ContractTest is TestBase {
         {
             uint256 subsidyFundsToDitto = subsidy2 - subsidy1;
 
+            console.log(subsidyFundsToEoa1);
+            console.log(subsidyFundsToDitto);
+
             // ensure the difference between bid amount and clone's worth is distributed
             // between subsidy and `eoa1` (from which the clone was taken)
-            assertEq(subsidyFundsToDitto + subsidyFundsToEoa1, minAmountToBuyClone - shape2.worth);
+            assertEq(subsidyFundsToDitto + subsidyFundsToEoa1, minAmountToBuyClone - shape2.worth, "subsidy");
         }
         // ensure DittoMachine's complete erc20 balance is accounted for
-        assertEq(currency.balanceOf(dmAddr), subsidy2 + shape2.worth);
+        assertEq(currency.balanceOf(dmAddr), subsidy2 + shape2.worth, "ditto machine balance");
         // ensure every erc20 token is accounted for
         assertEq(
             currency.balanceOf(eoa1),
