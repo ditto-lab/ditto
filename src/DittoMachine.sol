@@ -10,7 +10,7 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {Base64} from 'base64-sol/base64.sol';
 import {CloneList} from "./CloneList.sol";
 import {TimeCurve} from "./TimeCurve.sol";
-import {BlockAuction} from "./BlockAuction.sol";
+import {BlockRefund} from "./BlockRefund.sol";
 
 /**
  * @title NFT derivative exchange inspired by the SALSA concept.
@@ -19,7 +19,7 @@ import {BlockAuction} from "./BlockAuction.sol";
  * the right to ownership when it is sold via this contract. Anybody may buy the
  * token for a higher price and force a transfer from the previous owner to the new buyer.
  */
-contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, CloneList, BlockAuction {
+contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, CloneList, BlockRefund {
     /**
      * @notice Insufficient bid for purchasing a clone.
      * @dev thrown when the number of erc20 tokens sent is lower than
@@ -259,7 +259,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
             );
             pushListTail(protoId, index);
             cloneIdToSubsidy[cloneId] += subsidy;
-            _setBlockReceiver(cloneId, msg.sender, _ERC20Contract, subsidy, subsidy);
+            _setBlockReceiver(cloneId, msg.sender, subsidy, subsidy);
 
             SafeTransferLib.safeTransferFrom( // EXTERNAL CALL
                 ERC20(_ERC20Contract),
@@ -288,21 +288,22 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
                         revert AmountInvalid();
                     }
                 }
-                if (value < minAmount) {
+                if (feeReceiver == address(0) && value < minAmount) {
                     revert AmountInvalid();
                 }
 
                 // reduce heat relative to amount of time elapsed by auction
-                if (cloneShape.term > block.timestamp) {
-                    uint256 termLength = BASE_TERM + TimeCurve.calc(heat);
-                    uint256 elapsed = block.timestamp - (cloneShape.term - termLength); // current time - time when the current term started
-                    // add 1 to current heat so heat is not stuck at low value with anything but extreme demand for a clone
-                    uint256 cool = (heat+1) * elapsed / termLength;
-                    heat = (cool > heat) ? 1 : Math.min(heat - cool + 1, type(uint8).max);
-                } else {
-                    heat = 1;
+                if (feeReceiver == address(0)) { // if call is in same block as another keep the current heat
+                    if (cloneShape.term > block.timestamp) {
+                        uint256 termLength = BASE_TERM + TimeCurve.calc(heat);
+                        uint256 elapsed = block.timestamp - (cloneShape.term - termLength); // current time - time when the current term started
+                        // add 1 to current heat so heat is not stuck at low value with anything but extreme demand for a clone
+                        uint256 cool = (heat+1) * elapsed / termLength;
+                        heat = (cool > heat) ? 1 : Math.min(heat - cool + 1, type(uint8).max);
+                    } else {
+                        heat = 1;
+                    }
                 }
-
                 // calculate new clone term values
                 cloneIdToShape[cloneId].worth = value;
                 cloneIdToShape[cloneId].heat = uint8(heat); // does not inherit heat of floor id
@@ -328,11 +329,10 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
             // uint256 subRefund = _getBlockSubRefund(cloneId);
             // uint256 subsidyDiv2 = (subsidy >> 1);
             {
-                address token = _ERC20Contract;
                 // set fee receiver to the last clone owner before the current block to reduce front running incentive
                 // if feeReceiver == 0 then this is the first bid in the block
                 feeReceiver = feeReceiver != address(0) ? feeReceiver : curOwner;
-                _setBlockReceiver(cloneId, feeReceiver, token, subsidy, (subsidy >> 1) );
+                _setBlockReceiver(cloneId, curOwner, subsidy, (subsidy >> 1) );
             }
             // half of fee goes into subsidy pool, half to previous clone owner
             cloneIdToSubsidy[cloneId] += (subsidy >> 1);
@@ -343,7 +343,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
                 // previous clone value + half of subsidy sent to prior clone owner
                 // if feeReceiver is set fees are sent in the _setBlockReceiver call above
                 // clone's worth is refunded here
-                (cloneShape.worth + (feeReceiver != address(0) ? (subsidy >> 1) + (subsidy & 1) : feeRefund) )
+                (cloneShape.worth + (feeRefund == 0 ? ((subsidy >> 1) + (subsidy & 1)) : feeRefund) )
             );
             // force transfer from current owner to new highest bidder
             forceTransferFrom(curOwner, msg.sender, cloneId); // EXTERNAL CALL

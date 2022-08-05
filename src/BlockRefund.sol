@@ -2,38 +2,26 @@ pragma solidity ^0.8.4;
 
 import {SafeTransferLib, ERC20} from "@rari-capital/solmate/src/utils/SafeTransferLib.sol";
 
-contract BlockAuction {
+contract BlockRefund {
 
-    mapping(uint256 => mapping(uint256 => address)) private blockToCloneToReceiver;
-    mapping(uint256 => mapping(uint256 => uint256)) private blockToCloneToFeeRefund;
-    mapping(uint256 => mapping(uint256 => uint256)) private blockToCloneToSubRefund;
+    mapping(uint256 => mapping(uint256 => address)) public blockToCloneToReceiver;
+    // mapping(uint256 => mapping(uint256 => address)) private blockToCloneToRefundee;
+    mapping(uint256 => mapping(uint256 => uint256)) public blockToCloneToFeeRefund;
+    mapping(uint256 => mapping(uint256 => uint256)) public blockToCloneToSubRefund;
 
     function _setBlockReceiver(
         uint256 cloneId,
         address receiver,
-        address token,
         uint256 fullFee,
         uint256 subsidy
     ) internal {
-        address oldReceiver = blockToCloneToReceiver[block.number][cloneId];
-        uint256 oldFee = blockToCloneToFeeRefund[block.number][cloneId];
-        // uint256 oldSub = blockToCloneToSubRefund[block.number][cloneId];
-
         // assign new info
         // store clone's owner in previous block
         blockToCloneToReceiver[block.number][cloneId] = receiver;
+
         blockToCloneToFeeRefund[block.number][cloneId] = fullFee;
         blockToCloneToSubRefund[block.number][cloneId] = subsidy;
 
-        // transfer fee to clone's owner from previous block
-        // reduce incentive for front running inside the block
-        if (oldReceiver != address(0)) {
-            SafeTransferLib.safeTransfer(
-                ERC20(token),
-                oldReceiver,
-                fullFee - oldFee
-            );
-        }
     }
 
     function _getBlockReceiver(
