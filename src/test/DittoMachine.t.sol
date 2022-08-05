@@ -154,11 +154,9 @@ contract ContractTest is TestBase {
         assertEq(shape1.worth + subsidy1, currency.balanceOf(dmAddr));
 
         vm.stopPrank();
-        console.log(dm.blockToCloneToReceiver(block.number, cloneId1));
         // increment time so that clone's term is in past
         vm.roll(block.number+1);
         vm.warp(block.timestamp + BASE_TERM);
-        console.log(dm.blockToCloneToReceiver(block.number, cloneId1));
 
         assertEq(shape1.term, block.timestamp);
 

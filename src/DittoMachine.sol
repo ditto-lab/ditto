@@ -259,7 +259,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
             );
             pushListTail(protoId, index);
             cloneIdToSubsidy[cloneId] += subsidy;
-            _setBlockReceiver(cloneId, msg.sender, subsidy, subsidy);
+            _setBlockRefund(cloneId, subsidy, subsidy);
 
             SafeTransferLib.safeTransferFrom( // EXTERNAL CALL
                 ERC20(_ERC20Contract),
@@ -273,8 +273,8 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
             CloneShape memory cloneShape = cloneIdToShape[cloneId];
             uint256 heat = cloneShape.heat;
 
-            address feeReceiver = _getBlockReceiver(cloneId); // checl if bids have occured within the current block
-            uint256 minAmount = _getMinAmount(cloneShape, feeReceiver != address(0));
+            uint256 feeRefund = _getBlockRefund(cloneId); // check if bids have occured within the current block
+            uint256 minAmount = _getMinAmount(cloneShape, feeRefund != 0);
             // calculate subsidy and worth values
             uint256 subsidy = minAmount * (MIN_FEE * (1 + heat)) / DNOM;
 
@@ -288,12 +288,12 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
                         revert AmountInvalid();
                     }
                 }
-                if (feeReceiver == address(0) && value < minAmount) {
+                if (feeRefund == 0 && value < minAmount) {
                     revert AmountInvalid();
                 }
 
                 // reduce heat relative to amount of time elapsed by auction
-                if (feeReceiver == address(0)) { // if call is in same block as another keep the current heat
+                if (feeRefund == 0) { // if call is in same block as another keep the current heat
                     if (cloneShape.term > block.timestamp) {
                         uint256 termLength = BASE_TERM + TimeCurve.calc(heat);
                         uint256 elapsed = block.timestamp - (cloneShape.term - termLength); // current time - time when the current term started
@@ -320,7 +320,6 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
             // buying out the previous clone owner
 
             address curOwner = ownerOf[cloneId];
-            uint256 feeRefund = _getBlockRefund(cloneId);
 
             // subtract subsidy refund from subsidy pool
             // require(_getBlockSubRefund(cloneId) <= cloneIdToSubsidy[cloneId], "refund went wrong");
@@ -329,10 +328,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
             // uint256 subRefund = _getBlockSubRefund(cloneId);
             // uint256 subsidyDiv2 = (subsidy >> 1);
             {
-                // set fee receiver to the last clone owner before the current block to reduce front running incentive
-                // if feeReceiver == 0 then this is the first bid in the block
-                feeReceiver = feeReceiver != address(0) ? feeReceiver : curOwner;
-                _setBlockReceiver(cloneId, curOwner, subsidy, (subsidy >> 1) );
+                _setBlockRefund(cloneId, subsidy, (subsidy >> 1) );
             }
             // half of fee goes into subsidy pool, half to previous clone owner
             cloneIdToSubsidy[cloneId] += (subsidy >> 1);
@@ -341,7 +337,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
                 ERC20(_ERC20Contract),
                 curOwner,
                 // previous clone value + half of subsidy sent to prior clone owner
-                // if feeReceiver is set fees are sent in the _setBlockReceiver call above
+                // if feeReceiver is set fees are sent in the _setBlockRefund call above
                 // clone's worth is refunded here
                 (cloneShape.worth + (feeRefund == 0 ? ((subsidy >> 1) + (subsidy & 1)) : feeRefund) )
             );
@@ -394,7 +390,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
             return MIN_AMOUNT_FOR_NEW_CLONE;
         }
         CloneShape memory cloneShape = cloneIdToShape[cloneId];
-        bool intraBlock = _getBlockReceiver(cloneId) != address(0);
+        bool intraBlock = _getBlockRefund(cloneId) != 0;
         uint256 _minAmount = _getMinAmount(cloneShape, intraBlock);
         return _minAmount + (_minAmount * MIN_FEE * (1 + cloneShape.heat) / DNOM);
     }
