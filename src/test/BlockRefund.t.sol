@@ -7,14 +7,6 @@ contract BlockRefundTest is TestBase {
 
     constructor() {}
 
-    function setUp() public override {
-        super.setUp();
-
-        currency.mint(eoa1, MIN_AMOUNT_FOR_NEW_CLONE);
-        currency.mint(eoa2, MIN_AMOUNT_FOR_NEW_CLONE+1);
-        currency.mint(eoa3, MIN_AMOUNT_FOR_NEW_CLONE+2);
-    }
-
     // test first owner is fully refunded within the block
     function testRefund() public {
         uint256 nftId = nft.mint();
@@ -49,31 +41,6 @@ contract BlockRefundTest is TestBase {
             // console.log(dm.cloneIdToSubsidy(cloneId));
 
         }
-
-        // vm.startPrank(eoa2);
-        // currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE+1);
-        //
-        // // buy a clone using the minimum purchase amount
-        // dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE+1, false, 0);
-        // assertEq(dm.ownerOf(cloneId), eoa2);
-        //
-        // vm.stopPrank();
-        //
-        // assertEq(currency.balanceOf(dmAddr), MIN_AMOUNT_FOR_NEW_CLONE+1);
-        // assertEq(currency.balanceOf(eoa1), MIN_AMOUNT_FOR_NEW_CLONE);
-        //
-        //
-        // vm.startPrank(eoa3);
-        // currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE+2);
-        //
-        // // buy a clone using the minimum purchase amount
-        // dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE+2, false, 0);
-        // assertEq(dm.ownerOf(cloneId), eoa3);
-        //
-        // vm.stopPrank();
-        //
-        // assertEq(currency.balanceOf(dmAddr), MIN_AMOUNT_FOR_NEW_CLONE+2);
-        // assertEq(currency.balanceOf(eoa2), MIN_AMOUNT_FOR_NEW_CLONE+1);
     }
 
     function testRefundFuzz(uint256 amount0, uint256 amount1) public {
@@ -119,7 +86,5 @@ contract BlockRefundTest is TestBase {
         // console.log(eoa0);
         // console.log(eoa1);
     }
-
-    // test heat is not increased within the block, but increases properly after
 
 }
