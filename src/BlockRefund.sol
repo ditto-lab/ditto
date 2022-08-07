@@ -2,7 +2,7 @@ pragma solidity ^0.8.4;
 
 import {SafeTransferLib, ERC20} from "@rari-capital/solmate/src/utils/SafeTransferLib.sol";
 
-contract BlockRefund {
+abstract contract BlockRefund {
 
     mapping(uint256 => mapping(uint256 => uint256)) public blockToCloneToFeeRefund;
     mapping(uint256 => mapping(uint256 => uint256)) public blockToCloneToSubRefund;
