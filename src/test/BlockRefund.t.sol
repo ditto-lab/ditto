@@ -100,12 +100,14 @@ contract BlockRefundTest is TestBase {
         uint256 sub1 = dm.cloneIdToSubsidy(cloneId);
         console.log(sub1);
 
-        uint256 minAmountToBuyClone = dm.getMinAmountForCloneTransfer(cloneId);
+        // uint256 minAmountToBuyClone = dm.getMinAmountForCloneTransfer(cloneId);
+        uint256 minAmountToBuyClone = MIN_AMOUNT_FOR_NEW_CLONE;
         currency.mint(eoa0, minAmountToBuyClone);
         currency.approve(dmAddr, minAmountToBuyClone);
 
         CloneShape memory shape = getCloneShape(cloneId);
         console.log(shape.worth);
+        console.log(currency.balanceOf(dmAddr));
 
         dm.duplicate(nftAddr, nftId, currencyAddr, minAmountToBuyClone, false, 0);
         uint256 sub2 = dm.cloneIdToSubsidy(cloneId);
@@ -115,8 +117,10 @@ contract BlockRefundTest is TestBase {
         console.log(shape.worth);
 
         uint256 balance = currency.balanceOf(eoa0);
-        console.log(MIN_AMOUNT_FOR_NEW_CLONE);
-        console.log(balance);
+        // console.log(MIN_AMOUNT_FOR_NEW_CLONE);
+        // console.log(balance);
+        console.log(currency.balanceOf(dmAddr));
+        console.log(shape.worth + sub2);
         assertEq(balance, MIN_AMOUNT_FOR_NEW_CLONE);
 
         vm.stopPrank();

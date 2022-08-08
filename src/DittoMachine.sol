@@ -276,7 +276,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
             uint256 feeRefund = _getBlockRefund(cloneId); // check if bids have occured within the current block
             uint256 minAmount = _getMinAmount(cloneShape, feeRefund != 0);
             // calculate subsidy and worth values
-            uint256 subsidy = minAmount * (MIN_FEE * (1 + heat)) / DNOM;
+            uint256 subsidy = minAmount * (MIN_FEE * ((feeRefund == 0 ? 1 : 0) + heat)) / DNOM;
 
             // scoping to prevent "stack too deep" errors
             {
