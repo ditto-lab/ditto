@@ -119,6 +119,7 @@ contract HeatTest is TestBase {
         vm.stopPrank();
 
         for (uint256 i = 1; i < 50; i++) {
+            vm.roll(block.number+1);
             vm.warp(block.timestamp + uint256(time));
 
             bool sameBlock = dm._getBlockRefund(cloneId) != 0;
