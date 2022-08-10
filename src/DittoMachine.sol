@@ -46,7 +46,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
     uint256 public constant BASE_TERM = 2**18;
     uint256 public constant MIN_FEE = 32;
     uint256 public constant DNOM = 2**16 - 1;
-    uint256 public constant MIN_AMOUNT_FOR_NEW_CLONE = BASE_TERM + (BASE_TERM * MIN_FEE / DNOM);
+    uint256 public constant MIN_AMOUNT_FOR_NEW_CLONE = BASE_TERM + ((BASE_TERM * MIN_FEE / DNOM));
 
     ////////////// STATE VARIABLES //////////////
 
@@ -228,7 +228,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
             )));
             floorId = uint256(keccak256(abi.encodePacked(floorId, index)));
 
-            uint256 subsidy = _amount * MIN_FEE / DNOM; // with current constants subsidy <= _amount
+            uint256 subsidy = (_amount * MIN_FEE / DNOM); // with current constants subsidy <= _amount
             uint256 value = _amount - subsidy;
 
             if (cloneId != floorId && ownerOf[floorId] != address(0)) {
@@ -259,7 +259,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
             );
             pushListTail(protoId, index);
             cloneIdToSubsidy[cloneId] += subsidy;
-            _setBlockRefund(cloneId, subsidy, subsidy);
+            _setBlockRefund(cloneId, subsidy);
 
             SafeTransferLib.safeTransferFrom( // EXTERNAL CALL
                 ERC20(_ERC20Contract),
@@ -288,7 +288,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
                         revert AmountInvalid();
                     }
                 }
-                if (feeRefund == 0 && value < minAmount) {
+                if (value < minAmount) {
                     revert AmountInvalid();
                 }
 
@@ -322,13 +322,11 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
             address curOwner = ownerOf[cloneId];
 
             // subtract subsidy refund from subsidy pool
-            // require(_getBlockSubRefund(cloneId) <= cloneIdToSubsidy[cloneId], "refund went wrong");
-            cloneIdToSubsidy[cloneId] -= _getBlockSubRefund(cloneId);
+            cloneIdToSubsidy[cloneId] -= (feeRefund >> 1);
 
-            // uint256 subRefund = _getBlockSubRefund(cloneId);
             // uint256 subsidyDiv2 = (subsidy >> 1);
             {
-                _setBlockRefund(cloneId, subsidy, (subsidy >> 1) );
+                _setBlockRefund(cloneId, subsidy);
             }
             // half of fee goes into subsidy pool, half to previous clone owner
             cloneIdToSubsidy[cloneId] += (subsidy >> 1);
@@ -392,7 +390,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
         CloneShape memory cloneShape = cloneIdToShape[cloneId];
         bool intraBlock = _getBlockRefund(cloneId) != 0;
         uint256 _minAmount = _getMinAmount(cloneShape, intraBlock);
-        return _minAmount + (_minAmount * MIN_FEE * (1 + cloneShape.heat) / DNOM);
+        return _minAmount + (_minAmount * MIN_FEE * ((intraBlock ? 0:1) + cloneShape.heat) / DNOM);
     }
 
     /**

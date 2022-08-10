@@ -11,7 +11,8 @@ contract BlockRefundTest is TestBase {
     function testRefund() public {
         uint256 nftId = nft.mint();
 
-        for (uint256 i = 0; i<5; ++i) {
+        for (uint256 i = 0; i<10; ++i) {
+            console.log(i);
             // vm.roll(block.number+1);
             // vm.warp(block.timestamp + BASE_TERM + TimeCurve.calc(i+1));
 
@@ -29,14 +30,16 @@ contract BlockRefundTest is TestBase {
             assertEq(currency.balanceOf(testEoa), 0);
             vm.stopPrank();
 
-            assertEq(currency.balanceOf(dmAddr), MIN_AMOUNT_FOR_NEW_CLONE + i);
+            assertEq(currency.balanceOf(dmAddr), MIN_AMOUNT_FOR_NEW_CLONE + i, "dm balance");
             if (i > 0) {
                 address prevEoa = generateAddress(bytes(Strings.toString(i-1)));
-                assertEq(currency.balanceOf(prevEoa), MIN_AMOUNT_FOR_NEW_CLONE + i - 1);
+                assertEq(currency.balanceOf(prevEoa), MIN_AMOUNT_FOR_NEW_CLONE + i - 1, "eoa");
             }
 
-            ( , , , ,uint8 heat, , ) = dm.cloneIdToShape(cloneId);
-            assertEq(heat, 1);
+            CloneShape memory shape = getCloneShape(cloneId);
+            assertEq(shape.heat, 1);
+
+            // console.log(currency.balanceOf(dmAddr) - (shape.worth + dm.cloneIdToSubsidy(cloneId)));
 
             // console.log(dm.cloneIdToSubsidy(cloneId));
 
