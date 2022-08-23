@@ -18,28 +18,30 @@ contract BlockRefundTest is TestBase {
 
             address testEoa = generateAddress(bytes(Strings.toString(i)));
 
-            currency.mint(testEoa, MIN_AMOUNT_FOR_NEW_CLONE + i);
+            currency.mint(testEoa, MIN_AMOUNT_FOR_NEW_CLONE * (i+1));
 
             vm.startPrank(testEoa);
-            currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE + i);
+            currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE * (i+1));
 
             // buy a clone using the minimum purchase amount
-            (uint256 cloneId, ) = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE + i, false, 0);
+            (uint256 cloneId, ) = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE * (i+1), false, 0);
 
             assertEq(dm.ownerOf(cloneId), testEoa);
             assertEq(currency.balanceOf(testEoa), 0);
             vm.stopPrank();
 
-            assertEq(currency.balanceOf(dmAddr), MIN_AMOUNT_FOR_NEW_CLONE + i, "dm balance");
+            assertEq(currency.balanceOf(dmAddr), MIN_AMOUNT_FOR_NEW_CLONE * (i+1), "dm balance");
             if (i > 0) {
                 address prevEoa = generateAddress(bytes(Strings.toString(i-1)));
-                assertEq(currency.balanceOf(prevEoa), MIN_AMOUNT_FOR_NEW_CLONE + i - 1, "eoa");
-            }
+                assertEq(currency.balanceOf(prevEoa), (MIN_AMOUNT_FOR_NEW_CLONE * (i+1)) - MIN_AMOUNT_FOR_NEW_CLONE, "eoa");
 
+            }
             CloneShape memory shape = getCloneShape(cloneId);
             assertEq(shape.heat, 1);
 
-            // console.log(currency.balanceOf(dmAddr) - (shape.worth + dm.cloneIdToSubsidy(cloneId)));
+            console.log(currency.balanceOf(dmAddr));
+            console.log((shape.worth + dm.cloneIdToSubsidy(cloneId)));
+            assertEq((shape.worth + dm.cloneIdToSubsidy(cloneId)), currency.balanceOf(dmAddr));
 
             // console.log(dm.cloneIdToSubsidy(cloneId));
 
@@ -48,7 +50,7 @@ contract BlockRefundTest is TestBase {
 
     function testRefundFuzz(uint256 amount0, uint256 amount1) public {
         vm.assume(amount0 >= MIN_AMOUNT_FOR_NEW_CLONE);
-        vm.assume(amount1 < 2**250);
+        vm.assume(amount1 < 2**240);
         vm.assume(amount0 < amount1);
 
         // amount1 can be assumed to fit because it is greater tha  amount0
@@ -104,7 +106,7 @@ contract BlockRefundTest is TestBase {
         console.log(sub1);
 
         // uint256 minAmountToBuyClone = dm.getMinAmountForCloneTransfer(cloneId);
-        uint256 minAmountToBuyClone = MIN_AMOUNT_FOR_NEW_CLONE;
+        uint256 minAmountToBuyClone = MIN_AMOUNT_FOR_NEW_CLONE*2;
         currency.mint(eoa0, minAmountToBuyClone);
         currency.approve(dmAddr, minAmountToBuyClone);
 
@@ -122,16 +124,21 @@ contract BlockRefundTest is TestBase {
         uint256 balance = currency.balanceOf(eoa0);
         // console.log(MIN_AMOUNT_FOR_NEW_CLONE);
         // console.log(balance);
+        console.log("balance:");
         console.log(currency.balanceOf(dmAddr));
+
+        console.log("shape worth + subsidy:");
         console.log(shape.worth + sub2);
+
         assertEq(balance, MIN_AMOUNT_FOR_NEW_CLONE);
+        assertEq(shape.worth + sub2, currency.balanceOf(dmAddr), "worth + sub, dm balance");
 
         vm.stopPrank();
     }
 
     function testRefundSelfFuzz(uint256 amount) public {
         vm.assume(amount >= MIN_AMOUNT_FOR_NEW_CLONE);
-        vm.assume(amount < 2**250);
+        vm.assume(amount < 2**235); // math will overflow error if amount is too large 
 
         uint256 nftId = nft.mint();
 

@@ -28,12 +28,12 @@ contract HeatTest is TestBase {
 
         CloneShape memory shape = getCloneShape(cloneId);
         assertEq(shape.heat, 1);
-        console.log(dm.cloneIdToSubsidy(cloneId));
+        // console.log(dm.cloneIdToSubsidy(cloneId));
 
         vm.stopPrank();
 
-        for (uint256 i = 1; i < 215; i++) {
-            // after 215 worth*timleft will overflow error when calculating fees
+        for (uint256 i = 1; i < 210; i++) {
+            // after 210 price calculation will overflow error when calculating fees
 
             vm.roll(block.number+1);
             vm.warp(block.timestamp + i);
@@ -43,16 +43,23 @@ contract HeatTest is TestBase {
             currency.mint(eoa1, minAmountToBuyClone);
             currency.approve(dmAddr, minAmountToBuyClone);
 
+            uint256 fee = minAmountToBuyClone * MIN_FEE * (1 + shape.heat) / DNOM;
+            console.log(fee);
+            console.log(minAmountToBuyClone);
+            console.log(minAmountToBuyClone - fee);
+            console.log(dm._getMinAmount(shape, false));
+
             uint256 lastCumulativePrice = dm.protoIdToCumulativePrice(protoId);
             dm.duplicate(nftAddr, nftId, currencyAddr, minAmountToBuyClone, false, 0);
 
             // ensure correct oracle related values
             assertEq(dm.protoIdToCumulativePrice(protoId), lastCumulativePrice + (shape.worth * i));
             assertEq(dm.protoIdToTimestampLast(protoId), block.timestamp);
-            console.log(dm.cloneIdToSubsidy(cloneId));
+            // console.log(dm.cloneIdToSubsidy(cloneId));
 
             shape = getCloneShape(cloneId);
             assertEq(shape.heat, 1+i);
+            console.log(shape.worth);
 
             vm.stopPrank();
         }
@@ -139,8 +146,8 @@ contract HeatTest is TestBase {
             assertEq(
                 minAmountToBuyClone,
                 (sameBlock ?
-                    (shape.worth + (shape.worth * MIN_FEE * (1+shape.heat) / DNOM)):
-                    (auctionPrice + (auctionPrice * MIN_FEE * (1+shape.heat) / DNOM))),
+                    (shape.worth + ((shape.worth * (MIN_FEE * (shape.heat))) * DNOM) / (DNOM - (MIN_FEE * shape.heat)) / DNOM):
+                    (auctionPrice + ((auctionPrice * (MIN_FEE * (1+shape.heat))) * DNOM) / (DNOM - (MIN_FEE * (1+shape.heat))) / DNOM) ),
                 "price"
             );
 
