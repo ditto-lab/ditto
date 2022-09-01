@@ -47,7 +47,7 @@ contract HeatTest is TestBase {
             console.log(fee);
             console.log(minAmountToBuyClone);
             console.log(minAmountToBuyClone - fee);
-            console.log(dm._getMinAmount(shape, false));
+            // console.log(dm._getMinAmount(shape, false));
 
             uint256 lastCumulativePrice = dm.protoIdToCumulativePrice(protoId);
             dm.duplicate(nftAddr, nftId, currencyAddr, minAmountToBuyClone, false, 0);

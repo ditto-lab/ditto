@@ -105,7 +105,6 @@ contract BlockRefundTest is TestBase {
         uint256 sub1 = dm.cloneIdToSubsidy(cloneId);
         console.log(sub1);
 
-        // uint256 minAmountToBuyClone = dm.getMinAmountForCloneTransfer(cloneId);
         uint256 minAmountToBuyClone = MIN_AMOUNT_FOR_NEW_CLONE*2;
         currency.mint(eoa0, minAmountToBuyClone);
         currency.approve(dmAddr, minAmountToBuyClone);
@@ -138,7 +137,7 @@ contract BlockRefundTest is TestBase {
 
     function testRefundSelfFuzz(uint256 amount) public {
         vm.assume(amount >= MIN_AMOUNT_FOR_NEW_CLONE);
-        vm.assume(amount < 2**235); // math will overflow error if amount is too large 
+        vm.assume(amount < 2**235); // math will overflow error if amount is too large
 
         uint256 nftId = nft.mint();
 

@@ -46,7 +46,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
     uint256 public constant BASE_TERM = 2**18;
     uint256 public constant MIN_FEE = 32;
     uint256 public constant DNOM = 2**16 - 1;
-    uint256 public constant MIN_AMOUNT_FOR_NEW_CLONE = BASE_TERM + ((BASE_TERM * MIN_FEE / DNOM));
+    uint256 public constant MIN_AMOUNT_FOR_NEW_CLONE = BASE_TERM + (BASE_TERM * MIN_FEE / DNOM);
 
     ////////////// STATE VARIABLES //////////////
 
@@ -322,21 +322,21 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
             address curOwner = ownerOf[cloneId];
 
             // subtract subsidy refund from subsidy pool
-            cloneIdToSubsidy[cloneId] -= (feeRefund);
+            cloneIdToSubsidy[cloneId] -= feeRefund;
 
-            // uint256 subsidyDiv2 = (subsidy >> 1);
             {
                 _setBlockRefund(cloneId, subsidy);
             }
             // half of fee goes into subsidy pool, half to previous clone owner
+            // if in same block subsidy is not split and replaces refunded fees
             cloneIdToSubsidy[cloneId] += feeRefund == 0 ? (subsidy >> 1) : subsidy;
 
             SafeTransferLib.safeTransfer( // EXTERNAL CALL
                 ERC20(_ERC20Contract),
                 curOwner,
                 // previous clone value + half of subsidy sent to prior clone owner
-                // if feeReceiver is set fees are sent in the _setBlockRefund call above
                 // clone's worth is refunded here
+                // fees are completely refunded if in same block as another bid
                 (cloneShape.worth + (feeRefund == 0 ? ((subsidy >> 1) + (subsidy & 1)) : feeRefund) )
             );
             // force transfer from current owner to new highest bidder
@@ -390,9 +390,12 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
         CloneShape memory cloneShape = cloneIdToShape[cloneId];
         bool intraBlock = _getBlockRefund(cloneId) != 0;
         uint256 _minAmount = _getMinAmount(cloneShape, intraBlock);
+        // calculate fee ultiplier with heat, if in active bidding block do not add 1.
+        uint256 minFeeHeat = (MIN_FEE * ((intraBlock ? 0:1) + cloneShape.heat));
+        // calculate fee needed from min value. Do not devide my DNOM as to not loose percision.
+        uint256 feePercent = _minAmount * minFeeHeat;
         // calculate inverse percentage of fee amount
-        uint256 feePercent = _minAmount * (MIN_FEE * ((intraBlock ? 0:1) + cloneShape.heat));
-        uint256 feePortion = (feePercent * DNOM) / (DNOM - (MIN_FEE * ((intraBlock ? 0:1) + cloneShape.heat))) / DNOM;
+        uint256 feePortion = (feePercent * DNOM) / (DNOM - minFeeHeat) / DNOM;
         return _minAmount + feePortion;
     }
 
@@ -402,7 +405,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
      * @param cloneShape clone for which to compute the minimum amount.
      * @dev only use it for a minted clone.
      */
-    function _getMinAmount(CloneShape memory cloneShape, bool intraBlock) public view returns (uint256) {
+    function _getMinAmount(CloneShape memory cloneShape, bool intraBlock) internal view returns (uint256) {
         uint256 floorId = uint256(keccak256(abi.encodePacked(
             cloneShape.ERC721Contract,
             FLOOR_ID,
