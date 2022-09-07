@@ -1,7 +1,7 @@
 pragma solidity ^0.8.4;
 //SPDX-License-Identifier: MIT
 
-contract CloneList {
+abstract contract CloneList {
 
     //protoId is a precursor hash to a cloneId used to identify tokenId/erc20 pairs
     mapping(uint256 => uint256) public protoIdToIndexHead;
@@ -16,8 +16,6 @@ contract CloneList {
     // tracks the number of clones in circulation under a protoId
 
     mapping(uint256 => uint256) public protoIdToDepth;
-
-    constructor() {}
 
     function pushListTail(uint256 protoId, uint256 index) internal {
         unchecked { // ethereum will be irrelevant if this ever overflows
@@ -71,10 +69,10 @@ contract CloneList {
         protoIdToIndexToPrior[protoId][protoIdToIndexToAfter[protoId][head]] = protoIdToIndexToPrior[protoId][head];
     }
 
-    function validIndex(uint256 protoId, uint256 index) internal returns(bool) {
+    function validIndex(uint256 protoId, uint256 index) internal view returns(bool) {
         // prev <- index
         // prev -> index
-        return (protoIdToIndexToAfter[protoId][protoIdToIndexToPrior[protoId][index]] == index);
+        return protoIdToIndexToAfter[protoId][protoIdToIndexToPrior[protoId][index]] == index;
     }
 
 }

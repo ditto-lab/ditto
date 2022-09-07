@@ -3,16 +3,19 @@ pragma solidity ^0.8.4;
 
 import "./TestBase.sol";
 
-contract HeatTests is TestBase {
+contract HeatTest is TestBase {
 
     constructor() {}
 
-    function testHeatIncrease() public {
-        uint256 nftId = mintNft();
-        address eoa1 = generateAddress("eoa1");
-        currency.mint(eoa1, MIN_AMOUNT_FOR_NEW_CLONE);
+    function setUp() public override {
+        super.setUp();
 
-        cheats.startPrank(eoa1);
+        currency.mint(eoa1, MIN_AMOUNT_FOR_NEW_CLONE);
+    }
+
+    function testHeatIncrease() public {
+        uint256 nftId = nft.mint();
+        vm.startPrank(eoa1);
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
 
         // buy a clone using the minimum purchase amount
@@ -25,18 +28,26 @@ contract HeatTests is TestBase {
 
         CloneShape memory shape = getCloneShape(cloneId);
         assertEq(shape.heat, 1);
+        // console.log(dm.cloneIdToSubsidy(cloneId));
 
-        cheats.stopPrank();
+        vm.stopPrank();
 
-        for (uint256 i = 1; i < 215; i++) {
-            // after 215 worth*timleft will overflow error when calculating fees
+        for (uint256 i = 1; i < 210; i++) {
+            // after 210 price calculation will overflow error when calculating fees
 
-            cheats.warp(block.timestamp + i);
-            cheats.startPrank(eoa1);
+            vm.roll(block.number+1);
+            vm.warp(block.timestamp + i);
+            vm.startPrank(eoa1);
 
             uint256 minAmountToBuyClone = dm.getMinAmountForCloneTransfer(cloneId);
             currency.mint(eoa1, minAmountToBuyClone);
             currency.approve(dmAddr, minAmountToBuyClone);
+
+            uint256 fee = minAmountToBuyClone * MIN_FEE * (1 + shape.heat) / DNOM;
+            console.log(fee);
+            console.log(minAmountToBuyClone);
+            console.log(minAmountToBuyClone - fee);
+            // console.log(dm._getMinAmount(shape, false));
 
             uint256 lastCumulativePrice = dm.protoIdToCumulativePrice(protoId);
             dm.duplicate(nftAddr, nftId, currencyAddr, minAmountToBuyClone, false, 0);
@@ -44,21 +55,19 @@ contract HeatTests is TestBase {
             // ensure correct oracle related values
             assertEq(dm.protoIdToCumulativePrice(protoId), lastCumulativePrice + (shape.worth * i));
             assertEq(dm.protoIdToTimestampLast(protoId), block.timestamp);
+            // console.log(dm.cloneIdToSubsidy(cloneId));
 
             shape = getCloneShape(cloneId);
             assertEq(shape.heat, 1+i);
+            console.log(shape.worth);
 
-            cheats.stopPrank();
+            vm.stopPrank();
         }
     }
 
     function testHeatStatic() public {
-        uint256 nftId = mintNft();
-        address eoa1 = generateAddress("eoa1");
-
-        currency.mint(eoa1, MIN_AMOUNT_FOR_NEW_CLONE);
-
-        cheats.startPrank(eoa1);
+        uint256 nftId = nft.mint();
+        vm.startPrank(eoa1);
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
 
         // buy a clone using the minimum purchase amount
@@ -72,12 +81,12 @@ contract HeatTests is TestBase {
         CloneShape memory shape = getCloneShape(cloneId);
         assertEq(shape.heat, 1);
 
-        cheats.stopPrank();
+        vm.stopPrank();
 
         for (uint256 i = 1; i < 256; i++) {
-            cheats.warp(block.timestamp + (BASE_TERM) + TimeCurve.calc(shape.heat));
+            vm.warp(block.timestamp + (BASE_TERM) + TimeCurve.calc(shape.heat));
 
-            cheats.startPrank(eoa1);
+            vm.startPrank(eoa1);
 
             uint256 minAmountToBuyClone = dm.getMinAmountForCloneTransfer(cloneId);
             currency.mint(eoa1, minAmountToBuyClone);
@@ -94,17 +103,13 @@ contract HeatTests is TestBase {
             assertEq(shape.heat, 1);
             assertEq(shape.term, block.timestamp + (BASE_TERM-1) + shape.heat**2);
 
-            cheats.stopPrank();
+            vm.stopPrank();
         }
     }
 
     function testHeatDuplicatePrice(uint16 time) public {
-        uint256 nftId = mintNft();
-        address eoa1 = generateAddress("eoa1");
-
-        currency.mint(eoa1, MIN_AMOUNT_FOR_NEW_CLONE);
-
-        cheats.startPrank(eoa1);
+        uint256 nftId = nft.mint();
+        vm.startPrank(eoa1);
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
 
         // buy a clone using the minimum purchase amount
@@ -118,12 +123,15 @@ contract HeatTests is TestBase {
         CloneShape memory shape = getCloneShape(cloneId);
         assertEq(shape.heat, 1);
 
-        cheats.stopPrank();
+        vm.stopPrank();
 
         for (uint256 i = 1; i < 50; i++) {
-            cheats.warp(block.timestamp + uint256(time));
+            vm.roll(block.number+1);
+            vm.warp(block.timestamp + uint256(time));
 
-            cheats.startPrank(eoa1);
+            bool sameBlock = dm._getBlockRefund(cloneId) != 0;
+
+            vm.startPrank(eoa1);
 
             uint256 minAmountToBuyClone = dm.getMinAmountForCloneTransfer(cloneId);
             currency.mint(eoa1, minAmountToBuyClone);
@@ -135,7 +143,13 @@ contract HeatTests is TestBase {
 
             uint256 auctionPrice = shape.worth + (shape.worth * timeLeft / termLength);
 
-            assertEq(minAmountToBuyClone, (auctionPrice + (auctionPrice * MIN_FEE * (1+shape.heat) / DNOM)), "price");
+            assertEq(
+                minAmountToBuyClone,
+                (sameBlock ?
+                    (shape.worth + ((shape.worth * (MIN_FEE * (shape.heat))) * DNOM) / (DNOM - (MIN_FEE * shape.heat)) / DNOM):
+                    (auctionPrice + ((auctionPrice * (MIN_FEE * (1+shape.heat))) * DNOM) / (DNOM - (MIN_FEE * (1+shape.heat))) / DNOM) ),
+                "price"
+            );
 
             uint256 lastCumulativePrice = dm.protoIdToCumulativePrice(protoId);
             dm.duplicate(nftAddr, nftId, currencyAddr, minAmountToBuyClone, false, 0);
@@ -145,7 +159,7 @@ contract HeatTests is TestBase {
             assertEq(dm.protoIdToTimestampLast(protoId), block.timestamp);
             shape = getCloneShape(cloneId);
 
-            cheats.stopPrank();
+            vm.stopPrank();
         }
     }
 }

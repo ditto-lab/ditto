@@ -8,18 +8,16 @@ contract FloorTest is TestBase {
     constructor() {}
 
     function testFloorCloneSetsNewClonePrice() public {
-        uint256 nftId = mintNft();
-        address eoa1 = generateAddress("eoa1");
-        address eoa2 = generateAddress("eoa2");
+        uint256 nftId = nft.mint();
 
         currency.mint(eoa1, MIN_AMOUNT_FOR_NEW_CLONE * 2);
         currency.mint(eoa2, MIN_AMOUNT_FOR_NEW_CLONE * 2);
 
-        cheats.startPrank(eoa1);
+        vm.startPrank(eoa1);
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE * 2);
 
         (uint256 floorId, /*uint256 flotoId*/) = dm.duplicate(nftAddr, FLOOR_ID, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE * 2, true, 0);
-        cheats.stopPrank();
+        vm.stopPrank();
 
         uint256 cloneId = uint256(keccak256(abi.encodePacked(
             keccak256(abi.encodePacked(nftAddr, nftId, currencyAddr, false)),
@@ -28,18 +26,18 @@ contract FloorTest is TestBase {
         assertEq(dm.ownerOf(cloneId), address(0));
         assertEq(dm.ownerOf(floorId), eoa1);
 
-        cheats.startPrank(eoa2);
+        vm.startPrank(eoa2);
 
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE * 2);
 
         uint256 floorWorth = getCloneShape(floorId).worth;
-        cheats.expectRevert(abi.encodeWithSelector(DittoMachine.AmountInvalid.selector));
+        vm.expectRevert(abi.encodeWithSelector(DittoMachine.AmountInvalid.selector));
         // expect revert with amount less than floor clone worth
         dm.duplicate(nftAddr, nftId, currencyAddr, floorWorth-1, false, 0);
 
         (uint256 cId, /*uint256 flotoId*/) = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE * 2, false, 0);
         assertEq(cId, cloneId);
-        cheats.stopPrank();
+        vm.stopPrank();
 
         uint256 floorMinAmount = dm.getMinAmountForCloneTransfer(floorId);
         uint256 cloneMinAmount = dm.getMinAmountForCloneTransfer(cloneId);
@@ -51,44 +49,45 @@ contract FloorTest is TestBase {
     }
 
     function testFloorCloneSetsExistingClonePrice() public {
-        uint256 nftId = mintNft();
-        address eoa1 = generateAddress("eoa1");
-        address eoa2 = generateAddress("eoa2");
+        uint256 nftId = nft.mint();
 
         currency.mint(eoa1, MIN_AMOUNT_FOR_NEW_CLONE);
         currency.mint(eoa2, MIN_AMOUNT_FOR_NEW_CLONE * 3);
 
-        cheats.startPrank(eoa1);
+        vm.startPrank(eoa1);
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
 
         (uint256 cloneId, /*uint256 protoId*/) = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
-        cheats.stopPrank();
+        vm.stopPrank();
+
+        vm.roll(block.number+1); // vm.roll will preserve behaviour previous to the block refund mechanism
 
         uint256 clonePrice = dm.getMinAmountForCloneTransfer(cloneId);
         assertEq(
-            MIN_AMOUNT_FOR_NEW_CLONE * 2 + ((MIN_AMOUNT_FOR_NEW_CLONE * 2) * MIN_FEE / DNOM),
+            // MIN_AMOUNT_FOR_NEW_CLONE + (MIN_AMOUNT_FOR_NEW_CLONE * MIN_FEE / DNOM), // if within a block
+            MIN_AMOUNT_FOR_NEW_CLONE * 2 + ((MIN_AMOUNT_FOR_NEW_CLONE * 2) * MIN_FEE / DNOM), // if block has passed
             clonePrice
         );
 
-        cheats.startPrank(eoa2);
+        vm.startPrank(eoa2);
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE * 3);
 
         (uint256 floorId, /*uint256 protoId*/) = dm.duplicate(nftAddr, FLOOR_ID, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE * 3, true, 0);
-        cheats.stopPrank();
+        vm.stopPrank();
 
         uint256 newClonePrice = dm.getMinAmountForCloneTransfer(cloneId);
 
         currency.mint(eoa1, newClonePrice);
 
-        cheats.startPrank(eoa1);
+        vm.startPrank(eoa1);
         currency.approve(dmAddr, newClonePrice);
 
-        cheats.expectRevert(abi.encodeWithSelector(DittoMachine.AmountInvalid.selector));
+        vm.expectRevert(abi.encodeWithSelector(DittoMachine.AmountInvalid.selector));
         dm.duplicate(nftAddr, nftId, currencyAddr, newClonePrice - 1, false, 0);
 
         clonePrice = dm.getMinAmountForCloneTransfer(cloneId);
         dm.duplicate(nftAddr, nftId, currencyAddr, newClonePrice, false, 0);
-        cheats.stopPrank();
+        vm.stopPrank();
 
         uint256 floorWorth = getCloneShape(floorId).worth;
         uint256 cloneWorth = getCloneShape(cloneId).worth;
@@ -97,16 +96,14 @@ contract FloorTest is TestBase {
 
     function testFloorSellUnderlyingForFloor() public {
         // test selling nft when only floor clone exits
-        address eoaSeller = generateAddress("eoaSeller");
-        cheats.startPrank(eoaSeller);
-        nft.mint(eoaSeller, nftTokenId);
-        uint256 nftId = nftTokenId++;
+        vm.startPrank(eoaSeller);
+        uint256 nftId = nft.mint(eoaSeller);
         assertEq(nft.ownerOf(nftId), eoaSeller);
-        cheats.stopPrank();
+        vm.stopPrank();
 
         address eoaBidder = generateAddress("eoaBidder");
         currency.mint(eoaBidder, MIN_AMOUNT_FOR_NEW_CLONE);
-        cheats.startPrank(eoaBidder);
+        vm.startPrank(eoaBidder);
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
 
         // buy a clone using the minimum purchase amount
@@ -124,12 +121,12 @@ contract FloorTest is TestBase {
         CloneShape memory shape1 = getCloneShape(cloneId1);
         assertEq(shape1.worth, currency.balanceOf(dmAddr) - subsidy1);
 
-        cheats.stopPrank();
+        vm.stopPrank();
 
-        cheats.warp(block.timestamp + 100);
-        cheats.startPrank(eoaSeller);
+        vm.warp(block.timestamp + 100);
+        vm.startPrank(eoaSeller);
         nft.safeTransferFrom(eoaSeller, dmAddr, nftId, abi.encode(currencyAddr, false));
-        cheats.stopPrank();
+        vm.stopPrank();
         assertEq(currency.balanceOf(eoaSeller), shape1.worth + subsidy1);
         assertEq(currency.balanceOf(dmAddr), 0);
 
@@ -141,39 +138,34 @@ contract FloorTest is TestBase {
     function testFloorSellUnderlyingForCloneWhileFloorExists() public {
         // test selling nft when floor clone is worth is same as the nft clone
         // should sell to clone owner with true passed throughnft.safeTransferFrom
-        address eoaSeller = generateAddress("eoaSeller");
-        cheats.startPrank(eoaSeller);
-        nft.mint(eoaSeller, nftTokenId);
-        uint256 nftId = nftTokenId++;
+        vm.startPrank(eoaSeller);
+        uint256 nftId = nft.mint(eoaSeller);
         assertEq(nft.ownerOf(nftId), eoaSeller);
-        cheats.stopPrank();
-
-        address eoa1 = generateAddress("eoa1");
-        address eoa2 = generateAddress("eoa2");
+        vm.stopPrank();
 
         currency.mint(eoa1, MIN_AMOUNT_FOR_NEW_CLONE);
         currency.mint(eoa2, MIN_AMOUNT_FOR_NEW_CLONE);
 
-        cheats.startPrank(eoa1);
+        vm.startPrank(eoa1);
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
 
         (uint256 floorId, /*uint256 flotoId*/) = dm.duplicate(nftAddr, FLOOR_ID, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, true, 0);
-        cheats.stopPrank();
+        vm.stopPrank();
 
-        cheats.startPrank(eoa2);
+        vm.startPrank(eoa2);
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
 
         (uint256 cloneId, /*uint256 protoId*/) = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
-        cheats.stopPrank();
+        vm.stopPrank();
 
         uint256 floorWorth = getCloneShape(floorId).worth;
         uint256 cloneWorth = getCloneShape(cloneId).worth;
         assertEq(floorWorth, cloneWorth);
 
-        cheats.startPrank(eoaSeller);
+        vm.startPrank(eoaSeller);
         nft.safeTransferFrom(eoaSeller, dmAddr, nftId, abi.encode(currencyAddr, false));
         assertEq(dm.ownerOf(cloneId), address(0));
-        cheats.stopPrank();
+        vm.stopPrank();
 
         assertEq(nft.ownerOf(nftId), eoa2);
     }
@@ -181,41 +173,36 @@ contract FloorTest is TestBase {
     function testFloorSellUnderlyingForFloorWhileCloneExists() public {
         // test selling nft when floor clone's worth is same as the nft clone
         // should sell to floor owner with true passed through nft.safeTransferFrom
-        address eoaSeller = generateAddress("eoaSeller");
-        cheats.startPrank(eoaSeller);
-        nft.mint(eoaSeller, nftTokenId);
-        uint256 nftId = nftTokenId++;
+        vm.startPrank(eoaSeller);
+        uint256 nftId = nft.mint(eoaSeller);
         assertEq(nft.ownerOf(nftId), eoaSeller);
-        cheats.stopPrank();
-
-        address eoa1 = generateAddress("eoa1");
-        address eoa2 = generateAddress("eoa2");
+        vm.stopPrank();
 
         currency.mint(eoa1, MIN_AMOUNT_FOR_NEW_CLONE);
         currency.mint(eoa2, MIN_AMOUNT_FOR_NEW_CLONE);
 
-        cheats.startPrank(eoa1);
+        vm.startPrank(eoa1);
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
 
         (uint256 floorId, /*uint256 flotoId*/) = dm.duplicate(nftAddr, FLOOR_ID, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, true, 0);
         assertEq(dm.ownerOf(floorId), eoa1);
-        cheats.stopPrank();
+        vm.stopPrank();
 
-        cheats.startPrank(eoa2);
+        vm.startPrank(eoa2);
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
 
         (uint256 cloneId, /*uint256 protoId*/) = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
         assertEq(dm.ownerOf(cloneId), eoa2);
-        cheats.stopPrank();
+        vm.stopPrank();
 
         uint256 floorWorth = getCloneShape(floorId).worth;
         uint256 cloneWorth = getCloneShape(cloneId).worth;
         assertEq(floorWorth, cloneWorth);
 
-        cheats.startPrank(eoaSeller);
+        vm.startPrank(eoaSeller);
         nft.safeTransferFrom(eoaSeller, dmAddr, nftId, abi.encode(currencyAddr, true));
         assertEq(dm.ownerOf(floorId), address(0));
-        cheats.stopPrank();
+        vm.stopPrank();
 
         assertEq(nft.ownerOf(nftId), eoa1);
     }
@@ -223,54 +210,48 @@ contract FloorTest is TestBase {
     function testFloorSellUnderlyingForFloorWithCheaperClone() public {
         // test selling nft when floor clone is worth more than nft clone
         // should sell to floor owner whenever the floor is worth more
-        address eoaSeller = generateAddress("eoaSeller");
-        cheats.startPrank(eoaSeller);
-        nft.mint(eoaSeller, nftTokenId);
-        uint256 nftId = nftTokenId++;
+        vm.startPrank(eoaSeller);
+        uint256 nftId = nft.mint(eoaSeller);
         assertEq(nft.ownerOf(nftId), eoaSeller);
-        cheats.stopPrank();
-
-        address eoa1 = generateAddress("eoa1");
-        address eoa2 = generateAddress("eoa2");
-        address eoa3 = generateAddress("eoa3");
+        vm.stopPrank();
 
         currency.mint(eoa1, MIN_AMOUNT_FOR_NEW_CLONE * 2);
         currency.mint(eoa2, MIN_AMOUNT_FOR_NEW_CLONE);
         currency.mint(eoa3, MIN_AMOUNT_FOR_NEW_CLONE * 2);
 
         // eoa2 purchases nft clone for cheaper
-        cheats.startPrank(eoa2);
+        vm.startPrank(eoa2);
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
 
         dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
-        cheats.stopPrank();
+        vm.stopPrank();
 
         // eoa1 purchase floor clone for higher price
-        cheats.startPrank(eoa1);
+        vm.startPrank(eoa1);
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE * 2);
 
         (uint256 floorId, /*uint256 protoId*/) = dm.duplicate(nftAddr, FLOOR_ID, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE * 2, true, 0);
-        cheats.stopPrank();
+        vm.stopPrank();
 
         // eoaSeller sells nft specifying floor clone as recipient
-        cheats.startPrank(eoaSeller);
+        vm.startPrank(eoaSeller);
         nft.safeTransferFrom(eoaSeller, dmAddr, nftId, abi.encode(currencyAddr, true));
-        cheats.stopPrank();
+        vm.stopPrank();
 
         assertEq(nft.ownerOf(nftId), eoa1);
         assertEq(currency.balanceOf(eoaSeller), MIN_AMOUNT_FOR_NEW_CLONE * 2);
 
-        cheats.startPrank(eoa3);
+        vm.startPrank(eoa3);
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE * 2);
 
         dm.duplicate(nftAddr, FLOOR_ID, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE * 2, true, 1);
-        cheats.stopPrank();
+        vm.stopPrank();
 
-        cheats.startPrank(eoa1);
+        vm.startPrank(eoa1);
         //make sure if seller sets "floor" to "false" contract will still sell to floor clone if it is worth more
         nft.safeTransferFrom(eoa1, dmAddr, nftId, abi.encode(currencyAddr, false));
         assertEq(dm.ownerOf(floorId), address(0));
-        cheats.stopPrank();
+        vm.stopPrank();
 
         assertEq(nft.ownerOf(nftId), eoa3);
         assertEq(currency.balanceOf(eoa1), MIN_AMOUNT_FOR_NEW_CLONE * 2);
@@ -280,57 +261,51 @@ contract FloorTest is TestBase {
         // test selling nft when floor clone is worth less than nft clone
         // should sell to clone if "floor" is set to "false" in safeTransferFrom
         // should sell to floor if "floor" is set to "true" in safeTransferFrom
-        address eoaSeller = generateAddress("eoaSeller");
-        cheats.startPrank(eoaSeller);
-        nft.mint(eoaSeller, nftTokenId);
-        uint256 nftId = nftTokenId++;
+        vm.startPrank(eoaSeller);
+        uint256 nftId = nft.mint(eoaSeller);
         assertEq(nft.ownerOf(nftId), eoaSeller);
-        cheats.stopPrank();
-
-        address eoa1 = generateAddress("eoa1");
-        address eoa2 = generateAddress("eoa2");
-        address eoa3 = generateAddress("eoa3");
+        vm.stopPrank();
 
         currency.mint(eoa1, MIN_AMOUNT_FOR_NEW_CLONE);
         currency.mint(eoa2, MIN_AMOUNT_FOR_NEW_CLONE * 2);
         currency.mint(eoa3, MIN_AMOUNT_FOR_NEW_CLONE * 2);
 
         // eoa1 purchases floor clone for cheap
-        cheats.startPrank(eoa1);
+        vm.startPrank(eoa1);
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
 
         (uint256 floorId, /*uint256 flotoId*/) = dm.duplicate(nftAddr, FLOOR_ID, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, true, 0);
-        cheats.stopPrank();
+        vm.stopPrank();
 
         // eoa2 purchases nft clone for higher price
-        cheats.startPrank(eoa2);
+        vm.startPrank(eoa2);
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE * 2);
 
         (uint256 cloneId, /*uint256 protoId*/) = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE * 2, false, 0);
-        cheats.stopPrank();
+        vm.stopPrank();
 
         // eoaSeller sells nft, specifying floor clone as recipient
-        cheats.startPrank(eoaSeller);
+        vm.startPrank(eoaSeller);
         nft.safeTransferFrom(eoaSeller, dmAddr, nftId, abi.encode(currencyAddr, true));
         assertEq(dm.ownerOf(floorId), address(0));
-        cheats.stopPrank();
+        vm.stopPrank();
 
         assertEq(nft.ownerOf(nftId), eoa1);
         assertEq(currency.balanceOf(eoaSeller), MIN_AMOUNT_FOR_NEW_CLONE);
 
         // eoa3 purchases another floor clone
-        cheats.startPrank(eoa3);
+        vm.startPrank(eoa3);
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
 
         dm.duplicate(nftAddr, FLOOR_ID, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, true, 1);
-        cheats.stopPrank();
+        vm.stopPrank();
 
         // eoa1 sells nft for nft clone
-        cheats.startPrank(eoa1);
+        vm.startPrank(eoa1);
         //make sure if sellr sets "floor" to "false" contract will still sell to floor clone if it is worth more
         nft.safeTransferFrom(eoa1, dmAddr, nftId, abi.encode(currencyAddr, false));
         assertEq(dm.ownerOf(cloneId), address(0));
-        cheats.stopPrank();
+        vm.stopPrank();
 
         assertEq(nft.ownerOf(nftId), eoa2);
         assertEq(currency.balanceOf(eoa1), MIN_AMOUNT_FOR_NEW_CLONE * 2);

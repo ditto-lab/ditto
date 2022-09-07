@@ -1,18 +1,17 @@
 pragma solidity ^0.8.4;
+//SPDX-License-Identifier: MIT
 
 import "abdk-libraries-solidity/ABDKMath64x64.sol";
-// import "solidity-math-utils/project/contracts/IntegralMath.sol";
 
 library TimeCurve {
 
     // use 7 as abdk 64.64 int for math
-    int128 private constant SEVEN = int128(int256(7<<64));
-    int128 private constant T = int128(int256(86400<<64));
+    int128 private constant SEVEN = 7<<64;
+    int128 private constant SECONDS_IN_DAY = 86400<<64;
 
     // I'm so sorry for this absolutely ass ugly beast of function -calvbore
-    // returns the cube root of a uint < 256 as an abdk 64x64 decimal in128
+    // returns the cube root of a uint < 256 as an abdk 64x64 decimal int128
     function cbrt(uint256 x) internal pure returns(int128) {
-        require(x >= 0);
         if (x == 0) {return 0;} // this line may never be used within ditto?
         if (x == 1) {return 18446744073709551616;} // 1<<64
         if (x == 2) {return 23241441162429415667;}
@@ -278,11 +277,11 @@ library TimeCurve {
 
         int128 hSqrt = ABDKMath64x64.sqrt(h);           // square root of heat
         int128 hCbrt = cbrt(heat);                      // cube root of heat
-        int128 hCbLg = ABDKMath64x64.log_2(hCbrt);      // binar lof of heat's cube root
+        int128 hCbLg = ABDKMath64x64.log_2(hCbrt);      // base 2 log of heat's cube root
 
-        int128 log7   = ABDKMath64x64.mul(SEVEN, hCbLg);// multiply log by 7
-        int128 base   = ABDKMath64x64.mul(log7, hSqrt); // multiply log by sqrt of heat
-        int128 length = ABDKMath64x64.mul(T, base);     // multiply base by 1 day
+        int128 log7   = ABDKMath64x64.mul(SEVEN, hCbLg); // multiply log by 7
+        int128 base   = ABDKMath64x64.mul(log7, hSqrt);  // multiply log by sqrt of heat
+        int128 length = ABDKMath64x64.mul(SECONDS_IN_DAY, base);      // multiply base by 1 day
 
         return ABDKMath64x64.toUInt(length);  // convert from abdk 64.64 to uint256
     }
