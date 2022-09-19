@@ -308,7 +308,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
                         heat = 1;
                     }
                 }
-                issueVoucher(ownerOf[cloneId], cloneId, value);
+                issueVoucher(ownerOf[cloneId], cloneId, protoId, value);
 
                 // calculate new clone term values
                 cloneIdToShape[cloneId].worth = value;
@@ -439,8 +439,10 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
         return floorPrice > clonePrice ? floorPrice : clonePrice;
     }
 
-    function issueVoucher(address to, uint256 cloneId, uint256 value) private {
+    function issueVoucher(address to, uint256 cloneId, uint256 protoId, uint256 value) private {
+        bool isIndexHead = uint256(keccak256(abi.encodePacked(protoId, protoIdToIndexHead[protoId]))) == cloneId;
         uint256 voucher = uint256(keccak256(abi.encodePacked(
+            isIndexHead,
             cloneId, // encodes: protoId (nft contract, token id, erc20 contract, if floor), index
             to,
             cloneIdToShape[cloneId].heat,
