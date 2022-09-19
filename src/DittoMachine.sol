@@ -485,16 +485,19 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
         // token can only be sold to the clone at the index head
         popListHead(protoId);
 
+        // send useful data along with safe transfer to sontracts
+        bytes memory data = abi.encode(cloneId, owner, cloneShape.worth, subsidy);
+
         if (isERC1155) {
             if (ERC1155(tokenContract).balanceOf(address(this), id) < 1) {
                 revert NFTNotReceived();
             }
-            ERC1155(tokenContract).safeTransferFrom(address(this), owner, id, 1, "");
+            ERC1155(tokenContract).safeTransferFrom(address(this), owner, id, 1, data);
         } else {
             if (ERC721(tokenContract).ownerOf(id) != address(this)) {
                 revert NFTNotReceived();
             }
-            ERC721(tokenContract).safeTransferFrom(address(this), owner, id);
+            ERC721(tokenContract).safeTransferFrom(address(this), owner, id, data);
         }
 
         if (IERC165(tokenContract).supportsInterface(_INTERFACE_ID_ERC2981)) {
