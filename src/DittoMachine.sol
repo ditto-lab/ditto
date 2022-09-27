@@ -72,6 +72,9 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
     // hash protoId with the index placement to get cloneId
     mapping(uint256 => CloneShape) public cloneIdToShape;
 
+    // maps clone to the index it is placed at in a linked list
+    mapping(uint256 => uint256) public cloneIdToIndex;
+
     constructor() ERC721("Ditto", "DTO") { }
 
     ///////////////////////////////////////////
@@ -258,6 +261,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
                 block.timestamp + BASE_TERM
             );
             pushListTail(protoId, index);
+            cloneIdToIndex[cloneId] = index;
             cloneIdToSubsidy[cloneId] += subsidy;
             _setBlockRefund(cloneId, subsidy);
 
@@ -351,8 +355,8 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
      * @param protoId specifies the clone to be burned.
      * @dev will refund funds held in a position, subsidy will remain for sellers in the future.
      */
-    function dissolve(uint256 protoId, uint256 index) external {
-        uint256 cloneId = uint256(keccak256(abi.encodePacked(protoId, index)));
+    function dissolve(uint256 protoId, uint256 cloneId) external {
+        uint256 index = cloneIdToIndex[cloneId];
         if (!(msg.sender == ownerOf[cloneId]
                 || msg.sender == getApproved[cloneId]
                 || isApprovedForAll[ownerOf[cloneId]][msg.sender])) {
