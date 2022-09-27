@@ -66,7 +66,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
 
     // protoId cumulative price for TWAP
     mapping(uint256 => uint256) public protoIdToCumulativePrice;
-    // lat timestamp recorded for protoId TWAP
+    // last timestamp recorded for protoId TWAP
     mapping(uint256 => uint256) public protoIdToTimestampLast;
 
     // hash protoId with the index placement to get cloneId
@@ -193,8 +193,8 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
         bool floor,
         uint256 index // index at which to mint the clone
     ) external returns (
-        uint256, // cloneId
-        uint256 // protoId
+        uint256 cloneId,
+        uint256 protoId
     ) {
         // ensure enough funds to do some math on
         if (_amount < MIN_AMOUNT_FOR_NEW_CLONE) {
@@ -206,14 +206,14 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
         }
 
         // calculate protoId by hashing identifiying information, precursor to cloneId
-        uint256 protoId = uint256(keccak256(abi.encodePacked(
+        protoId = uint256(keccak256(abi.encodePacked(
             _ERC721Contract,
             _tokenId,
             _ERC20Contract,
             floor
         )));
         // hash protoId and index to get cloneId
-        uint256 cloneId = uint256(keccak256(abi.encodePacked(protoId, index)));
+        cloneId = uint256(keccak256(abi.encodePacked(protoId, index)));
 
         _updatePrice(protoId);
 
@@ -321,8 +321,8 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
                 address(this),
                 _amount
             );
-            // buying out the previous clone owner
 
+            // buying out the previous clone owner
             address curOwner = ownerOf[cloneId];
 
             // subtract subsidy refund from subsidy pool
@@ -346,8 +346,6 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
             // force transfer from current owner to new highest bidder
             forceTransferFrom(curOwner, msg.sender, cloneId); // EXTERNAL CALL
         }
-
-        return (cloneId, protoId);
     }
 
     /**

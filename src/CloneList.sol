@@ -3,7 +3,7 @@ pragma solidity ^0.8.4;
 
 abstract contract CloneList {
 
-    //protoId is a precursor hash to a cloneId used to identify tokenId/erc20 pairs
+    // protoId is a precursor hash to a cloneId used to identify tokenId/erc20 pairs
     mapping(uint256 => uint256) public protoIdToIndexHead;
 
     // mapping to track the index before a specified index

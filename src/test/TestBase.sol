@@ -82,8 +82,10 @@ contract TestBase is Test, DittoMachine {
         eoa4 = generateAddress("eoa3");
     }
 
-    function generateAddress(bytes memory str) internal pure returns (address) {
-        return address(bytes20(keccak256(str)));
+    function generateAddress(bytes memory str) internal returns (address) {
+        address a = address(bytes20(keccak256(str)));
+        vm.label(a, string(str));
+        return a;
     }
 
     function getCloneShape(uint256 cloneId) internal view returns (CloneShape memory) {
