@@ -378,6 +378,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
         address owner = ownerOf[cloneId];
 
         delete cloneIdToShape[cloneId];
+        delete cloneIdToIndex[cloneId];
 
         _burn(cloneId);
         SafeTransferLib.safeTransfer( // EXTERNAL CALL
