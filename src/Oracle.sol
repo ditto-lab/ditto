@@ -11,10 +11,11 @@ abstract contract Oracle {
     }
 
     struct ObservationIndex {
-        uint128 cardinality;
+        uint128 cardinality; // max 65535 = type(uint16).max
         uint128 lastIndex;
     }
 
+    // Observation array is 1 greater than the limit.
     mapping(uint256 => Observation[65536]) observations;
     mapping(uint256 => ObservationIndex) observationIndex;
 
@@ -26,6 +27,7 @@ abstract contract Oracle {
 
         unchecked {
             if (++index.lastIndex == index.cardinality) {
+                // since the maximum length is 65535, array's last timestamp is always 0
                 if (observations[protoId][index.lastIndex].timestamp != 0) {
                     ++index.cardinality;
                 } else {
@@ -48,6 +50,7 @@ abstract contract Oracle {
 
         unchecked {
             for(uint256 i = curCardinality; i < newCardinality; ++i) {
+                // i is max 65534
                 observations[protoId][i].timestamp = 1;
             }
         }
