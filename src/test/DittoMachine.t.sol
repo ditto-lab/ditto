@@ -92,8 +92,8 @@ contract ContractTest is TestBase {
         );
         assertEq(currency.balanceOf(dmAddr), MIN_AMOUNT_FOR_NEW_CLONE);
         assertEq(dm.cloneIdToSubsidy(cloneId), MIN_AMOUNT_FOR_NEW_CLONE * MIN_FEE / DNOM);
-        assertEq(dm.protoIdToCumulativePrice(protoId), 0);
-        assertEq(dm.protoIdToTimestampLast(protoId), INIT_TIME);
+        // assertEq(dm.protoIdToCumulativePrice(protoId), 0);
+        // assertEq(dm.protoIdToTimestampLast(protoId), INIT_TIME);
     }
 
     // test that a non-floor clone is minted
@@ -123,8 +123,8 @@ contract ContractTest is TestBase {
         );
         assertEq(currency.balanceOf(dmAddr), MIN_AMOUNT_FOR_NEW_CLONE);
         assertEq(dm.cloneIdToSubsidy(cloneId), MIN_AMOUNT_FOR_NEW_CLONE * MIN_FEE / DNOM);
-        assertEq(dm.protoIdToCumulativePrice(protoId), 0);
-        assertEq(dm.protoIdToTimestampLast(protoId), INIT_TIME);
+        // assertEq(dm.protoIdToCumulativePrice(protoId), 0);
+        // assertEq(dm.protoIdToTimestampLast(protoId), INIT_TIME);
     }
 
     // test a clone is correctly transferred
@@ -143,8 +143,8 @@ contract ContractTest is TestBase {
         assertEq(currency.balanceOf(dmAddr), MIN_AMOUNT_FOR_NEW_CLONE);
 
         // ensure correct oracle related values
-        assertEq(dm.protoIdToCumulativePrice(protoId1), 0);
-        assertEq(dm.protoIdToTimestampLast(protoId1), INIT_TIME);
+        // assertEq(dm.protoIdToCumulativePrice(protoId1), 0);
+        // assertEq(dm.protoIdToTimestampLast(protoId1), INIT_TIME);
 
         uint256 subsidy1 = dm.cloneIdToSubsidy(cloneId1);
         console.log(subsidy1);
@@ -181,8 +181,8 @@ contract ContractTest is TestBase {
         assertEq(cloneId1, cloneId2);
 
         // ensure correct oracle related values
-        assertEq(dm.protoIdToCumulativePrice(protoId2), shape1.worth * BASE_TERM);
-        assertEq(dm.protoIdToTimestampLast(protoId2), block.timestamp);
+        // assertEq(dm.protoIdToCumulativePrice(protoId2), shape1.worth * BASE_TERM);
+        // assertEq(dm.protoIdToTimestampLast(protoId2), block.timestamp);
 
         CloneShape memory shape2 = getCloneShape(cloneId2);
         uint256 subsidy2 = dm.cloneIdToSubsidy(cloneId2);
@@ -230,15 +230,15 @@ contract ContractTest is TestBase {
         // ensure the clone is burned
         assertEq(dm.ownerOf(cloneId), address(0));
         // ensure correct oracle related values
-        assertEq(dm.protoIdToCumulativePrice(protoId), 0);
-        assertEq(dm.protoIdToTimestampLast(protoId), INIT_TIME);
+        // assertEq(dm.protoIdToCumulativePrice(protoId), 0);
+        // assertEq(dm.protoIdToTimestampLast(protoId), INIT_TIME);
 
         vm.warp(block.timestamp + 100);
 
         (cloneId, protoId) = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, ++index);
         // ensure correct oracle related values
-        assertEq(dm.protoIdToCumulativePrice(protoId), 0);
-        assertEq(dm.protoIdToTimestampLast(protoId), block.timestamp);
+        // assertEq(dm.protoIdToCumulativePrice(protoId), 0);
+        // assertEq(dm.protoIdToTimestampLast(protoId), block.timestamp);
 
         CloneShape memory shape = getCloneShape(cloneId);
 
@@ -260,10 +260,10 @@ contract ContractTest is TestBase {
         assertEq(dm.ownerOf(cloneId), address(0));
 
         // ensure correct oracle related values
-        assertEq(dm.protoIdToCumulativePrice(protoId), shape.worth * 100);
-        assertEq(dm.protoIdToTimestampLast(protoId), block.timestamp);
+        // assertEq(dm.protoIdToCumulativePrice(protoId), shape.worth * 100);
+        // assertEq(dm.protoIdToTimestampLast(protoId), block.timestamp);
 
-        uint lastCumulativePrice = dm.protoIdToCumulativePrice(protoId);
+        // uint lastCumulativePrice = dm.protoIdToCumulativePrice(protoId);
         shape = getCloneShape(cloneId);
 
         vm.startPrank(eoa1);
@@ -271,10 +271,10 @@ contract ContractTest is TestBase {
         (cloneId, protoId) = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, ++index);
 
         // ensure correct oracle related values
-        assertEq(dm.protoIdToCumulativePrice(protoId), lastCumulativePrice + (shape.worth * 200));
-        assertEq(dm.protoIdToTimestampLast(protoId), block.timestamp);
+        // assertEq(dm.protoIdToCumulativePrice(protoId), lastCumulativePrice + (shape.worth * 200));
+        // assertEq(dm.protoIdToTimestampLast(protoId), block.timestamp);
 
-        lastCumulativePrice = dm.protoIdToCumulativePrice(protoId);
+        // lastCumulativePrice = dm.protoIdToCumulativePrice(protoId);
         shape = getCloneShape(cloneId);
 
         dm.setApprovalForAll(eoa2, true);
@@ -285,8 +285,8 @@ contract ContractTest is TestBase {
         // eoa2 should be able to dissolve the clone when it's owner has given approval for all the clones it owns
         dm.dissolve(/*cloneId,*/ protoId, cloneId);
         // ensure correct oracle related values
-        assertEq(dm.protoIdToCumulativePrice(protoId), lastCumulativePrice + (shape.worth * 10));
-        assertEq(dm.protoIdToTimestampLast(protoId), block.timestamp);
+        // assertEq(dm.protoIdToCumulativePrice(protoId), lastCumulativePrice + (shape.worth * 10));
+        // assertEq(dm.protoIdToTimestampLast(protoId), block.timestamp);
         assertEq(dm.ownerOf(cloneId), address(0));
     }
 
@@ -332,8 +332,8 @@ contract ContractTest is TestBase {
         assertEq(currency.balanceOf(dmAddr), 0);
 
         // ensure correct oracle related values
-        assertEq(dm.protoIdToCumulativePrice(protoId1), shape.worth * 100);
-        assertEq(dm.protoIdToTimestampLast(protoId1), block.timestamp);
+        // assertEq(dm.protoIdToCumulativePrice(protoId1), shape.worth * 100);
+        // assertEq(dm.protoIdToTimestampLast(protoId1), block.timestamp);
     }
 
     function testSellUnderlying1155() public {
@@ -372,8 +372,8 @@ contract ContractTest is TestBase {
         assertEq(currency.balanceOf(dmAddr), 0);
 
         // ensure correct oracle related values
-        assertEq(dm.protoIdToCumulativePrice(protoId1), shape.worth * 100);
-        assertEq(dm.protoIdToTimestampLast(protoId1), block.timestamp);
+        // assertEq(dm.protoIdToCumulativePrice(protoId1), shape.worth * 100);
+        // assertEq(dm.protoIdToTimestampLast(protoId1), block.timestamp);
     }
 
     function testSellUnderlying1155Batch() public {
@@ -439,8 +439,8 @@ contract ContractTest is TestBase {
         assertEq(currency.balanceOf(dmAddr), 0);
 
         // ensure correct oracle related values
-        assertEq(dm.protoIdToCumulativePrice(protoIds[0]), shapes[0].worth * 100);
-        assertEq(dm.protoIdToTimestampLast(protoIds[0]), block.timestamp);
+        // assertEq(dm.protoIdToCumulativePrice(protoIds[0]), shapes[0].worth * 100);
+        // assertEq(dm.protoIdToTimestampLast(protoIds[0]), block.timestamp);
     }
 
     function testSellUnderlyingWithRoyalties() public {
@@ -480,7 +480,7 @@ contract ContractTest is TestBase {
         assertEq(currency.balanceOf(eoaSeller), (shape1.worth + subsidy1) - royaltyAmount);
 
         // ensure correct oracle related values
-        assertEq(dm.protoIdToCumulativePrice(protoId1), shape1.worth * 100);
-        assertEq(dm.protoIdToTimestampLast(protoId1), block.timestamp);
+        // assertEq(dm.protoIdToCumulativePrice(protoId1), shape1.worth * 100);
+        // assertEq(dm.protoIdToTimestampLast(protoId1), block.timestamp);
     }
 }

@@ -46,12 +46,12 @@ contract HeatTest is TestBase {
             console.log(minAmountToBuyClone - fee);
             // console.log(dm._getMinAmount(shape, false));
 
-            uint256 lastCumulativePrice = dm.protoIdToCumulativePrice(protoId);
+            // uint256 lastCumulativePrice = dm.protoIdToCumulativePrice(protoId);
             dm.duplicate(nftAddr, nftId, currencyAddr, minAmountToBuyClone, false, 0);
 
             // ensure correct oracle related values
-            assertEq(dm.protoIdToCumulativePrice(protoId), lastCumulativePrice + (shape.worth * i));
-            assertEq(dm.protoIdToTimestampLast(protoId), block.timestamp);
+            // assertEq(dm.protoIdToCumulativePrice(protoId), lastCumulativePrice + (shape.worth * i));
+            // assertEq(dm.protoIdToTimestampLast(protoId), block.timestamp);
             // console.log(dm.cloneIdToSubsidy(cloneId));
 
             shape = getCloneShape(cloneId);
@@ -88,12 +88,12 @@ contract HeatTest is TestBase {
             currency.mint(eoa1, minAmountToBuyClone);
             currency.approve(dmAddr, minAmountToBuyClone);
 
-            uint256 lastCumulativePrice = dm.protoIdToCumulativePrice(protoId);
+            // uint256 lastCumulativePrice = dm.protoIdToCumulativePrice(protoId);
             dm.duplicate(nftAddr, nftId, currencyAddr, minAmountToBuyClone, false, 0);
 
             // ensure correct oracle related values
-            assertEq(dm.protoIdToCumulativePrice(protoId), lastCumulativePrice + (shape.worth * ((BASE_TERM-1) + shape.heat**2)));
-            assertEq(dm.protoIdToTimestampLast(protoId), block.timestamp);
+            // assertEq(dm.protoIdToCumulativePrice(protoId), lastCumulativePrice + (shape.worth * ((BASE_TERM-1) + shape.heat**2)));
+            // assertEq(dm.protoIdToTimestampLast(protoId), block.timestamp);
 
             shape = getCloneShape(cloneId);
             assertEq(shape.heat, 1);
@@ -144,7 +144,12 @@ contract HeatTest is TestBase {
                 "price"
             );
 
+            // uint256 lastCumulativePrice = dm.protoIdToCumulativePrice(protoId);
             dm.duplicate(nftAddr, nftId, currencyAddr, minAmountToBuyClone, false, 0);
+
+            // ensure correct oracle related values
+            // assertEq(dm.protoIdToCumulativePrice(protoId), lastCumulativePrice + (shape.worth * time));
+            // assertEq(dm.protoIdToTimestampLast(protoId), block.timestamp);
             shape = getCloneShape(cloneId);
         }
         vm.stopPrank();

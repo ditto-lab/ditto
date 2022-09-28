@@ -65,11 +65,6 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
     // tracks balance of subsidy for a specific cloneId
     mapping(uint256 => uint128) public cloneIdToSubsidy;
 
-    // protoId cumulative price for TWAP
-    mapping(uint256 => uint256) public protoIdToCumulativePrice;
-    // last timestamp recorded for protoId TWAP
-    mapping(uint256 => uint256) public protoIdToTimestampLast;
-
     // hash protoId with the index placement to get cloneId
     mapping(uint256 => CloneShape) public cloneIdToShape;
 
@@ -193,10 +188,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
         uint128 _amount,
         bool floor,
         uint256 index // index at which to mint the clone
-    ) external returns (
-        uint256 cloneId,
-        uint256 protoId
-    ) {
+    ) external returns (uint256 cloneId, uint256 protoId) {
         // ensure enough funds to do some math on
         if (_amount < MIN_AMOUNT_FOR_NEW_CLONE) {
             revert AmountInvalidMin();

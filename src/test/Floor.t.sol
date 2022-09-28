@@ -131,8 +131,8 @@ contract FloorTest is TestBase {
         assertEq(currency.balanceOf(dmAddr), 0);
 
         // ensure correct oracle related values
-        assertEq(dm.protoIdToCumulativePrice(protoId1), shape.worth * 100);
-        assertEq(dm.protoIdToTimestampLast(protoId1), block.timestamp);
+        // assertEq(dm.protoIdToCumulativePrice(protoId1), shape.worth * 100);
+        // assertEq(dm.protoIdToTimestampLast(protoId1), block.timestamp);
     }
 
     function testFloorSellUnderlyingForCloneWhileFloorExists() public {
