@@ -213,10 +213,17 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
             _ERC20Contract,
             floor
         )));
+
+        // Grow observation array size to 1 if a new protoId
+        if (observationIndex[protoId].cardinality == 0) {
+            Oracle.grow(protoId, 1);
+        }
         // hash protoId and index to get cloneId
         cloneId = uint256(keccak256(abi.encodePacked(protoId, index)));
 
-        _updatePrice(protoId);
+        if (index == protoIdToIndexHead[protoId]) {
+            Oracle.write(protoId, cloneIdToShape[cloneId].worth);
+        }
 
         if (ownerOf[cloneId] == address(0)) {
             // check that index references have been set
@@ -370,7 +377,9 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
 
         CloneShape memory cloneShape = cloneIdToShape[cloneId];
 
-        _updatePrice(protoId);
+        if (index == protoIdToIndexHead[protoId]) {
+            Oracle.write(protoId, cloneIdToShape[cloneId].worth);
+        }
 
         popListIndex(protoId, index);
 
@@ -478,7 +487,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
             revert CloneNotFound();
         }
 
-        _updatePrice(protoId);
+        Oracle.write(protoId, cloneIdToShape[cloneId].worth);
 
         CloneShape memory cloneShape = cloneIdToShape[cloneId];
         uint256 subsidy = cloneIdToSubsidy[cloneId];
@@ -624,18 +633,6 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
             try IERC721TokenEjector(from).onERC721Ejected{gas: 30000}(address(this), to, id, "") {} // EXTERNAL CALL
             catch {}
         }
-    }
-
-    // @dev: this function is not prod ready
-    function _updatePrice(uint256 protoId) internal {
-        uint256 cloneId = uint256(keccak256(abi.encodePacked(protoId, protoIdToIndexHead[protoId])));
-        uint256 timeElapsed = block.timestamp - protoIdToTimestampLast[protoId];
-        if (timeElapsed > 0) {
-            unchecked  {
-                protoIdToCumulativePrice[protoId] += cloneIdToShape[cloneId].worth * timeElapsed;
-            }
-        }
-        protoIdToTimestampLast[protoId] = block.timestamp;
     }
 
 }

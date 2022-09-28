@@ -17,6 +17,7 @@ abstract contract Oracle {
     mapping(uint256 => Observation[65536]) observations;
     mapping(uint256 => ObservationIndex) observationIndex;
 
+    // write current price (before a trade)
     function write(uint256 protoId, uint256 price) internal {
         ObservationIndex memory index = observationIndex[protoId];
         Observation memory lastObservation = observations[protoId][index.lastIndex];
@@ -40,13 +41,13 @@ abstract contract Oracle {
         }
     }
 
-    function grow(uint256 cloneId, uint16 newCardinality) public {
-        uint128 curCardinality = observationIndex[cloneId].cardinality;
+    function grow(uint256 protoId, uint16 newCardinality) public {
+        uint128 curCardinality = observationIndex[protoId].cardinality;
         if (newCardinality <= curCardinality) revert CardinalityNotAllowed();
 
         unchecked {
             for(uint256 i = curCardinality; i < newCardinality; ++i) {
-                observations[cloneId][i].timestamp = 1;
+                observations[protoId][i].timestamp = 1;
             }
         }
     }
