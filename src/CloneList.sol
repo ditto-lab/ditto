@@ -55,7 +55,7 @@ abstract contract CloneList {
         // indexHead -> next
         // head = next
         protoIdToIndexHead[protoId] = protoIdToIndexToAfter[protoId][head]; // move head to next index
-        unchecked { protoIdToDepth[protoId]--; } // should not underflow, will error above if clone does not exist
+        unchecked { --protoIdToDepth[protoId]; } // should not underflow, will error above if clone does not exist
 
         // index pointers will change:
         // prev -> index -> next

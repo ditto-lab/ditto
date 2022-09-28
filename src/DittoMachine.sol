@@ -11,6 +11,7 @@ import {Base64} from 'base64-sol/base64.sol';
 import {CloneList} from "./CloneList.sol";
 import {TimeCurve} from "./TimeCurve.sol";
 import {BlockRefund} from "./BlockRefund.sol";
+import {Oracle} from "./Oracle.sol";
 
 /**
  * @title NFT derivative exchange inspired by the SALSA concept.
@@ -19,7 +20,7 @@ import {BlockRefund} from "./BlockRefund.sol";
  * the right to ownership when it is sold via this contract. Anybody may buy the
  * token for a higher price and force a transfer from the previous owner to the new buyer.
  */
-contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, CloneList, BlockRefund {
+contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, CloneList, BlockRefund, Oracle {
     /**
      * @notice Insufficient bid for purchasing a clone.
      * @dev thrown when the number of erc20 tokens sent is lower than
