@@ -92,8 +92,17 @@ contract ContractTest is TestBase {
         );
         assertEq(currency.balanceOf(dmAddr), MIN_AMOUNT_FOR_NEW_CLONE);
         assertEq(dm.cloneIdToSubsidy(cloneId), MIN_AMOUNT_FOR_NEW_CLONE * MIN_FEE / DNOM);
-        // assertEq(dm.protoIdToCumulativePrice(protoId), 0);
-        // assertEq(dm.protoIdToTimestampLast(protoId), INIT_TIME);
+
+        // oracle assertions
+        uint256[] memory secondsAgos = new uint256[](1);
+        secondsAgos[0] = 0;
+        uint256[] memory obs = dm.observe(protoId, secondsAgos);
+        assertEq(obs.length, 1);
+        assertEq(obs[0], 0);
+
+        vm.warp(block.timestamp+10);
+        obs = dm.observe(protoId, secondsAgos);
+        assertEq(obs[0], getCloneShape(cloneId).worth*10);
     }
 
     // test that a non-floor clone is minted
@@ -123,8 +132,17 @@ contract ContractTest is TestBase {
         );
         assertEq(currency.balanceOf(dmAddr), MIN_AMOUNT_FOR_NEW_CLONE);
         assertEq(dm.cloneIdToSubsidy(cloneId), MIN_AMOUNT_FOR_NEW_CLONE * MIN_FEE / DNOM);
-        // assertEq(dm.protoIdToCumulativePrice(protoId), 0);
-        // assertEq(dm.protoIdToTimestampLast(protoId), INIT_TIME);
+
+        // oracle assertions
+        uint256[] memory secondsAgos = new uint256[](1);
+        secondsAgos[0] = 0;
+        uint256[] memory obs = dm.observe(protoId, secondsAgos);
+        assertEq(obs.length, 1);
+        assertEq(obs[0], 0);
+
+        vm.warp(block.timestamp+10);
+        obs = dm.observe(protoId, secondsAgos);
+        assertEq(obs[0], getCloneShape(cloneId).worth*10);
     }
 
     // test a clone is correctly transferred
@@ -143,8 +161,17 @@ contract ContractTest is TestBase {
         assertEq(currency.balanceOf(dmAddr), MIN_AMOUNT_FOR_NEW_CLONE);
 
         // ensure correct oracle related values
-        // assertEq(dm.protoIdToCumulativePrice(protoId1), 0);
-        // assertEq(dm.protoIdToTimestampLast(protoId1), INIT_TIME);
+        ////////////////////
+        uint256[] memory secondsAgos = new uint256[](1);
+        secondsAgos[0] = 0;
+        uint256[] memory obs = dm.observe(protoId1, secondsAgos);
+        assertEq(obs.length, 1);
+        assertEq(obs[0], 0);
+
+        vm.warp(block.timestamp+10);
+        obs = dm.observe(protoId1, secondsAgos);
+        assertEq(obs[0], getCloneShape(cloneId1).worth*10);
+        ////////////////////
 
         uint256 subsidy1 = dm.cloneIdToSubsidy(cloneId1);
         console.log(subsidy1);
@@ -156,7 +183,7 @@ contract ContractTest is TestBase {
         vm.stopPrank();
         // increment time so that clone's term is in past
         vm.roll(block.number+1);
-        vm.warp(block.timestamp + BASE_TERM);
+        vm.warp(block.timestamp + BASE_TERM-10); // -10 to account for oracle section above
 
         assertEq(shape1.term, block.timestamp);
 
