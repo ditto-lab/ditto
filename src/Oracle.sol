@@ -58,20 +58,21 @@ abstract contract Oracle {
 
     function observe(
         uint256 protoId,
-        uint256[] calldata secondsAgos
+        uint256[] calldata secondsAgos,
+        uint256 curWorth
     ) internal view returns (uint256[] memory cumulativePrices) {
         cumulativePrices = new uint256[](secondsAgos.length);
         ObservationIndex memory index = observationIndex[protoId];
         for (uint256 i=0; i < secondsAgos.length; ++i) {
-            cumulativePrices[i] = observeSingle(protoId, secondsAgos[i], index);
+            cumulativePrices[i] = observeSingle(protoId, secondsAgos[i], index, curWorth);
         }
     }
 
-    function observeSingle(uint256 protoId, uint256 secondsAgo, ObservationIndex memory lastIndex) internal view returns (uint256 cumulativePrice) {
+    function observeSingle(uint256 protoId, uint256 secondsAgo, ObservationIndex memory lastIndex, uint256 curWorth) internal view returns (uint256 cumulativePrice) {
         if (secondsAgo == 0) {
             Observation memory lastObservation = observations[protoId][lastIndex.lastIndex];
             if (block.timestamp != lastObservation.timestamp) {
-                return transform(lastObservation, block.timestamp);
+                return transform(lastObservation, block.timestamp, curWorth);
             }
             return lastObservation.cumulativeWorth;
         }
@@ -79,7 +80,7 @@ abstract contract Oracle {
         uint256 targetTimestamp = block.timestamp - secondsAgo;
 
         (Observation memory beforeOrAt, Observation memory atOrAfter) =
-            getSurroundingObservations(protoId, targetTimestamp, lastIndex);
+            getSurroundingObservations(protoId, targetTimestamp, lastIndex, curWorth);
 
         if (targetTimestamp == beforeOrAt.timestamp) {
             // we're at the left boundary
@@ -99,7 +100,7 @@ abstract contract Oracle {
     }
 
     function getSurroundingObservations(
-        uint256 protoId, uint256 targetTimestamp, ObservationIndex memory lastIndex
+        uint256 protoId, uint256 targetTimestamp, ObservationIndex memory lastIndex, uint256 curWorth
     ) internal view returns (Observation memory beforeOrAt, Observation memory atOrAfter) {
 
         // check if the newest obervation is older than the requested observation
@@ -109,7 +110,7 @@ abstract contract Oracle {
             return (beforeOrAt, atOrAfter);
         } else if (targetTimestamp > beforeOrAt.timestamp) {
             atOrAfter.timestamp = targetTimestamp;
-            atOrAfter.cumulativeWorth = transform(beforeOrAt, targetTimestamp);
+            atOrAfter.cumulativeWorth = transform(beforeOrAt, targetTimestamp, curWorth);
             return (beforeOrAt, atOrAfter);
         }
 
@@ -155,10 +156,10 @@ abstract contract Oracle {
     }
 
     function transform(
-        Observation memory lastObservation, uint256 targetTimestamp
+        Observation memory lastObservation, uint256 targetTimestamp, uint256 curWorth
     ) internal pure returns (uint256 cumulativeWorth) {
         return lastObservation.cumulativeWorth +
-            (targetTimestamp - lastObservation.timestamp) * lastObservation.cumulativeWorth;
+            (targetTimestamp - lastObservation.timestamp) * curWorth;
     }
 
 }
