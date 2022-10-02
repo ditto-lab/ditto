@@ -141,17 +141,9 @@ abstract contract Oracle {
             beforeOrAt = observations[protoId][i % lastIndex.cardinality];
             atOrAfter = observations[protoId][(i+1) % lastIndex.cardinality];
 
-            if (targetTimestamp < beforeOrAt.timestamp) {
-                r = i-1;
-                continue;
-            }
-
-            // beforeOrAt.timestamp <= targetTimestamp
-
-            if (targetTimestamp <= atOrAfter.timestamp) break; // found
-
-            // atOrAfter.timestamp < targetTimestamp, atOrAfter is at i+1
-            l = i+1;
+            if (targetTimestamp < beforeOrAt.timestamp) r = i-1;
+            else if (targetTimestamp > atOrAfter.timestamp) l = i+1; // beforeOrAt.timestamp <= targetTimestamp
+            else break; // beforeOrAt.timestamp <= targetTimestamp <= atOrAfter.timestamp, found
         }
     }
 
