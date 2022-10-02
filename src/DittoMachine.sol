@@ -206,10 +206,6 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
             floor
         )));
 
-        // Grow observation array size to 1 if a new protoId
-        if (observationIndex[protoId].cardinality == 0) {
-            Oracle.grow(protoId, 1);
-        }
         // hash protoId and index to get cloneId
         cloneId = uint256(keccak256(abi.encodePacked(protoId, index)));
 

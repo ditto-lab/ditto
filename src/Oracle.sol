@@ -6,8 +6,8 @@ abstract contract Oracle {
     error TimeRequestedTooOld();
 
     struct Observation {
-        uint256 timestamp;
-        uint256 cumulativeWorth;
+        uint128 timestamp;
+        uint128 cumulativeWorth;
     }
 
     struct ObservationIndex {
@@ -16,22 +16,23 @@ abstract contract Oracle {
     }
 
     // Observation array is 1 greater than the limit.
-    mapping(uint256 => Observation[65536]) observations;
-    mapping(uint256 => ObservationIndex) observationIndex;
+    mapping(uint256 => Observation[65536]) internal observations;
+    mapping(uint256 => ObservationIndex) internal observationIndex;
 
-    // write current price (before a trade)
+    // write current price (before a trade).
+    // if cardinality is 0, it write the price at position 0 (the same behavior when cardinality=1)
     function write(uint256 protoId, uint256 price) internal {
         ObservationIndex memory index = observationIndex[protoId];
         Observation memory lastObservation = observations[protoId][index.lastIndex];
         if (block.timestamp == lastObservation.timestamp) return;
 
         unchecked {
-            if (++index.lastIndex == index.cardinality) {
+            if (++index.lastIndex >= index.cardinality) { // > should only be true for 0 cardinality
                 // since the maximum length is 65535, array's last timestamp is always 0
                 if (observations[protoId][index.lastIndex].timestamp != 0) {
                     ++index.cardinality;
                 } else {
-                    index.lastIndex = 0;
+                    index.lastIndex = 0; // if index
                 }
             }
 
@@ -120,7 +121,6 @@ abstract contract Oracle {
 
         // apply binary search
         return binarySearch(protoId, targetTimestamp, lastIndex);
-
     }
 
     function binarySearch(
