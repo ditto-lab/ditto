@@ -271,7 +271,7 @@ library TimeCurve {
         revert();
     }
 
-    function calc(uint256 heat) internal pure returns(uint256) {
+    function calc(uint256 heat) internal pure returns(uint128) {
         // 7*log(cbrt(heat))*sqrt(heat)
         int128 h = ABDKMath64x64.fromUInt(heat);        // convert heat
 
@@ -283,7 +283,7 @@ library TimeCurve {
         int128 base   = ABDKMath64x64.mul(log7, hSqrt);  // multiply log by sqrt of heat
         int128 length = ABDKMath64x64.mul(SECONDS_IN_DAY, base);      // multiply base by 1 day
 
-        return ABDKMath64x64.toUInt(length);  // convert from abdk 64.64 to uint256
+        return ABDKMath64x64.toUInt(length);  // convert from abdk 64.64 to uint128
     }
 
 }

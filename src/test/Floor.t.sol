@@ -30,7 +30,7 @@ contract FloorTest is TestBase {
 
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE * 2);
 
-        uint256 floorWorth = getCloneShape(floorId).worth;
+        uint128 floorWorth = getCloneShape(floorId).worth;
         vm.expectRevert(abi.encodeWithSelector(DittoMachine.AmountInvalid.selector));
         // expect revert with amount less than floor clone worth
         dm.duplicate(nftAddr, nftId, currencyAddr, floorWorth-1, false, 0);
@@ -75,7 +75,7 @@ contract FloorTest is TestBase {
         (uint256 floorId, /*uint256 protoId*/) = dm.duplicate(nftAddr, FLOOR_ID, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE * 3, true, 0);
         vm.stopPrank();
 
-        uint256 newClonePrice = dm.getMinAmountForCloneTransfer(cloneId);
+        uint128 newClonePrice = dm.getMinAmountForCloneTransfer(cloneId);
 
         currency.mint(eoa1, newClonePrice);
 

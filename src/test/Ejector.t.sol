@@ -17,7 +17,7 @@ contract EjectorTest is TestBase {
         (uint256 cloneId, /*uint256 protoId*/) = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
         vm.stopPrank();
 
-        uint256 minAmountToBuyClone = dm.getMinAmountForCloneTransfer(cloneId);
+        uint128 minAmountToBuyClone = dm.getMinAmountForCloneTransfer(cloneId);
         currency.mint(eoa1, minAmountToBuyClone);
 
         vm.startPrank(eoa1);
@@ -40,7 +40,7 @@ contract EjectorTest is TestBase {
         (uint256 cloneId, /*uint256 protoId*/) = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
         vm.stopPrank();
 
-        uint256 minAmountToBuyClone = dm.getMinAmountForCloneTransfer(cloneId);
+        uint128 minAmountToBuyClone = dm.getMinAmountForCloneTransfer(cloneId);
         currency.mint(eoa1, minAmountToBuyClone);
 
         vm.startPrank(eoa1);
@@ -63,7 +63,7 @@ contract EjectorTest is TestBase {
         (uint256 cloneId, /*uint256 protoId*/) = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
         vm.stopPrank();
 
-        uint256 minAmountToBuyClone = dm.getMinAmountForCloneTransfer(cloneId);
+        uint128 minAmountToBuyClone = dm.getMinAmountForCloneTransfer(cloneId);
         currency.mint(eoa1, minAmountToBuyClone);
 
         vm.startPrank(eoa1);
