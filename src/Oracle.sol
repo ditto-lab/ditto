@@ -21,7 +21,7 @@ abstract contract Oracle {
 
     // write current price (before a trade).
     // if cardinality is 0, it write the price at position 0 (the same behavior when cardinality=1)
-    function write(uint256 protoId, uint256 price) internal {
+    function write(uint256 protoId, uint128 price) internal {
         ObservationIndex memory index = observationIndex[protoId];
         Observation memory lastObservation = observations[protoId][index.lastIndex];
         if (block.timestamp == lastObservation.timestamp) return;
@@ -36,9 +36,9 @@ abstract contract Oracle {
                 }
             }
 
-            uint256 timeDelta = block.timestamp - lastObservation.timestamp;
+            uint128 timeDelta = uint128(block.timestamp) - lastObservation.timestamp;
             observations[protoId][index.lastIndex] = Observation({
-                timestamp: block.timestamp,
+                timestamp: uint128(block.timestamp),
                 cumulativeWorth: lastObservation.cumulativeWorth + (timeDelta * price)
             });
             observationIndex[protoId] = index;
@@ -59,8 +59,8 @@ abstract contract Oracle {
 
     function observe(
         uint256 protoId,
-        uint256[] calldata secondsAgos,
-        uint256 curWorth
+        uint128[] calldata secondsAgos,
+        uint128 curWorth
     ) internal view returns (uint256[] memory cumulativePrices) {
         cumulativePrices = new uint256[](secondsAgos.length);
         ObservationIndex memory index = observationIndex[protoId];
@@ -69,19 +69,19 @@ abstract contract Oracle {
         }
     }
 
-    function observeSingle(uint256 protoId, uint256 secondsAgo, ObservationIndex memory lastIndex, uint256 curWorth) internal view returns (uint256 cumulativePrice) {
+    function observeSingle(uint256 protoId, uint128 secondsAgo, ObservationIndex memory lastIndex, uint128 curWorth) internal view returns (uint128 cumulativePrice) {
         if (secondsAgo == 0) {
             Observation memory lastObservation = observations[protoId][lastIndex.lastIndex];
             if (block.timestamp != lastObservation.timestamp) {
-                return transform(lastObservation, block.timestamp, curWorth);
+                return transform(lastObservation, uint128(block.timestamp), curWorth);
             }
             return lastObservation.cumulativeWorth;
         }
 
-        uint256 targetTimestamp = block.timestamp - secondsAgo;
+        uint128 targetTimestamp = uint128(block.timestamp) - secondsAgo;
 
         (Observation memory beforeOrAt, Observation memory atOrAfter) =
-            getSurroundingObservations(protoId, targetTimestamp, lastIndex, curWorth);
+            getSurroundingObservations(protoId, uint128(targetTimestamp), lastIndex, curWorth);
 
         if (targetTimestamp == beforeOrAt.timestamp) {
             // we're at the left boundary
@@ -91,8 +91,8 @@ abstract contract Oracle {
             return atOrAfter.cumulativeWorth;
         } else {
             // middle
-            uint256 observationTimeDelta = atOrAfter.timestamp - beforeOrAt.timestamp;
-            uint256 targetDelta = targetTimestamp - beforeOrAt.timestamp;
+            uint128 observationTimeDelta = atOrAfter.timestamp - beforeOrAt.timestamp;
+            uint128 targetDelta = targetTimestamp - beforeOrAt.timestamp;
 
             return
                 beforeOrAt.cumulativeWorth +
@@ -101,7 +101,7 @@ abstract contract Oracle {
     }
 
     function getSurroundingObservations(
-        uint256 protoId, uint256 targetTimestamp, ObservationIndex memory lastIndex, uint256 curWorth
+        uint256 protoId, uint128 targetTimestamp, ObservationIndex memory lastIndex, uint128 curWorth
     ) internal view returns (Observation memory beforeOrAt, Observation memory atOrAfter) {
 
         // check if the newest obervation is older than the requested observation
@@ -124,7 +124,7 @@ abstract contract Oracle {
     }
 
     function binarySearch(
-        uint256 protoId, uint256 targetTimestamp, ObservationIndex memory lastIndex
+        uint256 protoId, uint128 targetTimestamp, ObservationIndex memory lastIndex
     ) internal view returns (Observation memory beforeOrAt, Observation memory atOrAfter) {
         // binary search on a sorted rotated array
         uint256 l = (lastIndex.lastIndex + 1) % lastIndex.cardinality; // oldest obervation
@@ -156,8 +156,8 @@ abstract contract Oracle {
     }
 
     function transform(
-        Observation memory lastObservation, uint256 targetTimestamp, uint256 curWorth
-    ) internal pure returns (uint256 cumulativeWorth) {
+        Observation memory lastObservation, uint128 targetTimestamp, uint128 curWorth
+    ) internal pure returns (uint128 cumulativeWorth) {
         return lastObservation.cumulativeWorth +
             (targetTimestamp - lastObservation.timestamp) * curWorth;
     }
