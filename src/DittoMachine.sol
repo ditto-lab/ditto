@@ -400,7 +400,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
         return _minAmount + feePortion;
     }
 
-    function observe(uint256 protoId, uint256[] calldata secondsAgos) external view returns (uint256[] memory cumulativePrices) {
+    function observe(uint256 protoId, uint128[] calldata secondsAgos) external view returns (uint256[] memory cumulativePrices) {
         uint256 cloneId = uint256(keccak256(abi.encodePacked(protoId, protoIdToIndexHead[protoId])));
         return Oracle.observe(protoId, secondsAgos, cloneIdToShape[cloneId].worth);
     }

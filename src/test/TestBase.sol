@@ -95,8 +95,4 @@ contract TestBase is Test, DittoMachine {
         CloneShape memory shape = CloneShape(tokenId, ERC721Contract, ERC20Contract, heat, floor, worth, term);
         return shape;
     }
-
-    function getUintArray(uint256 len) internal returns (uint256[] memory arr) {
-        arr = new uint256[](len);
-    }
 }

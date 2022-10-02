@@ -94,7 +94,7 @@ contract ContractTest is TestBase {
         assertEq(dm.cloneIdToSubsidy(cloneId), MIN_AMOUNT_FOR_NEW_CLONE * MIN_FEE / DNOM);
 
         // oracle assertions
-        uint256[] memory secondsAgos = new uint256[](1);
+        uint128[] memory secondsAgos = new uint128[](1);
         secondsAgos[0] = 0;
         uint256[] memory obs = dm.observe(protoId, secondsAgos);
         assertEq(obs.length, 1);
@@ -134,7 +134,7 @@ contract ContractTest is TestBase {
         assertEq(dm.cloneIdToSubsidy(cloneId), MIN_AMOUNT_FOR_NEW_CLONE * MIN_FEE / DNOM);
 
         // oracle assertions
-        uint256[] memory secondsAgos = new uint256[](1);
+        uint128[] memory secondsAgos = new uint128[](1);
         secondsAgos[0] = 0;
         uint256[] memory obs = dm.observe(protoId, secondsAgos);
         assertEq(obs.length, 1);
@@ -171,7 +171,7 @@ contract ContractTest is TestBase {
 
         // ensure correct oracle related values
         {
-            uint256[] memory secondsAgos = getUintArray(1);
+            uint128[] memory secondsAgos = new uint128[](1);
             secondsAgos[0] = 0;
             uint256[] memory obs = dm.observe(protoId1, secondsAgos);
             assertEq(obs.length, 1);
@@ -212,7 +212,7 @@ contract ContractTest is TestBase {
 
         // ensure correct oracle related values
         {
-            uint256[] memory secondsAgos = new uint256[](1);
+            uint128[] memory secondsAgos = new uint128[](1);
             secondsAgos[0] = 0;
             uint256[] memory obs1 = dm.observe(protoId1, secondsAgos);
             assertEq(obs1.length, 1);

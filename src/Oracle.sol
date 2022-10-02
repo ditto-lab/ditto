@@ -20,19 +20,21 @@ abstract contract Oracle {
     mapping(uint256 => ObservationIndex) internal observationIndex;
 
     // write current price (before a trade).
-    // if cardinality is 0, it write the price at position 0 (the same behavior when cardinality=1)
+    // If cardinality is 0, it first sets it to 1.
+
     function write(uint256 protoId, uint128 price) internal {
         ObservationIndex memory index = observationIndex[protoId];
         Observation memory lastObservation = observations[protoId][index.lastIndex];
         if (block.timestamp == lastObservation.timestamp) return;
 
+        if (index.cardinality == 0) index.cardinality = 1;
         unchecked {
-            if (++index.lastIndex >= index.cardinality) { // > should only be true for 0 cardinality
+            if (++index.lastIndex == index.cardinality) {
                 // since the maximum length is 65535, array's last timestamp is always 0
                 if (observations[protoId][index.lastIndex].timestamp != 0) {
                     ++index.cardinality;
                 } else {
-                    index.lastIndex = 0; // if index
+                    index.lastIndex = 0;
                 }
             }
 
@@ -45,11 +47,11 @@ abstract contract Oracle {
         }
     }
 
-    function grow(uint256 protoId, uint16 newCardinality) public {
+    function grow(uint256 protoId, uint16 newCardinality) external {
         uint128 curCardinality = observationIndex[protoId].cardinality;
-        if (newCardinality <= curCardinality) revert CardinalityNotAllowed();
 
         unchecked {
+            // a no-op if newCardinality <= curCardinality
             for(uint256 i = curCardinality; i < newCardinality; ++i) {
                 // i is max 65534
                 observations[protoId][i].timestamp = 1;
