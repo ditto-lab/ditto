@@ -55,10 +55,10 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
         uint256 tokenId;
         address ERC721Contract;
         address ERC20Contract;
-        uint128 worth;
-        uint128 term;
         uint8 heat;
         bool floor;
+        uint128 worth;
+        uint128 term;
     }
 
     // tracks balance of subsidy for a specific cloneId
