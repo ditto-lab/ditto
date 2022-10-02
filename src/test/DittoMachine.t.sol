@@ -62,7 +62,7 @@ contract ContractTest is TestBase {
         // TODO: test revert when clone has been minted.
     }
 
-    function testFailDuplicateForFloor(uint256 _currAmount) public {
+    function testFailDuplicateForFloor(uint128 _currAmount) public {
         dm.duplicate(nftAddr, FLOOR_ID, currencyAddr, _currAmount, true, 0);
     }
 
@@ -160,8 +160,8 @@ contract ContractTest is TestBase {
 
         assertEq(shape1.term, block.timestamp);
 
-        uint256 minAmountToBuyClone = dm.getMinAmountForCloneTransfer(cloneId1);
-        uint256 minAmountWithoutSubsidy = shape1.worth;
+        uint128 minAmountToBuyClone = dm.getMinAmountForCloneTransfer(cloneId1);
+        uint128 minAmountWithoutSubsidy = shape1.worth;
         assertEq(minAmountToBuyClone, minAmountWithoutSubsidy + (minAmountWithoutSubsidy * (MIN_FEE*2) / DNOM));
 
         currency.mint(eoa2, minAmountToBuyClone);

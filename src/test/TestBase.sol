@@ -41,6 +41,7 @@ contract TestBase is Test, DittoMachine {
     BidderWithGassyEjector immutable bidderWithGassyEjector;
 
     address eoaSeller;
+    address eoa0;
     address eoa1;
     address eoa2;
     address eoa3;
@@ -74,6 +75,7 @@ contract TestBase is Test, DittoMachine {
         currencyAddr = address(currency);
 
         eoaSeller = generateAddress("eoaSeller");
+        eoa0 = generateAddress("eoa0");
         eoa1 = generateAddress("eoa1");
         eoa2 = generateAddress("eoa2");
         eoa3 = generateAddress("eoa3");
@@ -85,10 +87,10 @@ contract TestBase is Test, DittoMachine {
     }
 
     function getCloneShape(uint256 cloneId) internal view returns (CloneShape memory) {
-        (uint256 tokenId, uint256 worth, address ERC721Contract,
-            address ERC20Contract, uint8 heat, bool floor, uint256 term) = dm.cloneIdToShape(cloneId);
+        (uint256 tokenId, address ERC721Contract,
+            address ERC20Contract, uint128 worth, uint128 term, uint8 heat, bool floor) = dm.cloneIdToShape(cloneId);
 
-        CloneShape memory shape = CloneShape(tokenId, worth, ERC721Contract, ERC20Contract, heat, floor, term);
+        CloneShape memory shape = CloneShape(tokenId, ERC721Contract, ERC20Contract, worth, term, heat, floor);
         return shape;
     }
 }
