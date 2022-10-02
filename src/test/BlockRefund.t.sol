@@ -43,6 +43,7 @@ contract BlockRefundTest is TestBase {
 
     function testRefundFuzz(uint128 amount0, uint128 amount1) public {
         vm.assume(amount0 >= MIN_AMOUNT_FOR_NEW_CLONE);
+        vm.assume(amount1 < 2**123);
         vm.assume(amount0 < amount1);
 
         // amount1 can be assumed to fit because it is greater tha  amount0
@@ -112,7 +113,7 @@ contract BlockRefundTest is TestBase {
 
     function testRefundSelfFuzz(uint128 amount) public {
         vm.assume(amount >= MIN_AMOUNT_FOR_NEW_CLONE);
-        vm.assume(amount < 2**235); // math will overflow error if amount is too large
+        vm.assume(amount < 2**105); // math will overflow error if amount is too large
 
         uint256 nftId = nft.mint();
 

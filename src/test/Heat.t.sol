@@ -30,14 +30,11 @@ contract HeatTest is TestBase {
         assertEq(shape.heat, 1);
         // console.log(dm.cloneIdToSubsidy(cloneId));
 
-        vm.stopPrank();
-
-        for (uint256 i = 1; i < 210; i++) {
-            // after 210 price calculation will overflow error when calculating fees
+        for (uint256 i = 1; i < 83; i++) {
+            // after 83 price calculation will overflow error when calculating fees
 
             vm.roll(block.number+1);
             vm.warp(block.timestamp + i);
-            vm.startPrank(eoa1);
 
             uint128 minAmountToBuyClone = dm.getMinAmountForCloneTransfer(cloneId);
             currency.mint(eoa1, minAmountToBuyClone);
@@ -60,9 +57,8 @@ contract HeatTest is TestBase {
             shape = getCloneShape(cloneId);
             assertEq(shape.heat, 1+i);
             console.log(shape.worth);
-
-            vm.stopPrank();
         }
+        vm.stopPrank();
     }
 
     function testHeatStatic() public {
