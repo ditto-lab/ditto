@@ -178,7 +178,20 @@ contract OracleTest is Test, Oracle {
             write(0, i+1);
             vm.warp(block.timestamp+10);
         }
+        assertEq(observationIndex[0].lastIndex, 200);
+        assertEq(observationIndex[0].cardinality, 1000);
+        assertEq(observations[0][1000].cumulativeWorth, 0);
         secAgos = setExactSecAgos(observations[0], 999);
+
+        worth = this.observeWrapper(0, secAgos, 0);
+        for (uint j=0; j<1000; ++j) {
+            assertEq(worth[j], observations[0][j].cumulativeWorth);
+        }
+        assertEq(worth[1000], observations[0][200].cumulativeWorth, "O1");
+
+        for (uint j=0; j<1000; ++j) {
+            secAgos[j] -= shiftObsTime;
+        }
 
         // TODO: test binary search
 
@@ -187,6 +200,17 @@ contract OracleTest is Test, Oracle {
             vm.warp(block.timestamp+10);
         }
         secAgos = setExactSecAgos(observations[0], 999);
+
+        worth = this.observeWrapper(0, secAgos, 0);
+        for (uint j=0; j<1000; ++j) {
+            assertEq(worth[j], observations[0][j].cumulativeWorth);
+        }
+        assertEq(worth[1000], observations[0][799].cumulativeWorth, "O1");
+
+        for (uint j=0; j<1000; ++j) {
+            secAgos[j] -= shiftObsTime;
+        }
+
 
         // TODO: test binary search
 
