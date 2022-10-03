@@ -77,7 +77,7 @@ contract OracleTest is Test, Oracle {
             vm.warp(block.timestamp+10);
             uint j = i%3;
 
-            uint otherObsBefore = getConstantHash(observations[0], newCardinality, j);
+            uint otherObs = getConstantHash(observations[0], newCardinality, j);
 
             write(0, prices[j]);
             if (++cardinality > newCardinality) cardinality = newCardinality;
@@ -89,7 +89,8 @@ contract OracleTest is Test, Oracle {
             assertEq(observations[0][j].timestamp, block.timestamp);
             assertEq(observations[0][j].cumulativeWorth, cumulativeWorth);
 
-            assertEq(otherObsBefore, getConstantHash(observations[0], newCardinality, j));
+            // ensures that only the j-th index in observations is changed.
+            assertEq(otherObs, getConstantHash(observations[0], newCardinality, j));
 
             vm.warp(block.timestamp+20);
 
@@ -101,6 +102,28 @@ contract OracleTest is Test, Oracle {
     }
 
     function testBinarySearch() public {
+        this.grow(0, 1000);
+        uint128 i=0;
+        for(; i<1000; ++i) {
+            write(0, i+1);
+            vm.warp(block.timestamp+1);
+        }
+
+        // TODO: test binary search
+
+        for(; i<1200; ++i) {
+            write(0, i+1);
+            vm.warp(block.timestamp+1);
+        }
+
+        // TODO: test binary search
+
+        for (; i<1800; ++i) {
+            write(0, i+1);
+            vm.warp(block.timestamp+1);
+        }
+
+        // TODO: test binary search
 
     }
 
