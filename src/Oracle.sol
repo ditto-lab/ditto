@@ -63,8 +63,8 @@ abstract contract Oracle {
         uint256 protoId,
         uint128[] calldata secondsAgos,
         uint128 curWorth
-    ) internal view returns (uint256[] memory cumulativePrices) {
-        cumulativePrices = new uint256[](secondsAgos.length);
+    ) internal view returns (uint128[] memory cumulativePrices) {
+        cumulativePrices = new uint128[](secondsAgos.length);
         ObservationIndex memory index = observationIndex[protoId];
         for (uint256 i=0; i < secondsAgos.length; ++i) {
             cumulativePrices[i] = observeSingle(protoId, secondsAgos[i], index, curWorth);

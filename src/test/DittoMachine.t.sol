@@ -96,7 +96,7 @@ contract ContractTest is TestBase {
         // oracle assertions
         uint128[] memory secondsAgos = new uint128[](1);
         secondsAgos[0] = 0;
-        uint256[] memory obs = dm.observe(protoId, secondsAgos);
+        uint128[] memory obs = dm.observe(protoId, secondsAgos);
         assertEq(obs.length, 1);
         assertEq(obs[0], 0);
 
@@ -136,7 +136,7 @@ contract ContractTest is TestBase {
         // oracle assertions
         uint128[] memory secondsAgos = new uint128[](1);
         secondsAgos[0] = 0;
-        uint256[] memory obs = dm.observe(protoId, secondsAgos);
+        uint128[] memory obs = dm.observe(protoId, secondsAgos);
         assertEq(obs.length, 1);
         assertEq(obs[0], 0);
 
@@ -173,7 +173,7 @@ contract ContractTest is TestBase {
         {
             uint128[] memory secondsAgos = new uint128[](1);
             secondsAgos[0] = 0;
-            uint256[] memory obs = dm.observe(protoId1, secondsAgos);
+            uint128[] memory obs = dm.observe(protoId1, secondsAgos);
             assertEq(obs.length, 1);
             assertEq(obs[0], 0);
 
@@ -214,12 +214,12 @@ contract ContractTest is TestBase {
         {
             uint128[] memory secondsAgos = new uint128[](1);
             secondsAgos[0] = 0;
-            uint256[] memory obs1 = dm.observe(protoId1, secondsAgos);
+            uint128[] memory obs1 = dm.observe(protoId1, secondsAgos);
             assertEq(obs1.length, 1);
             assertEq(obs1[0], shape1.worth*BASE_TERM, "obs1[0]!=shape1.worth");
 
             vm.warp(block.timestamp+10);
-            uint256[] memory obs2 = dm.observe(protoId1, secondsAgos);
+            uint128[] memory obs2 = dm.observe(protoId1, secondsAgos);
             assertEq(obs2[0], obs1[0]+(shape2.worth*10), "obs2[0], obs1[0]+(shape2.worth*10)");
         }
 
