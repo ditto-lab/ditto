@@ -11,6 +11,16 @@ contract OracleTest is Test, Oracle {
         vm.warp(INIT_TIME);
     }
 
+    // we cannot call `Oracle.observe()` directly as it takes calldata argument.
+    // wrapping it in an external function lets us call it via `this.observeWrapper()`.
+    function observeWrapper(
+        uint256 protoId,
+        uint128[] calldata secondsAgos,
+        uint128 curWorth
+    ) external view returns (uint128[] memory cumulativePrices) {
+        return Oracle.observe(protoId, secondsAgos, curWorth);
+    }
+
     function getConstantHash(Observation[65536] storage obs, uint128 maxIndex, uint exceptIndex) internal view returns (uint _hash) {
         for (uint k=0;k<=maxIndex;++k) {
             if (k==exceptIndex) continue;
