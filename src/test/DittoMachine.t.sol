@@ -402,10 +402,6 @@ contract ContractTest is TestBase {
         vm.stopPrank();
         assertEq(currency.balanceOf(eoaSeller), shape1.worth + subsidy1);
         assertEq(currency.balanceOf(dmAddr), 0);
-
-        // ensure correct oracle related values
-        // assertEq(dm.protoIdToCumulativePrice(protoId1), shape.worth * 100);
-        // assertEq(dm.protoIdToTimestampLast(protoId1), block.timestamp);
     }
 
     function testSellUnderlying1155Batch() public {

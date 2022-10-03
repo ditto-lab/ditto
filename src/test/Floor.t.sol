@@ -107,8 +107,7 @@ contract FloorTest is TestBase {
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
 
         // buy a clone using the minimum purchase amount
-        (uint256 cloneId1, uint256 protoId1) = dm.duplicate(nftAddr, FLOOR_ID, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, true, 0);
-        CloneShape memory shape = getCloneShape(cloneId1);
+        (uint256 cloneId1, ) = dm.duplicate(nftAddr, FLOOR_ID, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, true, 0);
         assertEq(dm.ownerOf(cloneId1), eoaBidder);
 
         // ensure erc20 balances
@@ -129,10 +128,6 @@ contract FloorTest is TestBase {
         vm.stopPrank();
         assertEq(currency.balanceOf(eoaSeller), shape1.worth + subsidy1);
         assertEq(currency.balanceOf(dmAddr), 0);
-
-        // ensure correct oracle related values
-        // assertEq(dm.protoIdToCumulativePrice(protoId1), shape.worth * 100);
-        // assertEq(dm.protoIdToTimestampLast(protoId1), block.timestamp);
     }
 
     function testFloorSellUnderlyingForCloneWhileFloorExists() public {
