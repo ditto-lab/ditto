@@ -120,21 +120,29 @@ contract OracleTest is Test, Oracle {
     }
 
     function testBinarySearch() public {
-        // first test for even length of observations array
-        this.grow(0, 1000);
+        // test for even length of observations array
+        uint snapshot = vm.snapshot();
+        testWithCardinality(1000);
+        vm.revertTo(snapshot);
+
+        // test for odd length of observations array
+        testWithCardinality(1001);
+    }
+
+    function testWithCardinality(uint16 c) internal {
+        this.grow(0, c);
         uint128 i=0;
-        for(; i<1000; ++i) {
+        for(; i<c; ++i) {
             write(0, i+1);
             assertEq(observationIndex[0].lastIndex, i);
             assertEq(observationIndex[0].cardinality, i+1);
             vm.warp(block.timestamp+10);
         }
+        assertEq(observationIndex[0].lastIndex, c-1, "O3");
+        assertEq(observationIndex[0].cardinality, c, "O2");
 
-        assertEq(observationIndex[0].lastIndex, 999, "O3");
-        assertEq(observationIndex[0].cardinality, 1000, "O2");
-
-        // last element secAgos[1000] always stays 0
-        uint128[] memory secAgos = setExactSecAgos(observations[0], 999);
+        // last element secAgos[c] always stays 0
+        uint128[] memory secAgos = setExactSecAgos(observations[0], c-1);
 
         // uncomment when https://github.com/foundry-rs/foundry/issues/3437 is fixed.
         // vm.expectRevert(abi.encodeWithSelector(Oracle.TimeRequestedTooOld.selector));
@@ -142,20 +150,20 @@ contract OracleTest is Test, Oracle {
 
         // asserting correct observations when secondsAgos perfectly match with write timestamps
         uint128[] memory worth = this.observeWrapper(0, secAgos, 0);
-        for (uint j=0; j<1000; ++j) {
+        for (uint j=0; j<c; ++j) {
             assertEq(worth[j], observations[0][j].cumulativeWorth);
         }
-        assertEq(worth[1000], observations[0][999].cumulativeWorth, "O1");
+        assertEq(worth[c], observations[0][c-1].cumulativeWorth, "O1");
 
         uint128 shiftObsTime = 2;
 
-        for (uint j=0; j<1000; ++j) {
+        for (uint j=0; j<c; ++j) {
             secAgos[j] -= shiftObsTime;
         }
 
         uint128 curWorth = 15;
         worth = this.observeWrapper(0, secAgos, curWorth);
-        for (uint j=0; j<999; ++j) {
+        for (uint j=0; j<c-1; ++j) {
             uint128 obsTimeDelta = observations[0][j+1].timestamp - observations[0][j].timestamp;
             uint128 targetDelta = (uint128(block.timestamp) - secAgos[j]) - observations[0][j].timestamp;
             assertEq(obsTimeDelta, 10);
@@ -167,55 +175,91 @@ contract OracleTest is Test, Oracle {
                     * targetDelta / obsTimeDelta);
         }
         assertEq(
-            worth[999],
-            observations[0][999].cumulativeWorth
-            + (curWorth * (uint128(block.timestamp - secAgos[999]) - observations[0][999].timestamp)));
-        assertEq(worth[1000],
-            observations[0][999].cumulativeWorth
-            + (curWorth * (uint128(block.timestamp) - observations[0][999].timestamp)));
+            worth[c-1],
+            observations[0][c-1].cumulativeWorth
+            + (curWorth * (uint128(block.timestamp - secAgos[c-1]) - observations[0][c-1].timestamp)));
+        assertEq(worth[c],
+            observations[0][c-1].cumulativeWorth
+            + (curWorth * (uint128(block.timestamp) - observations[0][c-1].timestamp)));
 
-        for(; i<1201; ++i) {
+        for(; i<c+201; ++i) {
             write(0, i+1);
             vm.warp(block.timestamp+10);
         }
-        assertEq(observationIndex[0].lastIndex, 200);
-        assertEq(observationIndex[0].cardinality, 1000);
-        assertEq(observations[0][1000].cumulativeWorth, 0);
-        secAgos = setExactSecAgos(observations[0], 999);
+        assertEq(observationIndex[0].lastIndex, 200, "O4");
+        assertEq(observationIndex[0].cardinality, c, "O5");
+        assertEq(observations[0][c].cumulativeWorth, 0, "O6");
+        secAgos = setExactSecAgos(observations[0], c-1);
 
         worth = this.observeWrapper(0, secAgos, 0);
-        for (uint j=0; j<1000; ++j) {
+        for (uint j=0; j<c; ++j) {
             assertEq(worth[j], observations[0][j].cumulativeWorth);
         }
-        assertEq(worth[1000], observations[0][200].cumulativeWorth, "O1");
+        assertEq(worth[c], observations[0][200].cumulativeWorth, "O1");
 
-        for (uint j=0; j<1000; ++j) {
+        for (uint j=0; j<c; ++j) {
             secAgos[j] -= shiftObsTime;
         }
 
-        // TODO: test binary search
+        worth = this.observeWrapper(0, secAgos, curWorth);
+        for (uint k=201; k<c+200; ++k) {
+            uint j=k%c;
+            uint128 obsTimeDelta = observations[0][(j+1)%c].timestamp - observations[0][j].timestamp;
+            uint128 targetDelta = (uint128(block.timestamp) - secAgos[j]) - observations[0][j].timestamp;
+            assertEq(obsTimeDelta, 10);
+            assertEq(targetDelta, shiftObsTime);
+            assertEq(
+                worth[j],
+                observations[0][j].cumulativeWorth
+                + (observations[0][(j+1)%c].cumulativeWorth - observations[0][j].cumulativeWorth)
+                    * targetDelta / obsTimeDelta);
+        }
+        assertEq(
+            worth[200],
+            observations[0][200].cumulativeWorth
+            + (curWorth * (uint128(block.timestamp - secAgos[200]) - observations[0][200].timestamp)));
+        assertEq(worth[c],
+            observations[0][200].cumulativeWorth
+            + (curWorth * (uint128(block.timestamp) - observations[0][200].timestamp)));
 
-        for (; i<1800; ++i) {
+        for (; i<c+800; ++i) {
             write(0, i+1);
             vm.warp(block.timestamp+10);
         }
-        secAgos = setExactSecAgos(observations[0], 999);
+        assertEq(observationIndex[0].lastIndex, 799);
+        assertEq(observationIndex[0].cardinality, c);
+        assertEq(observations[0][c].cumulativeWorth, 0);
+        secAgos = setExactSecAgos(observations[0], c-1);
 
         worth = this.observeWrapper(0, secAgos, 0);
-        for (uint j=0; j<1000; ++j) {
+        for (uint j=0; j<c; ++j) {
             assertEq(worth[j], observations[0][j].cumulativeWorth);
         }
-        assertEq(worth[1000], observations[0][799].cumulativeWorth, "O1");
+        assertEq(worth[c], observations[0][799].cumulativeWorth, "O1");
 
-        for (uint j=0; j<1000; ++j) {
+        for (uint j=0; j<c; ++j) {
             secAgos[j] -= shiftObsTime;
         }
 
-
-        // TODO: test binary search
-
-        // now test for odd length of observations array
-
+        worth = this.observeWrapper(0, secAgos, curWorth);
+        for (uint k=800; k<c+799; ++k) {
+            uint j=k%c;
+            uint128 obsTimeDelta = observations[0][(j+1)%c].timestamp - observations[0][j].timestamp;
+            uint128 targetDelta = (uint128(block.timestamp) - secAgos[j]) - observations[0][j].timestamp;
+            assertEq(obsTimeDelta, 10);
+            assertEq(targetDelta, shiftObsTime);
+            assertEq(
+                worth[j],
+                observations[0][j].cumulativeWorth
+                + (observations[0][(j+1)%c].cumulativeWorth - observations[0][j].cumulativeWorth)
+                    * targetDelta / obsTimeDelta);
+        }
+        assertEq(
+            worth[799],
+            observations[0][799].cumulativeWorth
+            + (curWorth * (uint128(block.timestamp - secAgos[799]) - observations[0][799].timestamp)));
+        assertEq(worth[c],
+            observations[0][799].cumulativeWorth
+            + (curWorth * (uint128(block.timestamp) - observations[0][799].timestamp)));
     }
-
 }
