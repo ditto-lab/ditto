@@ -29,12 +29,14 @@ abstract contract Oracle {
 
         if (index.cardinality == 0) index.cardinality = 1;
         unchecked {
-            if (++index.lastIndex == index.cardinality) {
-                // since the maximum length is 65535, array's last timestamp is always 0
-                if (observations[protoId][index.lastIndex].timestamp != 0) {
-                    ++index.cardinality;
-                } else {
-                    index.lastIndex = 0;
+            if (lastObservation.timestamp > 1) {
+                if (++index.lastIndex == index.cardinality) {
+                    // since the maximum length is 65535, array's last timestamp is always 0
+                    if (observations[protoId][index.lastIndex].timestamp == 0) {
+                        index.lastIndex = 0;
+                    } else {
+                        ++index.cardinality;
+                    }
                 }
             }
 

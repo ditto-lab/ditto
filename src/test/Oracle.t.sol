@@ -117,17 +117,21 @@ contract OracleTest is Test, Oracle {
         uint128 i=0;
         for(; i<1000; ++i) {
             write(0, i+1);
+            assertEq(observationIndex[0].lastIndex, i);
+            assertEq(observationIndex[0].cardinality, i+1);
             vm.warp(block.timestamp+10);
         }
 
         assertEq(observationIndex[0].lastIndex, 999, "O3");
         assertEq(observationIndex[0].cardinality, 1000, "O2");
 
+        // last element secAgos[1000] always stays 0
         uint128[] memory secAgos = new uint128[](1001);
         for (uint j=0; j<1000; ++j) {
             secAgos[j] = uint128(block.timestamp) - observations[0][j].timestamp;
         }
-        console.log(secAgos[1000]);
+
+        // uncomment when https://github.com/foundry-rs/foundry/issues/3437 is fixed.
         // vm.expectRevert(abi.encodeWithSelector(Oracle.TimeRequestedTooOld.selector));
         // Oracle.observeSingle(0, uint128(INIT_TIME)-1, observationIndex[0], 0);
 
@@ -136,31 +140,34 @@ contract OracleTest is Test, Oracle {
         for (uint j=0; j<1000; ++j) {
             assertEq(worth[j], observations[0][j].cumulativeWorth);
         }
-        console.log(1000);
         assertEq(worth[1000], observations[0][999].cumulativeWorth, "O1");
 
-        // uint128 shiftObsTime = 2;
+        uint128 shiftObsTime = 2;
 
-        // uint snapshot = vm.snapshot();
-        // for (uint j=0; j<1000; ++j) {
-        //     secAgos[j] += shiftObsTime;
-        // }
-        // console.log(secAgos[0]);
-        // worth = this.observeWrapper(0, secAgos, 15);
-        // for (uint j=0; j<999; ++j) {
-        //     uint128 obsTimeDelta = observations[0][j+1].timestamp - observations[0][j].timestamp;
-        //     uint128 targetDelta = secAgos[j] - observations[0][j].timestamp;
-        //     assertEq(obsTimeDelta, 10);
-        //     assertEq(targetDelta, shiftObsTime);
-        //     assertEq(
-        //         worth[j],
-        //         observations[0][j].cumulativeWorth
-        //         + (observations[0][j+1].cumulativeWorth - observations[0][j].cumulativeWorth) * targetDelta / obsTimeDelta);
-        // }
-        // assertEq(worth[999], observations[0][999].cumulativeWorth * (1 + shiftObsTime));
-        // assertEq(worth[1000], observations[0][999].cumulativeWorth);
-        // vm.revertTo(snapshot);
-        // console.log(secAgos[0]);
+        for (uint j=0; j<1000; ++j) {
+            secAgos[j] -= shiftObsTime;
+        }
+
+        uint128 curWorth = 15;
+        worth = this.observeWrapper(0, secAgos, curWorth);
+        for (uint j=0; j<999; ++j) {
+            uint128 obsTimeDelta = observations[0][j+1].timestamp - observations[0][j].timestamp;
+            uint128 targetDelta = (uint128(block.timestamp) - secAgos[j]) - observations[0][j].timestamp;
+            assertEq(obsTimeDelta, 10);
+            assertEq(targetDelta, shiftObsTime);
+            assertEq(
+                worth[j],
+                observations[0][j].cumulativeWorth
+                + (observations[0][j+1].cumulativeWorth - observations[0][j].cumulativeWorth)
+                    * targetDelta / obsTimeDelta);
+        }
+        assertEq(
+            worth[999],
+            observations[0][999].cumulativeWorth
+            + (curWorth * (uint128(block.timestamp - secAgos[999]) - observations[0][999].timestamp)));
+        assertEq(worth[1000],
+            observations[0][999].cumulativeWorth
+            + (curWorth * (uint128(block.timestamp) - observations[0][999].timestamp)));
 
         // for(; i<1201; ++i) {
         //     write(0, i+1);
