@@ -32,6 +32,14 @@ contract OracleTest is Test, Oracle {
         }
     }
 
+    // last secAgos is always 0
+    function setExactSecAgos(Observation[65536] storage obs, uint128 maxIndex) internal view returns (uint128[] memory secAgos) {
+        secAgos = new uint128[](maxIndex+2);
+        for (uint i=0; i<=maxIndex; ++i) {
+            secAgos[i] = uint128(block.timestamp) - obs[i].timestamp;
+        }
+    }
+
     function testWrite() public {
         uint128 price = 2;
         uint256 protoId = 0;
@@ -126,10 +134,7 @@ contract OracleTest is Test, Oracle {
         assertEq(observationIndex[0].cardinality, 1000, "O2");
 
         // last element secAgos[1000] always stays 0
-        uint128[] memory secAgos = new uint128[](1001);
-        for (uint j=0; j<1000; ++j) {
-            secAgos[j] = uint128(block.timestamp) - observations[0][j].timestamp;
-        }
+        uint128[] memory secAgos = setExactSecAgos(observations[0], 999);
 
         // uncomment when https://github.com/foundry-rs/foundry/issues/3437 is fixed.
         // vm.expectRevert(abi.encodeWithSelector(Oracle.TimeRequestedTooOld.selector));
@@ -169,18 +174,19 @@ contract OracleTest is Test, Oracle {
             observations[0][999].cumulativeWorth
             + (curWorth * (uint128(block.timestamp) - observations[0][999].timestamp)));
 
-        // for(; i<1201; ++i) {
-        //     write(0, i+1);
-        //     // secAgos
-        //     vm.warp(block.timestamp+10);
-        // }
+        for(; i<1201; ++i) {
+            write(0, i+1);
+            vm.warp(block.timestamp+10);
+        }
+        secAgos = setExactSecAgos(observations[0], 999);
 
-        // // TODO: test binary search
+        // TODO: test binary search
 
-        // for (; i<1800; ++i) {
-        //     write(0, i+1);
-        //     vm.warp(block.timestamp+10);
-        // }
+        for (; i<1800; ++i) {
+            write(0, i+1);
+            vm.warp(block.timestamp+10);
+        }
+        secAgos = setExactSecAgos(observations[0], 999);
 
         // TODO: test binary search
 
