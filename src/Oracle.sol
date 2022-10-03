@@ -71,7 +71,12 @@ abstract contract Oracle {
         }
     }
 
-    function observeSingle(uint256 protoId, uint128 secondsAgo, ObservationIndex memory lastIndex, uint128 curWorth) internal view returns (uint128 cumulativePrice) {
+    function observeSingle(
+        uint256 protoId,
+        uint128 secondsAgo,
+        ObservationIndex memory lastIndex,
+        uint128 curWorth
+    ) internal view returns (uint128 cumulativePrice) {
         if (secondsAgo == 0) {
             Observation memory lastObservation = observations[protoId][lastIndex.lastIndex];
             if (block.timestamp != lastObservation.timestamp) {
