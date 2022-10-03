@@ -112,28 +112,72 @@ contract OracleTest is Test, Oracle {
     }
 
     function testBinarySearch() public {
+        // first test for even length of observations array
         this.grow(0, 1000);
         uint128 i=0;
         for(; i<1000; ++i) {
             write(0, i+1);
-            vm.warp(block.timestamp+1);
+            vm.warp(block.timestamp+10);
         }
+
+        assertEq(observationIndex[0].lastIndex, 999, "O3");
+        assertEq(observationIndex[0].cardinality, 1000, "O2");
+
+        uint128[] memory secAgos = new uint128[](1001);
+        for (uint j=0; j<1000; ++j) {
+            secAgos[j] = uint128(block.timestamp) - observations[0][j].timestamp;
+        }
+        console.log(secAgos[1000]);
+        // vm.expectRevert(abi.encodeWithSelector(Oracle.TimeRequestedTooOld.selector));
+        // Oracle.observeSingle(0, uint128(INIT_TIME)-1, observationIndex[0], 0);
+
+        // asserting correct observations when secondsAgos perfectly match with write timestamps
+        uint128[] memory worth = this.observeWrapper(0, secAgos, 0);
+        for (uint j=0; j<1000; ++j) {
+            assertEq(worth[j], observations[0][j].cumulativeWorth);
+        }
+        console.log(1000);
+        assertEq(worth[1000], observations[0][999].cumulativeWorth, "O1");
+
+        // uint128 shiftObsTime = 2;
+
+        // uint snapshot = vm.snapshot();
+        // for (uint j=0; j<1000; ++j) {
+        //     secAgos[j] += shiftObsTime;
+        // }
+        // console.log(secAgos[0]);
+        // worth = this.observeWrapper(0, secAgos, 15);
+        // for (uint j=0; j<999; ++j) {
+        //     uint128 obsTimeDelta = observations[0][j+1].timestamp - observations[0][j].timestamp;
+        //     uint128 targetDelta = secAgos[j] - observations[0][j].timestamp;
+        //     assertEq(obsTimeDelta, 10);
+        //     assertEq(targetDelta, shiftObsTime);
+        //     assertEq(
+        //         worth[j],
+        //         observations[0][j].cumulativeWorth
+        //         + (observations[0][j+1].cumulativeWorth - observations[0][j].cumulativeWorth) * targetDelta / obsTimeDelta);
+        // }
+        // assertEq(worth[999], observations[0][999].cumulativeWorth * (1 + shiftObsTime));
+        // assertEq(worth[1000], observations[0][999].cumulativeWorth);
+        // vm.revertTo(snapshot);
+        // console.log(secAgos[0]);
+
+        // for(; i<1201; ++i) {
+        //     write(0, i+1);
+        //     // secAgos
+        //     vm.warp(block.timestamp+10);
+        // }
+
+        // // TODO: test binary search
+
+        // for (; i<1800; ++i) {
+        //     write(0, i+1);
+        //     vm.warp(block.timestamp+10);
+        // }
 
         // TODO: test binary search
 
-        for(; i<1200; ++i) {
-            write(0, i+1);
-            vm.warp(block.timestamp+1);
-        }
-
-        // TODO: test binary search
-
-        for (; i<1800; ++i) {
-            write(0, i+1);
-            vm.warp(block.timestamp+1);
-        }
-
-        // TODO: test binary search
+        // now test for odd length of observations array
 
     }
 
