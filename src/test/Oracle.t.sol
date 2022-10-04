@@ -2,7 +2,8 @@
 pragma solidity ^0.8.4;
 
 import "forge-std/Test.sol";
-import "../Oracle.sol";
+import {Oracle} from "../Oracle.sol";
+import {OracleWrapper} from "./OracleWrapper.sol";
 
 contract OracleTest is Test, Oracle {
     uint256 constant INIT_TIME = 1644911858;
@@ -144,10 +145,6 @@ contract OracleTest is Test, Oracle {
         // last element secAgos[c] always stays 0
         uint128[] memory secAgos = setExactSecAgos(observations[0], c-1);
 
-        // uncomment when https://github.com/foundry-rs/foundry/issues/3437 is fixed.
-        // vm.expectRevert(abi.encodeWithSelector(Oracle.TimeRequestedTooOld.selector));
-        // Oracle.observeSingle(0, uint128(INIT_TIME)-1, observationIndex[0], 0);
-
         // asserting correct observations when secondsAgos perfectly match with write timestamps
         uint128[] memory worth = this.observeWrapper(0, secAgos, 0);
         for (uint j=0; j<c; ++j) {
@@ -261,5 +258,28 @@ contract OracleTest is Test, Oracle {
         assertEq(worth[c],
             observations[0][799].cumulativeWorth
             + (curWorth * (uint128(block.timestamp) - observations[0][799].timestamp)));
+    }
+
+    function testObserveTooOld() public {
+        OracleWrapper o = new OracleWrapper();
+        o.grow(0, 3);
+        o.writeWrapper(0, 1);
+        vm.warp(block.timestamp+1);
+        o.writeWrapper(0, 2);
+        vm.warp(block.timestamp+1);
+        o.writeWrapper(0, 3);
+        vm.warp(block.timestamp+1);
+
+        uint128[] memory secAgos = new uint128[](1);
+        secAgos[0] = uint128(block.timestamp) - (uint128(INIT_TIME)-1);
+
+        vm.expectRevert(abi.encodeWithSelector(Oracle.TimeRequestedTooOld.selector));
+        o.observeWrapper(0, secAgos, 0);
+
+        o.writeWrapper(0, 4); // overwrites the first observation written at INIT_TIME
+
+        secAgos[0] = uint128(block.timestamp) - uint128(INIT_TIME);
+        vm.expectRevert(abi.encodeWithSelector(Oracle.TimeRequestedTooOld.selector));
+        o.observeWrapper(0, secAgos, 0);
     }
 }
