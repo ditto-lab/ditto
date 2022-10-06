@@ -441,7 +441,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
         return floorPrice > clonePrice ? floorPrice : clonePrice;
     }
 
-    function issueVoucher(address to, uint256 cloneId, uint256 protoId, uint256 value) private {
+    function issueVoucher(address to, uint256 cloneId, uint256 protoId, uint128 value) private {
 
         uint128 termLength = BASE_TERM + TimeCurve.calc(cloneIdToShape[cloneId].heat);
 
@@ -454,7 +454,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
             cloneIdToShape[cloneId].worth, // old value of the clone
             value, // new value of the clone
             cloneIdToShape[cloneId].term - termLength,
-            block.timestamp
+            uint128(block.timestamp)
         )));
 
         voucherValidity[voucher] = true;
