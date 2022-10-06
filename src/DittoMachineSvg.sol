@@ -13,22 +13,6 @@ contract DittoMachineSvg {
 
     uint256 internal constant FLOOR_ID = uint256(0xfddc260aecba8a66725ee58da4ea3cbfcf4ab6c6ad656c48345a575ca18c45c9);
 
-    ////////////// STATE VARIABLES //////////////
-
-    // variables essential to calculating auction/price information for each cloneId
-    struct CloneShape {
-        uint256 tokenId;
-        address ERC721Contract;
-        address ERC20Contract;
-        uint8 heat;
-        bool floor;
-        uint128 worth;
-        uint128 term;
-    }
-
-    // hash protoId with the index placement to get cloneId
-    mapping(uint256 => CloneShape) public cloneIdToShape;
-
     constructor() {}
 
     ///////////////////////////////////////////

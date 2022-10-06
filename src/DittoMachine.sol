@@ -45,10 +45,10 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
 
     // ensure that CloneShape can always be casted to int128.
     // change the type to ensure this?
-    uint128 internal constant BASE_TERM = 2**18;
+    uint128 internal constant BASE_TERM = 2**18; // 262144
     uint128 internal constant MIN_FEE = 32;
-    uint128 internal constant DNOM = 2**16 - 1;
-    uint128 internal constant MIN_AMOUNT_FOR_NEW_CLONE = BASE_TERM + (BASE_TERM * MIN_FEE / DNOM);
+    uint128 internal constant DNOM = 2**16 - 1; // 65535
+    uint128 internal constant MIN_AMOUNT_FOR_NEW_CLONE = BASE_TERM + (BASE_TERM * MIN_FEE / DNOM); // 262272
 
     DittoMachineSvg internal immutable svg;
     ////////////// STATE VARIABLES //////////////
@@ -76,7 +76,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
     // non transferrable vouchers for reward tokens
     mapping(uint256 => bool) public voucherValidity;
 
-    constructor(address _dm) ERC721("Ditto", "DTO") { svg = DittoMachineSvg(_dm); }
+    constructor(address _svg) ERC721("Ditto", "DTO") { svg = DittoMachineSvg(_svg); }
 
     ///////////////////////////////////////////
     ////////////// URI FUNCTIONS //////////////
@@ -380,6 +380,8 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
     ////////////// RECEIVER FUNCTIONS //////////////
     ////////////////////////////////////////////////
 
+    // NOTE: msg.sender is the underlying ERC721/ERC1155 contract
+    // i.e. the contract of the token being received.
     function onTokenReceived(
         address from,
         uint256 id,
@@ -441,10 +443,10 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
 
         if (isERC1155) {
             if (ERC1155(msg.sender).balanceOf(address(this), id) < 1) revert NFTNotReceived();
-            ERC1155(msg.sender).safeTransferFrom(address(this), owner, id, 1, "");
+            ERC1155(msg.sender).safeTransferFrom(address(this), owner, id, 1, data);
         } else {
             if (ERC721(msg.sender).ownerOf(id) != address(this)) revert NFTNotReceived();
-            ERC721(msg.sender).safeTransferFrom(address(this), owner, id);
+            ERC721(msg.sender).safeTransferFrom(address(this), owner, id, data);
         }
 
         if (IERC165(msg.sender).supportsInterface(_INTERFACE_ID_ERC2981)) {
@@ -513,12 +515,11 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
         for (uint256 i=0; i < amounts.length; i++) {
             if (amounts[i] != 1) revert AmountInvalid();
         }
-        // address[] memory ERC20Contracts = new address[](ids.length);
-        // bool[] memory floors = new bool[](ids.length);
+
         (address[] memory ERC20Contracts, bool[] memory floors) = abi.decode(data, (address[], bool[]));
 
         for (uint256 i=0; i < ids.length; i++) {
-            onTokenReceived(from/*ERC1155 contract address*/, ids[i], ERC20Contracts[i], floors[i], true);
+            onTokenReceived(from, ids[i], ERC20Contracts[i], floors[i], true);
         }
 
         return this.onERC1155BatchReceived.selector;
