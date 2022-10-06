@@ -28,7 +28,6 @@ contract TestVoucher is TestBase {
         vm.stopPrank();
 
         vm.warp(block.timestamp + time);
-        vm.roll(block.number + (time/12));
 
         uint256 newMinAmount = dm.getMinAmountForCloneTransfer(cloneId);
         vm.assume(largeAmount > newMinAmount);
