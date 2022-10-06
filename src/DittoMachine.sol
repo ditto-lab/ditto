@@ -43,10 +43,10 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
 
     // ensure that CloneShape can always be casted to int128.
     // change the type to ensure this?
-    uint128 public constant BASE_TERM = 2**18;
+    uint128 public constant BASE_TERM = 2**18; // 262144
     uint128 public constant MIN_FEE = 32;
-    uint128 public constant DNOM = 2**16 - 1;
-    uint128 public constant MIN_AMOUNT_FOR_NEW_CLONE = BASE_TERM + (BASE_TERM * MIN_FEE / DNOM);
+    uint128 public constant DNOM = 2**16 - 1; // 65535
+    uint128 public constant MIN_AMOUNT_FOR_NEW_CLONE = BASE_TERM + (BASE_TERM * MIN_FEE / DNOM); // 262272
 
     ////////////// STATE VARIABLES //////////////
 
@@ -487,6 +487,19 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
         delete cloneIdToShape[cloneId];
         delete cloneIdToSubsidy[cloneId];
         _burn(cloneId);
+
+        // send useful data along with safe transfer to sontracts
+        bytes memory data = abi.encode(
+            // NFT contract address is sent as msg.sender with function call
+            // NFT ID is sent with function call
+            ERC20Contract,
+            floor,
+            protoIdToIndexHead[protoId], // index
+            owner,
+            cloneShape.worth,
+            subsidy
+        );
+
         // token can only be sold to the clone at the index head
         popListHead(protoId);
 
@@ -494,12 +507,12 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
             if (ERC1155(tokenContract).balanceOf(address(this), id) < 1) {
                 revert NFTNotReceived();
             }
-            ERC1155(tokenContract).safeTransferFrom(address(this), owner, id, 1, "");
+            ERC1155(tokenContract).safeTransferFrom(address(this), owner, id, 1, data);
         } else {
             if (ERC721(tokenContract).ownerOf(id) != address(this)) {
                 revert NFTNotReceived();
             }
-            ERC721(tokenContract).safeTransferFrom(address(this), owner, id);
+            ERC721(tokenContract).safeTransferFrom(address(this), owner, id, data);
         }
 
         if (IERC165(tokenContract).supportsInterface(_INTERFACE_ID_ERC2981)) {
