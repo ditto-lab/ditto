@@ -39,6 +39,7 @@ contract TestBase is Test, DittoMachine {
     BidderWithEjector immutable bidderWithEjector;
     BidderWithBadEjector immutable bidderWithBadEjector;
     BidderWithGassyEjector immutable bidderWithGassyEjector;
+    DittoMachineSvg immutable svgTest;
 
     address eoaSeller;
     address eoa0;
@@ -47,19 +48,18 @@ contract TestBase is Test, DittoMachine {
     address eoa3;
     address eoa4;
 
-    constructor() {
-        dm = new DittoMachine();
-
+    constructor() DittoMachine(address(0)) {
         bidder = new Bidder();
         bidderWithEjector = new BidderWithEjector();
         bidderWithBadEjector = new BidderWithBadEjector();
         bidderWithGassyEjector = new BidderWithGassyEjector();
+        svgTest = new DittoMachineSvg();
     }
 
     function setUp() public virtual {
         vm.warp(INIT_TIME); // bring timestamp to a realistic number
 
-        dm = new DittoMachine();
+        dm = new DittoMachine(address(svgTest));
         dmAddr = address(dm);
 
         nft = new UnderlyingNFT();
