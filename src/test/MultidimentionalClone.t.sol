@@ -228,7 +228,7 @@ contract MultidimensionalCloneTest is TestBase {
 
 
         vm.startPrank(eoa1);
-        dm.dissolve(protoId0, index0);
+        dm.dissolve(protoId0, cloneId0);
         vm.stopPrank();
         assertEq(dm.ownerOf(cloneId0), address(0));
         assertEq(dm.protoIdToIndexHead(protoId2), 1);
@@ -241,7 +241,7 @@ contract MultidimensionalCloneTest is TestBase {
 
 
         vm.startPrank(eoa3);
-        dm.dissolve(protoId2, index2);
+        dm.dissolve(protoId2, cloneId2);
         vm.stopPrank();
         assertEq(dm.ownerOf(cloneId2), address(0));
         // this dissolve should not move the index head
@@ -254,7 +254,7 @@ contract MultidimensionalCloneTest is TestBase {
 
 
         vm.startPrank(eoa2);
-        dm.dissolve(protoId1, index1);
+        dm.dissolve(protoId1, cloneId1);
         vm.stopPrank();
         assertEq(dm.ownerOf(cloneId1), address(0));
         assertEq(dm.protoIdToIndexHead(protoId2), 3);
@@ -317,7 +317,7 @@ contract MultidimensionalCloneTest is TestBase {
 
         // dissolve middle clone sibling
         vm.startPrank(eoa2);
-        dm.dissolve(protoId1, index1);
+        dm.dissolve(protoId1, cloneId1);
         vm.stopPrank();
         assertEq(dm.ownerOf(cloneId1), address(0));
         assertEq(dm.protoIdToIndexHead(protoId2), 0);

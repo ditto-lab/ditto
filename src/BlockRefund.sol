@@ -4,11 +4,11 @@ import {SafeTransferLib, ERC20} from "@rari-capital/solmate/src/utils/SafeTransf
 
 abstract contract BlockRefund {
 
-    mapping(uint256 => mapping(uint256 => uint256)) public blockToCloneToFeeRefund;
+    mapping(uint256 => mapping(uint256 => uint128)) public blockToCloneToFeeRefund;
 
     function _setBlockRefund(
         uint256 cloneId,
-        uint256 fullFee
+        uint128 fullFee
     ) internal {
         // assign new info
         blockToCloneToFeeRefund[block.number][cloneId] = fullFee;
@@ -17,7 +17,7 @@ abstract contract BlockRefund {
 
     function _getBlockRefund(
         uint256 cloneId
-    ) public view returns(uint256) {
+    ) public view returns(uint128) {
         return blockToCloneToFeeRefund[block.number][cloneId];
     }
 
