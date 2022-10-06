@@ -11,6 +11,7 @@ import {Base64} from 'base64-sol/base64.sol';
 import {CloneList} from "./CloneList.sol";
 import {TimeCurve} from "./TimeCurve.sol";
 import {BlockRefund} from "./BlockRefund.sol";
+import {Oracle} from "./Oracle.sol";
 
 /**
  * @title NFT derivative exchange inspired by the SALSA concept.
@@ -19,7 +20,7 @@ import {BlockRefund} from "./BlockRefund.sol";
  * the right to ownership when it is sold via this contract. Anybody may buy the
  * token for a higher price and force a transfer from the previous owner to the new buyer.
  */
-contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, CloneList, BlockRefund {
+contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, CloneList, BlockRefund, Oracle {
     /**
      * @notice Insufficient bid for purchasing a clone.
      * @dev thrown when the number of erc20 tokens sent is lower than
@@ -63,11 +64,6 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
 
     // tracks balance of subsidy for a specific cloneId
     mapping(uint256 => uint128) public cloneIdToSubsidy;
-
-    // protoId cumulative price for TWAP
-    mapping(uint256 => uint256) public protoIdToCumulativePrice;
-    // lat timestamp recorded for protoId TWAP
-    mapping(uint256 => uint256) public protoIdToTimestampLast;
 
     // hash protoId with the index placement to get cloneId
     mapping(uint256 => CloneShape) public cloneIdToShape;
@@ -192,10 +188,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
         uint128 _amount,
         bool floor,
         uint256 index // index at which to mint the clone
-    ) external returns (
-        uint256, // cloneId
-        uint256 // protoId
-    ) {
+    ) external returns (uint256 cloneId, uint256 protoId) {
         // ensure enough funds to do some math on
         if (_amount < MIN_AMOUNT_FOR_NEW_CLONE) {
             revert AmountInvalidMin();
@@ -206,16 +199,19 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
         }
 
         // calculate protoId by hashing identifiying information, precursor to cloneId
-        uint256 protoId = uint256(keccak256(abi.encodePacked(
+        protoId = uint256(keccak256(abi.encodePacked(
             _ERC721Contract,
             _tokenId,
             _ERC20Contract,
             floor
         )));
-        // hash protoId and index to get cloneId
-        uint256 cloneId = uint256(keccak256(abi.encodePacked(protoId, index)));
 
-        _updatePrice(protoId);
+        // hash protoId and index to get cloneId
+        cloneId = uint256(keccak256(abi.encodePacked(protoId, index)));
+
+        if (index == protoIdToIndexHead[protoId]) {
+            Oracle.write(protoId, cloneIdToShape[cloneId].worth);
+        }
 
         if (ownerOf[cloneId] == address(0)) {
             // check that index references have been set
@@ -321,8 +317,8 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
                 address(this),
                 _amount
             );
-            // buying out the previous clone owner
 
+            // buying out the previous clone owner
             address curOwner = ownerOf[cloneId];
 
             // subtract subsidy refund from subsidy pool
@@ -346,8 +342,6 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
             // force transfer from current owner to new highest bidder
             forceTransferFrom(curOwner, msg.sender, cloneId); // EXTERNAL CALL
         }
-
-        return (cloneId, protoId);
     }
 
     /**
@@ -371,7 +365,9 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
 
         CloneShape memory cloneShape = cloneIdToShape[cloneId];
 
-        _updatePrice(protoId);
+        if (index == protoIdToIndexHead[protoId]) {
+            Oracle.write(protoId, cloneIdToShape[cloneId].worth);
+        }
 
         popListIndex(protoId, index);
 
@@ -402,6 +398,11 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
         // calculate inverse percentage of fee amount
         uint128 feePortion = (feePercent * DNOM) / (DNOM - minFeeHeat) / DNOM;
         return _minAmount + feePortion;
+    }
+
+    function observe(uint256 protoId, uint128[] calldata secondsAgos) external view returns (uint128[] memory cumulativePrices) {
+        uint256 cloneId = uint256(keccak256(abi.encodePacked(protoId, protoIdToIndexHead[protoId])));
+        return Oracle.observe(protoId, secondsAgos, cloneIdToShape[cloneId].worth);
     }
 
     /**
@@ -479,7 +480,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
             revert CloneNotFound();
         }
 
-        _updatePrice(protoId);
+        Oracle.write(protoId, cloneIdToShape[cloneId].worth);
 
         CloneShape memory cloneShape = cloneIdToShape[cloneId];
         uint256 subsidy = cloneIdToSubsidy[cloneId];
@@ -638,18 +639,6 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
             try IERC721TokenEjector(from).onERC721Ejected{gas: 30000}(address(this), to, id, "") {} // EXTERNAL CALL
             catch {}
         }
-    }
-
-    // @dev: this function is not prod ready
-    function _updatePrice(uint256 protoId) internal {
-        uint256 cloneId = uint256(keccak256(abi.encodePacked(protoId, protoIdToIndexHead[protoId])));
-        uint256 timeElapsed = block.timestamp - protoIdToTimestampLast[protoId];
-        if (timeElapsed > 0) {
-            unchecked  {
-                protoIdToCumulativePrice[protoId] += cloneIdToShape[cloneId].worth * timeElapsed;
-            }
-        }
-        protoIdToTimestampLast[protoId] = block.timestamp;
     }
 
 }
