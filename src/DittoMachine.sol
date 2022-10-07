@@ -232,6 +232,8 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
                     } else {
                         cloneShape.heat = 1;
                     }
+                    // done for gas gas savings (refer to label:subsidy-split)
+                    feeRefund = subsidy >> 1;
                 }
                 issueVoucher(curOwner, cloneId, index == protoIdHead, value);
 
@@ -254,9 +256,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
             BlockRefund._setBlockRefund(cloneId, subsidy);
             // half of fee goes into subsidy pool, half to previous clone owner.
             // if in same block, subsidy is not split and replaces refunded fees.
-            if (feeRefund == 0) {
-                feeRefund = subsidy >> 1;
-            }
+            // label: subsidy-split
             cloneIdToSubsidy[cloneId] += subsidy - feeRefund;
 
             SafeTransferLib.safeTransfer( // EXTERNAL CALL
