@@ -19,7 +19,7 @@ abstract contract CloneList {
 
     function pushListTail(uint protoId, uint index) internal {
         unchecked { // ethereum will be irrelevant if this ever overflows
-            protoIdToDepth[protoId]++; // increase depth counter
+            ++protoIdToDepth[protoId]; // increase depth counter
 
             // index -> next
             protoIdToIndexToAfter[protoId][index] = index+1; // set reference **to** the next index
@@ -31,42 +31,46 @@ abstract contract CloneList {
 
     function popListIndex(uint protoId, uint index) internal {
         unchecked { // if clone deoesn't exist an error will throw above. should not underflow
-            protoIdToDepth[protoId]--; // decrement clone depth counter
+            --protoIdToDepth[protoId]; // decrement clone depth counter
         }
+        mapping(uint => uint) storage indexToAfter = protoIdToIndexToAfter[protoId];
+        mapping(uint => uint) storage indexToPrior = protoIdToIndexToPrior[protoId];
         if (index == protoIdToIndexHead[protoId]) { // if index == indexHead move head to next index
             // index -> next
             // head = next
-            protoIdToIndexHead[protoId] = protoIdToIndexToAfter[protoId][index];
+            protoIdToIndexHead[protoId] = indexToAfter[index];
         }
         // index pointers will change:
         // prev -> index -> next
         // becomes:
         // prev ----------> next
-        protoIdToIndexToAfter[protoId][protoIdToIndexToPrior[protoId][index]] = protoIdToIndexToAfter[protoId][index];
+        indexToAfter[indexToPrior[index]] = indexToAfter[index];
 
         // prev <- index <- next
         // becomes:
         // prev <---------- next
-        protoIdToIndexToPrior[protoId][protoIdToIndexToAfter[protoId][index]] = protoIdToIndexToPrior[protoId][index];
+        indexToPrior[indexToAfter[index]] = indexToPrior[index];
     }
 
     function popListHead(uint protoId) internal {
         uint head = protoIdToIndexHead[protoId];
+        mapping(uint => uint) storage indexToAfter = protoIdToIndexToAfter[protoId];
+        mapping(uint => uint) storage indexToPrior = protoIdToIndexToPrior[protoId];
         // indexHead -> next
         // head = next
-        protoIdToIndexHead[protoId] = protoIdToIndexToAfter[protoId][head]; // move head to next index
+        protoIdToIndexHead[protoId] = indexToAfter[head]; // move head to next index
         unchecked { --protoIdToDepth[protoId]; } // should not underflow, will error above if clone does not exist
 
         // index pointers will change:
         // prev -> index -> next
         // becomes:
         // prev ----------> next
-        protoIdToIndexToAfter[protoId][protoIdToIndexToPrior[protoId][head]] = protoIdToIndexToAfter[protoId][head];
+        indexToAfter[indexToPrior[head]] = indexToAfter[head];
 
         // prev <- index <- next
         // becomes:
         // prev <---------- next
-        protoIdToIndexToPrior[protoId][protoIdToIndexToAfter[protoId][head]] = protoIdToIndexToPrior[protoId][head];
+        indexToPrior[indexToAfter[head]] = indexToPrior[head];
     }
 
     function validIndex(uint protoId, uint index) internal view returns(bool) {
