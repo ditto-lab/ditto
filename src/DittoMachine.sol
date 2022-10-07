@@ -4,10 +4,8 @@ pragma solidity ^0.8.4;
 import {ERC721, ERC721TokenReceiver} from "@rari-capital/solmate/src/tokens/ERC721.sol";
 import {ERC1155, ERC1155TokenReceiver} from "@rari-capital/solmate/src/tokens/ERC1155.sol";
 import {SafeTransferLib, ERC20} from "@rari-capital/solmate/src/utils/SafeTransferLib.sol";
-import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {IERC2981, IERC165} from "@openzeppelin/contracts/interfaces/IERC2981.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {Base64} from 'base64-sol/base64.sol';
 import {CloneList} from "./CloneList.sol";
 import {TimeCurve} from "./TimeCurve.sol";
 import {BlockRefund} from "./BlockRefund.sol";
@@ -238,8 +236,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
                 issueVoucher(curOwner, cloneId, index == protoIdHead, value);
 
                 // calculate new clone term values
-                CloneShape storage shapeS = cloneIdToShape[cloneId];
-                shapeS.heat = cloneShape.heat; // does not inherit heat of floor id
+                cloneIdToShape[cloneId].heat = cloneShape.heat; // does not inherit heat of floor id
                 cloneIdToShape[cloneId].worth = value;
                 unchecked {
                     cloneIdToShape[cloneId].term = uint128(block.timestamp) + BASE_TERM + TimeCurve.calc(cloneShape.heat);
@@ -257,7 +254,6 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
             BlockRefund._setBlockRefund(cloneId, subsidy);
             // half of fee goes into subsidy pool, half to previous clone owner.
             // if in same block, subsidy is not split and replaces refunded fees.
-            // subtract subsidy refund from subsidy pool.
             if (feeRefund == 0) {
                 feeRefund = subsidy >> 1;
             }
