@@ -3,6 +3,7 @@ pragma solidity ^0.8.4;
 
 import {ERC721, ERC721TokenReceiver} from "@rari-capital/solmate/src/tokens/ERC721.sol";
 import {ERC1155, ERC1155TokenReceiver} from "@rari-capital/solmate/src/tokens/ERC1155.sol";
+import {ERC1155D} from "./ERC1155D.sol";
 import {SafeTransferLib, ERC20} from "@rari-capital/solmate/src/utils/SafeTransferLib.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {IERC2981, IERC165} from "@openzeppelin/contracts/interfaces/IERC2981.sol";
@@ -21,7 +22,7 @@ import {DittoMachineSvg} from "./DittoMachineSvg.sol";
  * the right to ownership when it is sold via this contract. Anybody may buy the
  * token for a higher price and force a transfer from the previous owner to the new buyer.
  */
-contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, CloneList, BlockRefund, Oracle {
+contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, CloneList, BlockRefund, Oracle {
     /**
      * @notice Insufficient bid for purchasing a clone.
      * @dev thrown when the number of erc20 tokens sent is lower than
@@ -75,13 +76,13 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
     // non transferrable vouchers for reward tokens
     mapping(uint => bool) public voucherValidity;
 
-    constructor() ERC721("Ditto", "DTO") {}
+    constructor() {}
 
     ///////////////////////////////////////////
     ////////////// URI FUNCTIONS //////////////
     ///////////////////////////////////////////
 
-    function tokenURI(uint id) public view override returns (string memory) {
+    function uri(uint id) public view override returns (string memory) {
         require(ownerOf[id] != address(0), "!owner");
         CloneShape memory shape = cloneIdToShape[id];
 
@@ -138,8 +139,9 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
         }
 
         address[1] memory r = [receiver];
+        address curOwner = ownerOf[cloneId];
 
-        if (ownerOf[cloneId] == address(0)) {
+        if (curOwner == address(0)) {
             // check that index references have been set
             if (!validIndex(protoId, index)) {
                 // if references have not been set by a previous clone this clone cannot be minted
@@ -168,7 +170,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
                 if (value > cloneIdToShape[elderId].worth) revert AmountInvalid();
             }
 
-            _mint(r[0], cloneId);
+            _mintSingle(r[0], cloneId);
 
             cloneIdToShape[cloneId] = CloneShape({
                 tokenId: _tokenId,
@@ -223,7 +225,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
                         heat = 1;
                     }
                 }
-                issueVoucher(ownerOf[cloneId], cloneId, protoId, value);
+                issueVoucher(curOwner, cloneId, protoId, value);
 
                 // calculate new clone term values
                 cloneIdToShape[cloneId].heat = uint8(heat); // does not inherit heat of floor id
@@ -238,9 +240,6 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
                 address(this),
                 _amount
             );
-
-            // buying out the previous clone owner
-            address curOwner = ownerOf[cloneId];
 
             // subtract subsidy refund from subsidy pool
             cloneIdToSubsidy[cloneId] -= feeRefund;
@@ -272,9 +271,9 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
      */
     function dissolve(uint protoId, uint cloneId) external {
         uint index = cloneIdToIndex[cloneId];
-        if (!(msg.sender == ownerOf[cloneId]
-                || msg.sender == getApproved[cloneId]
-                || isApprovedForAll[ownerOf[cloneId]][msg.sender])) {
+        address owner = ownerOf[cloneId];
+        if (!(msg.sender == owner
+                || isApprovedForAll[owner][msg.sender])) {
             revert NotAuthorized();
         }
 
@@ -292,12 +291,10 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
 
         popListIndex(protoId, index);
 
-        address owner = ownerOf[cloneId];
-
         delete cloneIdToShape[cloneId];
         delete cloneIdToIndex[cloneId];
 
-        _burn(cloneId);
+        _burn(owner, cloneId, 1);
         SafeTransferLib.safeTransfer( // EXTERNAL CALL
             ERC20(cloneShape.ERC20Contract),
             owner,
@@ -426,7 +423,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
         address owner = ownerOf[cloneId];
         delete cloneIdToShape[cloneId];
         delete cloneIdToSubsidy[cloneId];
-        _burn(cloneId);
+        _burn(owner, cloneId, 1);
 
         // send useful data along with safe transfer to sontracts
         bytes memory data = abi.encode(
@@ -550,15 +547,9 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
         // no ownership or approval checks cause we're forcing a change of ownership
         if (from != ownerOf[id]) revert FromInvalid();
 
-        unchecked {
-            balanceOf[from]--;
-            balanceOf[to]++;
-        }
-
         ownerOf[id] = to;
 
-        delete getApproved[id];
-        emit Transfer(from, to, id);
+        emit TransferSingle(address(this), from, to, id, 1);
 
         // require statement copied from solmate ERC721 safeTransferFrom()
         require(
@@ -572,7 +563,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
         // if they don't implement the ejector we're stll going to move the token.
         if (from.code.length != 0) {
             // not sure if this is exploitable yet?
-            try IERC721TokenEjector(from).onERC721Ejected{gas: 30000}(address(this), to, id, "") {} // EXTERNAL CALL
+            try IERC1155TokenEjector(from).onERC1155Ejected{gas: 30000}(address(this), to, id, 1, "") {} // EXTERNAL CALL
             catch {}
         }
     }
@@ -583,12 +574,13 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
  * @title A funtion to support token ejection
  * @notice function is called if a contract must do accounting on a forced transfer
  */
-interface IERC721TokenEjector {
+interface IERC1155TokenEjector {
 
-    function onERC721Ejected(
+    function onERC1155Ejected(
         address operator,
         address to,
         uint id,
+        uint amount,
         bytes calldata data
     ) external returns (bytes4);
 
