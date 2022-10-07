@@ -548,8 +548,8 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
         if (from != ownerOf[id]) revert FromInvalid();
 
         unchecked {
-            balanceOf[from]--;
-            balanceOf[to]++;
+            --balanceOf[from];
+            ++balanceOf[to];
         }
 
         ownerOf[id] = to;
