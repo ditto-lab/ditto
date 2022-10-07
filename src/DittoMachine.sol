@@ -153,7 +153,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
             uint128 subsidy = (_amount * MIN_FEE / DNOM); // with current constants subsidy <= _amount
             uint128 value = _amount - subsidy;
 
-            if (cloneId != floorId && ownerOf[floorId] != address(0)) {
+            if (!(cloneId == floorId || ownerOf[floorId] == address(0))) {
                 // check price of floor clone to get price floor
                 uint128 minAmount = cloneIdToShape[floorId].worth;
                 if (value < minAmount) revert AmountInvalid();
@@ -216,7 +216,9 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
                         uint128 elapsed = uint128(block.timestamp) - (cloneShape.term - termLength); // current time - time when the current term started
                         // add 1 to current heat so heat is not stuck at low value with anything but extreme demand for a clone
                         uint128 cool = (heat+1) * elapsed / termLength;
-                        heat = (cool > heat) ? 1 : uint128(Math.min(heat - cool + 1, type(uint8).max));
+                        unchecked {
+                            heat = (cool > heat) ? 1 : uint128(Math.min(heat - cool + 1, type(uint8).max));
+                        }
                     } else {
                         heat = 1;
                     }
