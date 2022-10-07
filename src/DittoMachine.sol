@@ -159,7 +159,8 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
             floorId = uint(keccak256(abi.encodePacked(floorId, index)));
 
             uint128 subsidy = (_amount * MIN_FEE / DNOM); // with current constants subsidy <= _amount
-            uint128 value = _amount - subsidy;
+            uint128 value;
+            unchecked{ value = _amount - subsidy; }
 
             if (!(cloneId == floorId || ownerOf[floorId] == address(0))) {
                 // check price of floor clone to get price floor
