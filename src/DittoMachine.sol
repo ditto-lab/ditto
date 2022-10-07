@@ -39,7 +39,6 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
     ////////////// CONSTANT VARIABLES //////////////
 
     bytes4 private constant _INTERFACE_ID_ERC2981 = 0x2a55205a;
-    bytes16 private constant _HEX_SYMBOLS = "0123456789abcdef";
 
     uint internal constant FLOOR_ID = uint(0xfddc260aecba8a66725ee58da4ea3cbfcf4ab6c6ad656c48345a575ca18c45c9);
 
