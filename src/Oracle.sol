@@ -51,13 +51,12 @@ abstract contract Oracle {
     }
 
     function grow(uint protoId, uint16 newCardinality) external {
-        uint128 curCardinality = observationIndex[protoId].cardinality;
-
+        Observation[65536] storage obsS = observations[protoId];
         unchecked {
             // a no-op if newCardinality <= curCardinality
-            for(uint i = curCardinality; i < newCardinality; ++i) {
+            for(uint i = observationIndex[protoId].cardinality; i < newCardinality; ++i) {
                 // i is max 65534
-                observations[protoId][i].timestamp = 1;
+                obsS[i].timestamp = 1;
             }
         }
     }
