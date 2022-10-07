@@ -175,10 +175,10 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
                 heat: 1,
                 floor: floor
             });
-            pushListTail(protoId, index);
+            CloneList.pushListTail(protoId, index);
             cloneIdToIndex[cloneId] = index;
             cloneIdToSubsidy[cloneId] += subsidy;
-            _setBlockRefund(cloneId, subsidy);
+            BlockRefund._setBlockRefund(cloneId, subsidy);
 
             SafeTransferLib.safeTransferFrom( // EXTERNAL CALL
                 ERC20(_ERC20Contract),
@@ -192,7 +192,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
             CloneShape memory cloneShape = cloneIdToShape[cloneId];
             uint128 heat = cloneShape.heat;
 
-            uint128 feeRefund = _getBlockRefund(cloneId); // check if bids have occured within the current block
+            uint128 feeRefund = BlockRefund._getBlockRefund(cloneId); // check if bids have occured within the current block
             bool isFeeRefundZero = feeRefund == 0;
             uint128 minAmount = _getMinAmount(cloneShape, !isFeeRefundZero);
             // calculate subsidy and worth values
@@ -239,15 +239,13 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
             // buying out the previous clone owner
             address curOwner = ownerOf[cloneId];
 
-            // subtract subsidy refund from subsidy pool
-            cloneIdToSubsidy[cloneId] -= feeRefund;
-
             {
-                _setBlockRefund(cloneId, subsidy);
+                BlockRefund._setBlockRefund(cloneId, subsidy);
             }
             // half of fee goes into subsidy pool, half to previous clone owner
-            // if in same block subsidy is not split and replaces refunded fees
-            cloneIdToSubsidy[cloneId] += isFeeRefundZero ? (subsidy >> 1) : subsidy;
+            // if in same block subsidy is not split and replaces refunded fees.
+            // subtract subsidy refund from subsidy pool.
+            cloneIdToSubsidy[cloneId] += (isFeeRefundZero ? (subsidy >> 1) : subsidy) - feeRefund;
 
             SafeTransferLib.safeTransfer( // EXTERNAL CALL
                 ERC20(_ERC20Contract),
@@ -307,7 +305,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
             return MIN_AMOUNT_FOR_NEW_CLONE;
         }
         CloneShape memory cloneShape = cloneIdToShape[cloneId];
-        bool intraBlock = _getBlockRefund(cloneId) != 0;
+        bool intraBlock = BlockRefund._getBlockRefund(cloneId) != 0;
         uint128 _minAmount = _getMinAmount(cloneShape, intraBlock);
         // calculate fee multiplier with heat, if in active bidding block do not add 1.
         uint128 minFeeHeat = (MIN_FEE * ((intraBlock ? 0:1) + cloneShape.heat));
