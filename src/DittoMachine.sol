@@ -225,14 +225,14 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
                         cloneShape.heat = 1;
                     }
                 }
-                issueVoucher(curOwner, cloneId, protoId, value);
+                issueVoucher(curOwner, cloneId, index == protoIdHead, value);
 
                 // calculate new clone term values
                 CloneShape storage shapeS = cloneIdToShape[cloneId];
                 shapeS.heat = cloneShape.heat; // does not inherit heat of floor id
-                shapeS.worth = value;
+                cloneIdToShape[cloneId].worth = value;
                 unchecked {
-                    shapeS.term = uint128(block.timestamp) + BASE_TERM + TimeCurve.calc(cloneShape.heat);
+                    cloneIdToShape[cloneId].term = uint128(block.timestamp) + BASE_TERM + TimeCurve.calc(cloneShape.heat);
                 }
             }
 
@@ -290,7 +290,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
             Oracle.write(protoId, worth);
         }
 
-        popListIndex(protoId, index);
+        CloneList.popListIndex(protoId, index);
 
         delete cloneIdToShape[cloneId];
         delete cloneIdToIndex[cloneId];
@@ -358,14 +358,13 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
         return floorPrice > clonePrice ? floorPrice : clonePrice;
     }
 
-    function issueVoucher(address to, uint cloneId, uint protoId, uint128 value) private {
+    function issueVoucher(address to, uint cloneId, bool isIndexHead, uint128 value) private {
         uint8 heat = cloneIdToShape[cloneId].heat;
         uint128 worth = cloneIdToShape[cloneId].worth;
         uint128 term = cloneIdToShape[cloneId].term;
         uint128 termLength;
         unchecked { termLength = BASE_TERM + TimeCurve.calc(heat); }
 
-        bool isIndexHead = uint(keccak256(abi.encodePacked(protoId, protoIdToIndexHead[protoId]))) == cloneId;
         uint voucher = uint(keccak256(abi.encodePacked(
             isIndexHead,
             cloneId, // encodes: protoId (nft contract, token id, erc20 contract, if floor), index
