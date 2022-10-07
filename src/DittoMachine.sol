@@ -131,7 +131,8 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
         // hash protoId and index to get cloneId
         cloneId = uint(keccak256(abi.encodePacked(protoId, index)));
 
-        if (index == protoIdToIndexHead[protoId]) {
+        uint protoIdHead = protoIdToIndexHead[protoId];
+        if (index == protoIdHead) {
             Oracle.write(protoId, cloneIdToShape[cloneId].worth);
         }
 
@@ -157,7 +158,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
                 uint128 minAmount = cloneIdToShape[floorId].worth;
                 if (value < minAmount) revert AmountInvalid();
             }
-            if (index != protoIdToIndexHead[protoId]) { // check cloneId at prior index
+            if (index != protoIdHead) { // check cloneId at prior index
                 // prev <- index
                 uint elderId = uint(keccak256(abi.encodePacked(protoId, protoIdToIndexToPrior[protoId][index])));
                 // check value is less than clone closer to the index head
@@ -201,7 +202,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
             // scoping to prevent "stack too deep" errors
             {
                 uint128 value = _amount - subsidy; // will be applied to cloneShape.worth
-                if (index != protoIdToIndexHead[protoId]) { // check cloneId at prior index
+                if (index != protoIdHead) { // check cloneId at prior index
                     // prev <- index
                     uint elderId = uint(keccak256(abi.encodePacked(protoId, protoIdToIndexToPrior[protoId][index])));
                     if (value > cloneIdToShape[elderId].worth) revert AmountInvalid();
