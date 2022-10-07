@@ -71,6 +71,8 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
     // maps clone to the index it is placed at in a linked list
     mapping(uint256 => uint256) public cloneIdToIndex;
 
+    mapping(uint256 => bool) public voucherValidity; // non transferrable vouchers for reward tokens
+
     constructor() ERC721("Ditto", "DTO") { }
 
     ///////////////////////////////////////////
@@ -304,6 +306,8 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
                         heat = 1;
                     }
                 }
+                issueVoucher(ownerOf[cloneId], cloneId, protoId, value);
+
                 // calculate new clone term values
                 cloneIdToShape[cloneId].heat = uint8(heat); // does not inherit heat of floor id
                 cloneIdToShape[cloneId].worth = value;
@@ -436,6 +440,25 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
         uint128 clonePrice = cloneShape.worth + (cloneShape.worth * timeLeft / termLength);
         // return floor price if greater than clone auction price
         return floorPrice > clonePrice ? floorPrice : clonePrice;
+    }
+
+    function issueVoucher(address to, uint256 cloneId, uint256 protoId, uint128 value) private {
+
+        uint128 termLength = BASE_TERM + TimeCurve.calc(cloneIdToShape[cloneId].heat);
+
+        bool isIndexHead = uint256(keccak256(abi.encodePacked(protoId, protoIdToIndexHead[protoId]))) == cloneId;
+        uint256 voucher = uint256(keccak256(abi.encodePacked(
+            isIndexHead,
+            cloneId, // encodes: protoId (nft contract, token id, erc20 contract, if floor), index
+            to,
+            cloneIdToShape[cloneId].heat,
+            cloneIdToShape[cloneId].worth, // old value of the clone
+            value, // new value of the clone
+            cloneIdToShape[cloneId].term - termLength,
+            uint128(block.timestamp)
+        )));
+
+        voucherValidity[voucher] = true;
     }
 
     ////////////////////////////////////////////////
