@@ -368,15 +368,17 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
             return floorPrice > cloneShape.worth ? floorPrice : cloneShape.worth;
         }
 
-        uint128 timeLeft = 0;
-        unchecked {
-            if (cloneShape.term > block.timestamp) {
+        uint128 clonePrice = cloneShape.worth;
+        if (cloneShape.term > block.timestamp) {
+            uint128 timeLeft;
+            uint128 termLength;
+            unchecked {
                 timeLeft = cloneShape.term - uint128(block.timestamp);
+                termLength = BASE_TERM + TimeCurve.calc(cloneShape.heat);
             }
+            clonePrice += (cloneShape.worth * timeLeft / termLength);
         }
-        uint128 termLength;
-        unchecked { termLength = BASE_TERM + TimeCurve.calc(cloneShape.heat); }
-        uint128 clonePrice = cloneShape.worth + (cloneShape.worth * timeLeft / termLength);
+
         // return floor price if greater than clone auction price
         return floorPrice > clonePrice ? floorPrice : clonePrice;
     }
