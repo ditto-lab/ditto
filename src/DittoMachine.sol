@@ -511,14 +511,14 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
         uint[] calldata amounts,
         bytes calldata data
     ) external returns (bytes4) {
-        for (uint i=0; i < amounts.length; i++) {
-            if (amounts[i] != 1) revert AmountInvalid();
-        }
-
         (address[] memory ERC20Contracts, bool[] memory floors) = abi.decode(data, (address[], bool[]));
-
-        for (uint i=0; i < ids.length; i++) {
-            onTokenReceived(from, ids[i], ERC20Contracts[i], floors[i], true);
+        require(ERC20Contracts.length == amounts.length);
+        require(floors.length == amounts.length);
+        unchecked {
+            for (uint i=0; i < amounts.length; ++i) {
+                if (amounts[i] != 1) revert AmountInvalid();
+                onTokenReceived(from, ids[i], ERC20Contracts[i], floors[i], true);
+            }
         }
 
         return this.onERC1155BatchReceived.selector;
