@@ -57,6 +57,7 @@ contract TestBase is Test, DittoMachine {
     function setUp() public virtual {
         vm.warp(INIT_TIME); // bring timestamp to a realistic number
 
+        dm = new DittoMachine();
         dmAddr = address(dm);
 
         nft = new UnderlyingNFT();
