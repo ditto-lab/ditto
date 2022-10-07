@@ -24,7 +24,8 @@ abstract contract Oracle {
 
     function write(uint protoId, uint128 price) internal {
         ObservationIndex memory index = observationIndex[protoId];
-        Observation memory lastObservation = observations[protoId][index.lastIndex];
+        Observation[65536] storage obsS = observations[protoId];
+        Observation memory lastObservation = obsS[index.lastIndex];
         if (block.timestamp == lastObservation.timestamp) return;
 
         if (index.cardinality == 0) index.cardinality = 1;
@@ -32,7 +33,7 @@ abstract contract Oracle {
             if (lastObservation.timestamp > 1) {
                 if (++index.lastIndex == index.cardinality) {
                     // since the maximum length is 65535, array's last timestamp is always 0
-                    if (observations[protoId][index.lastIndex].timestamp == 0) {
+                    if (obsS[index.lastIndex].timestamp == 0) {
                         index.lastIndex = 0;
                     } else {
                         ++index.cardinality;
@@ -41,7 +42,7 @@ abstract contract Oracle {
             }
 
             uint128 timeDelta = uint128(block.timestamp) - lastObservation.timestamp;
-            observations[protoId][index.lastIndex] = Observation({
+            obsS[index.lastIndex] = Observation({
                 timestamp: uint128(block.timestamp),
                 cumulativeWorth: lastObservation.cumulativeWorth + (timeDelta * price)
             });
@@ -68,8 +69,10 @@ abstract contract Oracle {
     ) internal view returns (uint128[] memory cumulativePrices) {
         cumulativePrices = new uint128[](secondsAgos.length);
         ObservationIndex memory index = observationIndex[protoId];
-        for (uint i=0; i < secondsAgos.length; ++i) {
-            cumulativePrices[i] = observeSingle(protoId, secondsAgos[i], index, curWorth);
+        unchecked {
+            for (uint i=0; i < secondsAgos.length; ++i) {
+                cumulativePrices[i] = observeSingle(protoId, secondsAgos[i], index, curWorth);
+            }
         }
     }
 
