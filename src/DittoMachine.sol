@@ -227,7 +227,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
                 issueVoucher(curOwner, cloneId, protoId, value);
 
                 // calculate new clone term values
-                cloneIdToShape[cloneId].heat = uint8(cloneShape.heat); // does not inherit heat of floor id
+                cloneIdToShape[cloneId].heat = cloneShape.heat; // does not inherit heat of floor id
                 cloneIdToShape[cloneId].worth = value;
                 cloneIdToShape[cloneId].term = uint128(block.timestamp) + BASE_TERM + TimeCurve.calc(cloneShape.heat);
             }
@@ -240,9 +240,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
                 _amount
             );
 
-            {
-                BlockRefund._setBlockRefund(cloneId, subsidy);
-            }
+            BlockRefund._setBlockRefund(cloneId, subsidy);
             // half of fee goes into subsidy pool, half to previous clone owner
             // if in same block subsidy is not split and replaces refunded fees.
             // subtract subsidy refund from subsidy pool.
@@ -281,10 +279,11 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
         cloneIdToSubsidy[nextCloneId] += cloneIdToSubsidy[cloneId];
         delete cloneIdToSubsidy[cloneId];
 
-        CloneShape memory cloneShape = cloneIdToShape[cloneId];
+        uint128 worth = cloneIdToShape[cloneId].worth;
+        address ERC20Contract = cloneIdToShape[cloneId].ERC20Contract;
 
         if (index == protoIdToIndexHead[protoId]) {
-            Oracle.write(protoId, cloneShape.worth);
+            Oracle.write(protoId, worth);
         }
 
         popListIndex(protoId, index);
@@ -294,9 +293,9 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
 
         _burn(cloneId);
         SafeTransferLib.safeTransfer( // EXTERNAL CALL
-            ERC20(cloneShape.ERC20Contract),
+            ERC20(ERC20Contract),
             owner,
-            cloneShape.worth
+            worth
         );
     }
 
@@ -355,18 +354,20 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
     }
 
     function issueVoucher(address to, uint cloneId, uint protoId, uint128 value) private {
-
-        uint128 termLength = BASE_TERM + TimeCurve.calc(cloneIdToShape[cloneId].heat);
+        uint8 heat = cloneIdToShape[cloneId].heat;
+        uint128 worth = cloneIdToShape[cloneId].worth;
+        uint128 term = cloneIdToShape[cloneId].term;
+        uint128 termLength = BASE_TERM + TimeCurve.calc(heat);
 
         bool isIndexHead = uint(keccak256(abi.encodePacked(protoId, protoIdToIndexHead[protoId]))) == cloneId;
         uint voucher = uint(keccak256(abi.encodePacked(
             isIndexHead,
             cloneId, // encodes: protoId (nft contract, token id, erc20 contract, if floor), index
             to,
-            cloneIdToShape[cloneId].heat,
-            cloneIdToShape[cloneId].worth, // old value of the clone
+            heat,
+            worth, // old value of the clone
             value, // new value of the clone
-            cloneIdToShape[cloneId].term - termLength,
+            term - termLength,
             uint128(block.timestamp)
         )));
 
