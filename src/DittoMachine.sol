@@ -258,7 +258,15 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
             // half of fee goes into subsidy pool, half to previous clone owner
             // if in same block subsidy is not split and replaces refunded fees.
             // subtract subsidy refund from subsidy pool.
-            cloneIdToSubsidy[cloneId] += (isFeeRefundZero ? (subsidy >> 1) : subsidy) - feeRefund;
+            uint128 newSubsidy = subsidy;
+            uint128 transferAmt;
+            if (isFeeRefundZero) {
+                newSubsidy >>= 1;
+                transferAmt = subsidy - newSubsidy;
+            } else {
+                transferAmt = feeRefund;
+            }
+            cloneIdToSubsidy[cloneId] += newSubsidy - feeRefund;
 
             SafeTransferLib.safeTransfer( // EXTERNAL CALL
                 ERC20(_ERC20Contract),
@@ -266,7 +274,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
                 // previous clone value + half of subsidy sent to prior clone owner
                 // clone's worth is refunded here
                 // fees are completely refunded if in same block as another bid
-                (cloneShape.worth + (isFeeRefundZero ? ((subsidy >> 1) + (subsidy & 1)) : feeRefund) )
+                cloneShape.worth + transferAmt
             );
             // force transfer from current owner to new highest bidder
             forceTransferFrom(curOwner, msg.sender, cloneId); // EXTERNAL CALL
