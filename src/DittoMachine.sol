@@ -193,9 +193,10 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
             uint128 heat = cloneShape.heat;
 
             uint128 feeRefund = _getBlockRefund(cloneId); // check if bids have occured within the current block
-            uint128 minAmount = _getMinAmount(cloneShape, feeRefund != 0);
+            bool isFeeRefundZero = feeRefund == 0;
+            uint128 minAmount = _getMinAmount(cloneShape, !isFeeRefundZero);
             // calculate subsidy and worth values
-            uint128 subsidy = (_amount * (MIN_FEE * ((feeRefund == 0 ? 1 : 0) + heat))) / DNOM;
+            uint128 subsidy = (_amount * (MIN_FEE * ((isFeeRefundZero ? 1 : 0) + heat))) / DNOM;
 
             // scoping to prevent "stack too deep" errors
             {
@@ -208,7 +209,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
                 if (value < minAmount) revert AmountInvalid();
 
                 // reduce heat relative to amount of time elapsed by auction
-                if (feeRefund == 0) { // if call is in same block as another keep the current heat
+                if (isFeeRefundZero) { // if call is in same block as another keep the current heat
                     if (cloneShape.term > block.timestamp) {
                         uint128 termLength = BASE_TERM + TimeCurve.calc(heat);
                         uint128 elapsed = uint128(block.timestamp) - (cloneShape.term - termLength); // current time - time when the current term started
@@ -246,7 +247,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
             }
             // half of fee goes into subsidy pool, half to previous clone owner
             // if in same block subsidy is not split and replaces refunded fees
-            cloneIdToSubsidy[cloneId] += feeRefund == 0 ? (subsidy >> 1) : subsidy;
+            cloneIdToSubsidy[cloneId] += isFeeRefundZero ? (subsidy >> 1) : subsidy;
 
             SafeTransferLib.safeTransfer( // EXTERNAL CALL
                 ERC20(_ERC20Contract),
@@ -254,7 +255,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
                 // previous clone value + half of subsidy sent to prior clone owner
                 // clone's worth is refunded here
                 // fees are completely refunded if in same block as another bid
-                (cloneShape.worth + (feeRefund == 0 ? ((subsidy >> 1) + (subsidy & 1)) : feeRefund) )
+                (cloneShape.worth + (isFeeRefundZero ? ((subsidy >> 1) + (subsidy & 1)) : feeRefund) )
             );
             // force transfer from current owner to new highest bidder
             forceTransferFrom(curOwner, msg.sender, cloneId); // EXTERNAL CALL
