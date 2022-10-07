@@ -8,8 +8,7 @@ contract DittoMachineScript is Script {
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         vm.startBroadcast(deployerPrivateKey);
-        DittoMachineSvg svg = new DittoMachineSvg();
-        DittoMachine dm = new DittoMachine(address(svg));
+        DittoMachine dm = new DittoMachine();
         console.log(dm.name());
         console.log(address(dm));
 

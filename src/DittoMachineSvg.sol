@@ -6,14 +6,12 @@ import {ERC1155} from "@rari-capital/solmate/src/tokens/ERC1155.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {Base64} from 'base64-sol/base64.sol';
 
-contract DittoMachineSvg {
+library DittoMachineSvg {
     ////////////// CONSTANT VARIABLES //////////////
 
     bytes16 private constant _HEX_SYMBOLS = "0123456789abcdef";
 
     uint256 internal constant FLOOR_ID = uint256(0xfddc260aecba8a66725ee58da4ea3cbfcf4ab6c6ad656c48345a575ca18c45c9);
-
-    constructor() {}
 
     ///////////////////////////////////////////
     ////////////// URI FUNCTIONS //////////////

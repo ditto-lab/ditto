@@ -50,7 +50,6 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
     uint128 internal constant DNOM = 2**16 - 1; // 65535
     uint128 internal constant MIN_AMOUNT_FOR_NEW_CLONE = BASE_TERM + (BASE_TERM * MIN_FEE / DNOM); // 262272
 
-    DittoMachineSvg internal immutable svg;
     ////////////// STATE VARIABLES //////////////
 
     // variables essential to calculating auction/price information for each cloneId
@@ -76,7 +75,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
     // non transferrable vouchers for reward tokens
     mapping(uint256 => bool) public voucherValidity;
 
-    constructor(address _svg) ERC721("Ditto", "DTO") { svg = DittoMachineSvg(_svg); }
+    constructor() ERC721("Ditto", "DTO") {}
 
     ///////////////////////////////////////////
     ////////////// URI FUNCTIONS //////////////
@@ -86,12 +85,12 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
         require(ownerOf[id] != address(0), "!owner");
         CloneShape memory shape = cloneIdToShape[id];
 
-        return svg.tokenURI(id, shape.ERC20Contract, shape.ERC721Contract, ownerOf[id], shape.tokenId, shape.floor);
+        return DittoMachineSvg.tokenURI(id, shape.ERC20Contract, shape.ERC721Contract, ownerOf[id], shape.tokenId, shape.floor);
     }
 
     // Visibility is `public` to enable it being called by other contracts for composition.
-    function renderTokenById(uint256 _tokenId) public view returns (string memory) {
-        return svg.renderTokenById(_tokenId);
+    function renderTokenById(uint256 _tokenId) public pure returns (string memory) {
+        return DittoMachineSvg.renderTokenById(_tokenId);
     }
 
     /////////////////////////////////////////////////
