@@ -62,6 +62,12 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
         uint128 term;
     }
 
+    struct CloneShapeVars {
+        uint8 heat;
+        uint128 worth;
+        uint128 term;
+    }
+
     // tracks balance of subsidy for a specific cloneId
     mapping(uint => uint128) public cloneIdToSubsidy;
 
@@ -192,11 +198,15 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
 
         } else {
 
-            CloneShape memory cloneShape = cloneIdToShape[cloneId];
+            CloneShapeVars memory cloneShape = CloneShapeVars({
+                heat: cloneIdToShape[cloneId].heat,
+                worth: cloneIdToShape[cloneId].worth,
+                term: cloneIdToShape[cloneId].term
+            });
 
             uint128 feeRefund = BlockRefund._getBlockRefund(cloneId); // check if bids have occured within the current block
             bool isFeeRefundZero = feeRefund == 0;
-            uint128 minAmount = _getMinAmount(cloneShape, !isFeeRefundZero);
+            uint128 minAmount = _getMinAmount(cloneShape, _ERC721Contract, _ERC20Contract, !isFeeRefundZero);
             // calculate subsidy and worth values
             uint128 subsidy = (_amount * (MIN_FEE * ((isFeeRefundZero ? 1 : 0) + cloneShape.heat))) / DNOM;
 
@@ -308,8 +318,13 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
             return MIN_AMOUNT_FOR_NEW_CLONE;
         }
         CloneShape memory cloneShape = cloneIdToShape[cloneId];
+        CloneShapeVars memory shapeVars = CloneShapeVars({
+            heat: cloneShape.heat,
+            worth: cloneShape.worth,
+            term: cloneShape.term
+        });
         bool intraBlock = BlockRefund._getBlockRefund(cloneId) != 0;
-        uint128 _minAmount = _getMinAmount(cloneShape, intraBlock);
+        uint128 _minAmount = _getMinAmount(shapeVars, cloneShape.ERC721Contract, cloneShape.ERC20Contract, intraBlock);
         // calculate fee multiplier with heat, if in active bidding block do not add 1.
         uint128 minFeeHeat = (MIN_FEE * ((intraBlock ? 0:1) + cloneShape.heat));
         // calculate fee needed from min value. Do not devide my DNOM as to not loose percision.
@@ -330,11 +345,11 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
      * @param cloneShape clone for which to compute the minimum amount.
      * @dev only use it for a minted clone.
      */
-    function _getMinAmount(CloneShape memory cloneShape, bool intraBlock) internal view returns (uint128) {
+    function _getMinAmount(CloneShapeVars memory cloneShape, address ERC721Contract, address ERC20Contract, bool intraBlock) internal view returns (uint128) {
         uint floorId = uint(keccak256(abi.encodePacked(
-            cloneShape.ERC721Contract,
+            ERC721Contract,
             FLOOR_ID,
-            cloneShape.ERC20Contract,
+            ERC20Contract,
             true
         )));
         floorId = uint(keccak256(abi.encodePacked(floorId, protoIdToIndexHead[floorId])));
