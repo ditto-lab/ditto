@@ -2,8 +2,8 @@
 pragma solidity ^0.8.4;
 
 import {DittoMachine, IERC1155TokenEjector} from "../DittoMachine.sol";
-
-contract BidderWithEjector is IERC1155TokenEjector {
+import {Bidder} from "./Bidder.sol";
+contract BidderWithEjector is Bidder, IERC1155TokenEjector {
 
     uint public ejections;
 
@@ -21,7 +21,7 @@ contract BidderWithEjector is IERC1155TokenEjector {
     }
 }
 
-contract BidderWithBadEjector is IERC1155TokenEjector {
+contract BidderWithBadEjector is Bidder, IERC1155TokenEjector {
 
     uint public ejections;
 
@@ -40,7 +40,7 @@ contract BidderWithBadEjector is IERC1155TokenEjector {
     }
 }
 
-contract BidderWithGassyEjector is IERC1155TokenEjector {
+contract BidderWithGassyEjector is Bidder, IERC1155TokenEjector {
 
     uint public ejections;
     uint[] public stored;

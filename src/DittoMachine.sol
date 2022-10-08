@@ -104,11 +104,12 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
      * @param _ERC721Contract address of selected NFT smart contract.
      * @param _tokenId selected NFT token id.
      * @param _ERC20Contract address of the ERC20 contract used for purchase.
-     * @param _amount address of ERC20 tokens used for purchase.
+     * @param _amount amount of ERC20 tokens used for purchase.
      * @param floor selector determining if the purchase is for a floor perp.
-     * @dev creates an ERC721 representing the specified future or floor perp, reffered to as clone.
+     * @param index index at which to mint the clone.
+     * @dev creates an ERC721 representing the specified future or floor perp, referred to as clone.
      * @dev a clone id is calculated by hashing ERC721Contract, _tokenId, _ERC20Contract, and floor params.
-     * @dev if floor == true, FLOOR_ID will replace _tokenId in cloneId calculation.
+     * @dev if floor == true, _tokenId has to be FLOOR_ID, otherwise it reverts.
      */
     function duplicate(
         address receiver,
@@ -117,7 +118,7 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
         address _ERC20Contract,
         uint128 _amount,
         bool floor,
-        uint index // index at which to mint the clone
+        uint index
     ) external returns (uint cloneId, uint protoId) {
         // ensure enough funds to do some math on
         if (_amount < MIN_AMOUNT_FOR_NEW_CLONE) revert AmountInvalidMin();
@@ -269,7 +270,7 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
      * @param protoId specifies the clone to be burned.
      * @dev will refund funds held in a position, subsidy will remain for sellers in the future.
      */
-    function dissolve(uint protoId, uint cloneId) external {
+    function dissolve(uint protoId, uint cloneId) external returns (bool) {
         uint index = cloneIdToIndex[cloneId];
         address owner = ownerOf[cloneId];
         if (!(msg.sender == owner
@@ -294,12 +295,13 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
         delete cloneIdToShape[cloneId];
         delete cloneIdToIndex[cloneId];
 
-        _burn(owner, cloneId, 1);
+        _burn(owner, cloneId);
         SafeTransferLib.safeTransfer( // EXTERNAL CALL
             ERC20(cloneShape.ERC20Contract),
             owner,
             cloneShape.worth
         );
+        return true;
     }
 
     function getMinAmountForCloneTransfer(uint cloneId) external view returns (uint128) {
@@ -413,17 +415,17 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
             cloneId = floorId;
             protoId = flotoId;
         }
-        // if no cloneId is active, revert
-        if (ownerOf[cloneId] == address(0)) revert CloneNotFound();
-
-        Oracle.write(protoId, cloneIdToShape[cloneId].worth);
-
-        CloneShape memory cloneShape = cloneIdToShape[cloneId];
-        uint subsidy = cloneIdToSubsidy[cloneId];
         address owner = ownerOf[cloneId];
+        // if no cloneId is active, revert
+        if (owner == address(0)) revert CloneNotFound();
+
+        uint128 worth = cloneIdToShape[cloneId].worth;
+        Oracle.write(protoId, worth);
+
+        uint subsidy = cloneIdToSubsidy[cloneId];
         delete cloneIdToShape[cloneId];
         delete cloneIdToSubsidy[cloneId];
-        _burn(owner, cloneId, 1);
+        _burn(owner, cloneId);
 
         // send useful data along with safe transfer to sontracts
         bytes memory data = abi.encode(
@@ -433,7 +435,7 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
             floor,
             protoIdToIndexHead[protoId], // index
             owner,
-            cloneShape.worth,
+            worth,
             subsidy
         );
 
@@ -450,11 +452,11 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
 
         if (IERC165(msg.sender).supportsInterface(_INTERFACE_ID_ERC2981)) {
             (address receiver, uint royaltyAmount) = IERC2981(msg.sender).royaltyInfo(
-                cloneShape.tokenId,
-                cloneShape.worth
+                id,
+                worth
             );
             if (royaltyAmount > 0 && royaltyAmount < type(uint128).max) {
-                cloneShape.worth -= uint128(royaltyAmount);
+                worth -= uint128(royaltyAmount);
                 SafeTransferLib.safeTransfer(
                     ERC20(ERC20Contract),
                     receiver,
@@ -465,7 +467,7 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
         SafeTransferLib.safeTransfer(
             ERC20(ERC20Contract),
             from,
-            cloneShape.worth + subsidy
+            worth + subsidy
         );
     }
 
