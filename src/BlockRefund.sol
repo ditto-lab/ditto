@@ -12,7 +12,6 @@ abstract contract BlockRefund {
     ) internal {
         // assign new info
         blockToCloneToFeeRefund[block.number][cloneId] = fullFee;
-
     }
 
     function _getBlockRefund(

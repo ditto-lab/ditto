@@ -4,7 +4,7 @@ pragma solidity ^0.8.4;
 import "forge-std/Test.sol";
 import "../DittoMachine.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
-import {Bidder, DittoMachine} from "./Bidder.sol";
+import {Bidder} from "./Bidder.sol";
 import {BidderWithEjector, BidderWithBadEjector, BidderWithGassyEjector} from "./BidderWithEjector.sol";
 import {ERC721, IERC2981, UnderlyingNFTWithRoyalties, UnderlyingNFT, UnderlyingNFT1155} from "./UnderlyingNFTWithRoyalties.sol";
 
