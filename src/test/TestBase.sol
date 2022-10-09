@@ -48,8 +48,6 @@ contract TestBase is Test, DittoMachine {
     address eoa4;
 
     constructor() {
-        dm = new DittoMachine();
-
         bidder = new Bidder();
         bidderWithEjector = new BidderWithEjector();
         bidderWithBadEjector = new BidderWithBadEjector();
