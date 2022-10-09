@@ -6,7 +6,7 @@ import {Oracle} from "../Oracle.sol";
 import {OracleWrapper} from "./OracleWrapper.sol";
 
 contract OracleTest is Test, Oracle {
-    uint256 constant INIT_TIME = 1644911858;
+    uint constant INIT_TIME = 1644911858;
 
     function setUp() public {
         vm.warp(INIT_TIME);
@@ -15,7 +15,7 @@ contract OracleTest is Test, Oracle {
     // we cannot call `Oracle.observe()` directly as it takes calldata argument.
     // wrapping it in an external function lets us call it via `this.observeWrapper()`.
     function observeWrapper(
-        uint256 protoId,
+        uint protoId,
         uint128[] calldata secondsAgos,
         uint128 curWorth
     ) external view returns (uint128[] memory cumulativePrices) {
@@ -43,7 +43,7 @@ contract OracleTest is Test, Oracle {
 
     function testWrite() public {
         uint128 price = 2;
-        uint256 protoId = 0;
+        uint protoId = 0;
         write(protoId, price);
 
         ObservationIndex memory lastIndex = observationIndex[0];

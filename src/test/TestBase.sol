@@ -12,13 +12,13 @@ import {ERC721, IERC2981, UnderlyingNFTWithRoyalties, UnderlyingNFT, UnderlyingN
 contract Currency is ERC20 {
     constructor() ERC20("Currency", "CRY", 18) {}
 
-    function mint(address to, uint256 amount) external {
+    function mint(address to, uint amount) external {
         _mint(to, amount);
     }
 }
 
 contract TestBase is Test, DittoMachine {
-    uint256 constant INIT_TIME = 1644911858;
+    uint constant INIT_TIME = 1644911858;
 
     DittoMachine dm;
     address dmAddr;
@@ -86,8 +86,8 @@ contract TestBase is Test, DittoMachine {
         return a;
     }
 
-    function getCloneShape(uint256 cloneId) internal view returns (CloneShape memory) {
-        (uint256 tokenId, address ERC721Contract,
+    function getCloneShape(uint cloneId) internal view returns (CloneShape memory) {
+        (uint tokenId, address ERC721Contract,
             address ERC20Contract, uint8 heat, bool floor, uint128 worth, uint128 term) = dm.cloneIdToShape(cloneId);
 
         CloneShape memory shape = CloneShape(tokenId, ERC721Contract, ERC20Contract, heat, floor, worth, term);

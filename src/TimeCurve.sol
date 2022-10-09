@@ -11,7 +11,7 @@ library TimeCurve {
 
     // I'm so sorry for this absolutely ass ugly beast of function -calvbore
     // returns the cube root of a uint < 256 as an abdk 64x64 decimal int128
-    function cbrt(uint256 x) internal pure returns(int128) {
+    function cbrt(uint x) internal pure returns(int128) {
         if (x == 0) {return 0;} // this line may never be used within ditto?
         if (x == 1) {return 18446744073709551616;} // 1<<64
         if (x == 2) {return 23241441162429415667;}
@@ -271,7 +271,7 @@ library TimeCurve {
         revert();
     }
 
-    function calc(uint256 heat) internal pure returns(uint128) {
+    function calc(uint heat) internal pure returns(uint128) {
         // 7*log(cbrt(heat))*sqrt(heat)
         int128 h = ABDKMath64x64.fromUInt(heat);        // convert heat
 

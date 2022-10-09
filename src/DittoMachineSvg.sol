@@ -11,13 +11,13 @@ library DittoMachineSvg {
 
     bytes16 private constant _HEX_SYMBOLS = "0123456789abcdef";
 
-    uint256 internal constant FLOOR_ID = uint256(0xfddc260aecba8a66725ee58da4ea3cbfcf4ab6c6ad656c48345a575ca18c45c9);
+    uint internal constant FLOOR_ID = uint(0xfddc260aecba8a66725ee58da4ea3cbfcf4ab6c6ad656c48345a575ca18c45c9);
 
     ///////////////////////////////////////////
     ////////////// URI FUNCTIONS //////////////
     ///////////////////////////////////////////
 
-    function tokenURI(uint256 id, address token, address nft, address owner, uint nftId, bool floor) public view returns (string memory) {
+    function tokenURI(uint id, address token, address nft, address owner, uint nftId, bool floor) public view returns (string memory) {
 
         if (!floor) {
             // if clone is not a floor return underlying token uri
@@ -63,7 +63,7 @@ library DittoMachineSvg {
         }
     }
 
-    function generateSVGofTokenById(uint256 _tokenId) internal pure returns (string memory) {
+    function generateSVGofTokenById(uint _tokenId) internal pure returns (string memory) {
         string memory svg = string(abi.encodePacked(
           '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">',
             renderTokenById(_tokenId),
@@ -74,7 +74,7 @@ library DittoMachineSvg {
     }
 
     // Visibility is `public` to enable it being called by other contracts for composition.
-    function renderTokenById(uint256 _tokenId) public pure returns (string memory) {
+    function renderTokenById(uint _tokenId) public pure returns (string memory) {
         string memory hexColor = toHexString(uint24(_tokenId), 3);
         return string(abi.encodePacked(
             '<rect width="100" height="100" rx="15" style="fill:#', hexColor, '" />',
@@ -93,11 +93,11 @@ library DittoMachineSvg {
     }
 
     // same as inspired from @openzeppelin/contracts/utils/Strings.sol except that it doesn't add "0x" as prefix.
-    function toHexString(uint256 value, uint256 length) internal pure returns (string memory) {
+    function toHexString(uint value, uint length) internal pure returns (string memory) {
         bytes memory buffer = new bytes(2 * length);
 
         unchecked {
-            for (uint256 i = 2 * length; i > 0; --i) {
+            for (uint i = 2 * length; i > 0; --i) {
                 buffer[i - 1] = _HEX_SYMBOLS[value & 0xf];
                 value >>= 4;
             }
