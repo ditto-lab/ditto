@@ -12,11 +12,11 @@ contract UnderlyingNFTWithRoyalties is UnderlyingNFT, IERC2981 {
     }
 
     function royaltyInfo(
-        uint256 /*_tokenId*/,
-        uint256 _salePrice
+        uint /*_tokenId*/,
+        uint _salePrice
     ) external view returns (
         address receiver,
-        uint256 royaltyAmount
+        uint royaltyAmount
     ) {
         receiver = royaltyReceiver;
         royaltyAmount = _salePrice * 10 / 100;

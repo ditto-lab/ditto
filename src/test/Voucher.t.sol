@@ -14,7 +14,7 @@ contract TestVoucher is TestBase {
         vm.assume(smallAmount < 2**105);
         vm.assume(largeAmount < 2**105);
 
-        uint256 nftId = nft.mint();
+        uint nftId = nft.mint();
 
         currency.mint(eoa1, smallAmount);
 
@@ -22,14 +22,14 @@ contract TestVoucher is TestBase {
         currency.approve(dmAddr, smallAmount);
 
         uint128 startTime = uint128(block.timestamp);
-        (uint256 cloneId, uint256 protoId) = dm.duplicate(nftAddr, nftId, currencyAddr, smallAmount, false, 0);
+        (uint cloneId, uint protoId) = dm.duplicate(nftAddr, nftId, currencyAddr, smallAmount, false, 0);
         uint128 worth = getCloneShape(cloneId).worth;
 
         vm.stopPrank();
 
         vm.warp(block.timestamp + time);
 
-        uint256 newMinAmount = dm.getMinAmountForCloneTransfer(cloneId);
+        uint newMinAmount = dm.getMinAmountForCloneTransfer(cloneId);
         vm.assume(largeAmount > newMinAmount);
 
         currency.mint(eoa2, largeAmount);
@@ -44,7 +44,7 @@ contract TestVoucher is TestBase {
 
         vm.stopPrank();
 
-        uint256 voucherHash = uint256(keccak256(
+        uint voucherHash = uint(keccak256(
             abi.encodePacked(
                 true,
                 cloneId,
