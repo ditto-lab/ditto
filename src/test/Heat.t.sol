@@ -19,7 +19,7 @@ contract HeatTest is TestBase {
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
 
         // buy a clone using the minimum purchase amount
-        (uint256 cloneId, ) = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
+        (uint256 cloneId, ) = dm.duplicate(eoa1, nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
         assertEq(dm.ownerOf(cloneId), eoa1);
 
         // ensure erc20 balances
@@ -46,7 +46,7 @@ contract HeatTest is TestBase {
             console.log(minAmountToBuyClone - fee);
             // console.log(dm._getMinAmount(shape, false));
 
-            dm.duplicate(nftAddr, nftId, currencyAddr, minAmountToBuyClone, false, 0);
+            dm.duplicate(eoa1, nftAddr, nftId, currencyAddr, minAmountToBuyClone, false, 0);
 
             shape = getCloneShape(cloneId);
             assertEq(shape.heat, 1+i);
@@ -61,7 +61,7 @@ contract HeatTest is TestBase {
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
 
         // buy a clone using the minimum purchase amount
-        (uint256 cloneId, ) = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
+        (uint256 cloneId, ) = dm.duplicate(eoa1, nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
         assertEq(dm.ownerOf(cloneId), eoa1);
 
         // ensure erc20 balances
@@ -82,7 +82,7 @@ contract HeatTest is TestBase {
             currency.mint(eoa1, minAmountToBuyClone);
             currency.approve(dmAddr, minAmountToBuyClone);
 
-            dm.duplicate(nftAddr, nftId, currencyAddr, minAmountToBuyClone, false, 0);
+            dm.duplicate(eoa1, nftAddr, nftId, currencyAddr, minAmountToBuyClone, false, 0);
 
             shape = getCloneShape(cloneId);
             assertEq(shape.heat, 1);
@@ -98,7 +98,7 @@ contract HeatTest is TestBase {
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
 
         // buy a clone using the minimum purchase amount
-        (uint256 cloneId, ) = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
+        (uint256 cloneId, ) = dm.duplicate(eoa1, nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
         assertEq(dm.ownerOf(cloneId), eoa1);
 
         // ensure erc20 balances
@@ -133,7 +133,7 @@ contract HeatTest is TestBase {
                 "price"
             );
 
-            dm.duplicate(nftAddr, nftId, currencyAddr, minAmountToBuyClone, false, 0);
+            dm.duplicate(eoa1, nftAddr, nftId, currencyAddr, minAmountToBuyClone, false, 0);
             shape = getCloneShape(cloneId);
         }
         vm.stopPrank();
