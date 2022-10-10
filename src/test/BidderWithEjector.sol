@@ -5,14 +5,14 @@ import {DittoMachine, IERC721TokenEjector} from "../DittoMachine.sol";
 
 contract BidderWithEjector is IERC721TokenEjector {
 
-    uint256 public ejections;
+    uint public ejections;
 
     constructor() {}
 
     function onERC721Ejected(
         address /*data*/,
         address /*data*/,
-        uint256 /*data*/,
+        uint /*data*/,
         bytes calldata /*data*/
     ) external returns (bytes4) {
         ++ejections;
@@ -22,14 +22,14 @@ contract BidderWithEjector is IERC721TokenEjector {
 
 contract BidderWithBadEjector is IERC721TokenEjector {
 
-    uint256 public ejections;
+    uint public ejections;
 
     constructor() {}
 
     function onERC721Ejected(
         address /*data*/,
         address /*data*/,
-        uint256 /*data*/,
+        uint /*data*/,
         bytes calldata /*data*/
     ) external returns (bytes4) {
         revert();
@@ -40,18 +40,18 @@ contract BidderWithBadEjector is IERC721TokenEjector {
 
 contract BidderWithGassyEjector is IERC721TokenEjector {
 
-    uint256 public ejections;
-    uint256[] public stored;
+    uint public ejections;
+    uint[] public stored;
 
     constructor() {}
 
     function onERC721Ejected(
         address /*data*/,
         address /*data*/,
-        uint256 /*data*/,
+        uint /*data*/,
         bytes calldata /*data*/
     ) external returns (bytes4) {
-        uint256 gas = gasleft();
+        uint gas = gasleft();
         while (stored.length <= gas) {
             stored.push(gas**gasleft());
         }

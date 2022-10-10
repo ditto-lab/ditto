@@ -16,13 +16,13 @@ abstract contract Oracle {
     }
 
     // Observation array is 1 greater than the limit.
-    mapping(uint256 => Observation[65536]) internal observations;
-    mapping(uint256 => ObservationIndex) internal observationIndex;
+    mapping(uint => Observation[65536]) internal observations;
+    mapping(uint => ObservationIndex) internal observationIndex;
 
     // write current price (before a trade).
     // If cardinality is 0, it first sets it to 1.
 
-    function write(uint256 protoId, uint128 price) internal {
+    function write(uint protoId, uint128 price) internal {
         ObservationIndex memory index = observationIndex[protoId];
         Observation memory lastObservation = observations[protoId][index.lastIndex];
         if (block.timestamp == lastObservation.timestamp) return;
@@ -49,12 +49,12 @@ abstract contract Oracle {
         }
     }
 
-    function grow(uint256 protoId, uint16 newCardinality) external {
+    function grow(uint protoId, uint16 newCardinality) external {
         uint128 curCardinality = observationIndex[protoId].cardinality;
 
         unchecked {
             // a no-op if newCardinality <= curCardinality
-            for(uint256 i = curCardinality; i < newCardinality; ++i) {
+            for(uint i = curCardinality; i < newCardinality; ++i) {
                 // i is max 65534
                 observations[protoId][i].timestamp = 1;
             }
@@ -62,19 +62,19 @@ abstract contract Oracle {
     }
 
     function observe(
-        uint256 protoId,
+        uint protoId,
         uint128[] calldata secondsAgos,
         uint128 curWorth
     ) internal view returns (uint128[] memory cumulativePrices) {
         cumulativePrices = new uint128[](secondsAgos.length);
         ObservationIndex memory index = observationIndex[protoId];
-        for (uint256 i=0; i < secondsAgos.length; ++i) {
+        for (uint i=0; i < secondsAgos.length; ++i) {
             cumulativePrices[i] = observeSingle(protoId, secondsAgos[i], index, curWorth);
         }
     }
 
     function observeSingle(
-        uint256 protoId,
+        uint protoId,
         uint128 secondsAgo,
         ObservationIndex memory lastIndex,
         uint128 curWorth
@@ -110,7 +110,7 @@ abstract contract Oracle {
     }
 
     function getSurroundingObservations(
-        uint256 protoId, uint128 targetTimestamp, ObservationIndex memory lastIndex, uint128 curWorth
+        uint protoId, uint128 targetTimestamp, ObservationIndex memory lastIndex, uint128 curWorth
     ) internal view returns (Observation memory beforeOrAt, Observation memory atOrAfter) {
 
         // check if the newest obervation is older than the requested observation
@@ -133,15 +133,15 @@ abstract contract Oracle {
     }
 
     function binarySearch(
-        uint256 protoId, uint128 targetTimestamp, ObservationIndex memory lastIndex
+        uint protoId, uint128 targetTimestamp, ObservationIndex memory lastIndex
     ) internal view returns (Observation memory beforeOrAt, Observation memory atOrAfter) {
         // binary search on a sorted rotated array
-        uint256 l = (lastIndex.lastIndex + 1) % lastIndex.cardinality; // oldest obervation
-        uint256 r = l + lastIndex.cardinality - 1; // newest obervation
+        uint l = (lastIndex.lastIndex + 1) % lastIndex.cardinality; // oldest obervation
+        uint r = l + lastIndex.cardinality - 1; // newest obervation
         // r can never be the target as we have already checked the newest observation
 
         // index i maps to the real index i % cardinality in the observations array.
-        uint256 i;
+        uint i;
 
         // goal is to find beforeOrAt
         // invariant: l <= beforeOrAt < r

@@ -41,7 +41,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
     bytes4 private constant _INTERFACE_ID_ERC2981 = 0x2a55205a;
     bytes16 private constant _HEX_SYMBOLS = "0123456789abcdef";
 
-    uint256 internal constant FLOOR_ID = uint256(0xfddc260aecba8a66725ee58da4ea3cbfcf4ab6c6ad656c48345a575ca18c45c9);
+    uint internal constant FLOOR_ID = uint(0xfddc260aecba8a66725ee58da4ea3cbfcf4ab6c6ad656c48345a575ca18c45c9);
 
     // ensure that CloneShape can always be casted to int128.
     // change the type to ensure this?
@@ -54,7 +54,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
 
     // variables essential to calculating auction/price information for each cloneId
     struct CloneShape {
-        uint256 tokenId;
+        uint tokenId;
         address ERC721Contract;
         address ERC20Contract;
         uint8 heat;
@@ -64,16 +64,16 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
     }
 
     // tracks balance of subsidy for a specific cloneId
-    mapping(uint256 => uint128) public cloneIdToSubsidy;
+    mapping(uint => uint128) public cloneIdToSubsidy;
 
     // hash protoId with the index placement to get cloneId
-    mapping(uint256 => CloneShape) public cloneIdToShape;
+    mapping(uint => CloneShape) public cloneIdToShape;
 
     // maps clone to the index it is placed at in a linked list
-    mapping(uint256 => uint256) public cloneIdToIndex;
+    mapping(uint => uint) public cloneIdToIndex;
 
     // non transferrable vouchers for reward tokens
-    mapping(uint256 => bool) public voucherValidity;
+    mapping(uint => bool) public voucherValidity;
 
     constructor() ERC721("Ditto", "DTO") {}
 
@@ -81,7 +81,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
     ////////////// URI FUNCTIONS //////////////
     ///////////////////////////////////////////
 
-    function tokenURI(uint256 id) public view override returns (string memory) {
+    function tokenURI(uint id) public view override returns (string memory) {
         require(ownerOf[id] != address(0), "!owner");
         CloneShape memory shape = cloneIdToShape[id];
 
@@ -89,7 +89,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
     }
 
     // Visibility is `public` to enable it being called by other contracts for composition.
-    function renderTokenById(uint256 _tokenId) public pure returns (string memory) {
+    function renderTokenById(uint _tokenId) public pure returns (string memory) {
         return DittoMachineSvg.renderTokenById(_tokenId);
     }
 
@@ -112,18 +112,18 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
     function duplicate(
         address receiver,
         address _ERC721Contract,
-        uint256 _tokenId,
+        uint _tokenId,
         address _ERC20Contract,
         uint128 _amount,
         bool floor,
-        uint256 index // index at which to mint the clone
-    ) external returns (uint256 cloneId, uint256 protoId) {
+        uint index // index at which to mint the clone
+    ) external returns (uint cloneId, uint protoId) {
         // ensure enough funds to do some math on
         if (_amount < MIN_AMOUNT_FOR_NEW_CLONE) revert AmountInvalidMin();
         if (floor && _tokenId != FLOOR_ID) revert InvalidFloorId();
 
         // calculate protoId by hashing identifiying information, precursor to cloneId
-        protoId = uint256(keccak256(abi.encodePacked(
+        protoId = uint(keccak256(abi.encodePacked(
             _ERC721Contract,
             _tokenId,
             _ERC20Contract,
@@ -131,7 +131,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
         )));
 
         // hash protoId and index to get cloneId
-        cloneId = uint256(keccak256(abi.encodePacked(protoId, index)));
+        cloneId = uint(keccak256(abi.encodePacked(protoId, index)));
 
         if (index == protoIdToIndexHead[protoId]) {
             Oracle.write(protoId, cloneIdToShape[cloneId].worth);
@@ -145,13 +145,13 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
                 // if references have not been set by a previous clone this clone cannot be minted
                 revert IndexInvalid();
             }
-            uint256 floorId = uint256(keccak256(abi.encodePacked(
+            uint floorId = uint(keccak256(abi.encodePacked(
                 _ERC721Contract,
                 FLOOR_ID,
                 _ERC20Contract,
                 true
             )));
-            floorId = uint256(keccak256(abi.encodePacked(floorId, index)));
+            floorId = uint(keccak256(abi.encodePacked(floorId, index)));
 
             uint128 subsidy = (_amount * MIN_FEE / DNOM); // with current constants subsidy <= _amount
             uint128 value = _amount - subsidy;
@@ -163,7 +163,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
             }
             if (index != protoIdToIndexHead[protoId]) { // check cloneId at prior index
                 // prev <- index
-                uint256 elderId = uint256(keccak256(abi.encodePacked(protoId, protoIdToIndexToPrior[protoId][index])));
+                uint elderId = uint(keccak256(abi.encodePacked(protoId, protoIdToIndexToPrior[protoId][index])));
                 // check value is less than clone closer to the index head
                 if (value > cloneIdToShape[elderId].worth) revert AmountInvalid();
             }
@@ -206,7 +206,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
                 uint128 value = _amount - subsidy; // will be applied to cloneShape.worth
                 if (index != protoIdToIndexHead[protoId]) { // check cloneId at prior index
                     // prev <- index
-                    uint256 elderId = uint256(keccak256(abi.encodePacked(protoId, protoIdToIndexToPrior[protoId][index])));
+                    uint elderId = uint(keccak256(abi.encodePacked(protoId, protoIdToIndexToPrior[protoId][index])));
                     if (value > cloneIdToShape[elderId].worth) revert AmountInvalid();
                 }
                 if (value < minAmount) revert AmountInvalid();
@@ -270,8 +270,8 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
      * @param protoId specifies the clone to be burned.
      * @dev will refund funds held in a position, subsidy will remain for sellers in the future.
      */
-    function dissolve(uint256 protoId, uint256 cloneId) external {
-        uint256 index = cloneIdToIndex[cloneId];
+    function dissolve(uint protoId, uint cloneId) external {
+        uint index = cloneIdToIndex[cloneId];
         if (!(msg.sender == ownerOf[cloneId]
                 || msg.sender == getApproved[cloneId]
                 || isApprovedForAll[ownerOf[cloneId]][msg.sender])) {
@@ -279,7 +279,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
         }
 
         // move its subsidy to the next clone in the linked list even if it's not minted yet.
-        uint256 nextCloneId = uint256(keccak256(abi.encodePacked(protoId, protoIdToIndexToAfter[protoId][index])));
+        uint nextCloneId = uint(keccak256(abi.encodePacked(protoId, protoIdToIndexToAfter[protoId][index])));
         // invariant: cloneId != nextCloneId
         cloneIdToSubsidy[nextCloneId] += cloneIdToSubsidy[cloneId];
         delete cloneIdToSubsidy[cloneId];
@@ -305,7 +305,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
         );
     }
 
-    function getMinAmountForCloneTransfer(uint256 cloneId) external view returns (uint128) {
+    function getMinAmountForCloneTransfer(uint cloneId) external view returns (uint128) {
         if(ownerOf[cloneId] == address(0)) {
             return MIN_AMOUNT_FOR_NEW_CLONE;
         }
@@ -321,8 +321,8 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
         return _minAmount + feePortion;
     }
 
-    function observe(uint256 protoId, uint128[] calldata secondsAgos) external view returns (uint128[] memory cumulativePrices) {
-        uint256 cloneId = uint256(keccak256(abi.encodePacked(protoId, protoIdToIndexHead[protoId])));
+    function observe(uint protoId, uint128[] calldata secondsAgos) external view returns (uint128[] memory cumulativePrices) {
+        uint cloneId = uint(keccak256(abi.encodePacked(protoId, protoIdToIndexHead[protoId])));
         return Oracle.observe(protoId, secondsAgos, cloneIdToShape[cloneId].worth);
     }
 
@@ -333,13 +333,13 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
      * @dev only use it for a minted clone.
      */
     function _getMinAmount(CloneShape memory cloneShape, bool intraBlock) internal view returns (uint128) {
-        uint256 floorId = uint256(keccak256(abi.encodePacked(
+        uint floorId = uint(keccak256(abi.encodePacked(
             cloneShape.ERC721Contract,
             FLOOR_ID,
             cloneShape.ERC20Contract,
             true
         )));
-        floorId = uint256(keccak256(abi.encodePacked(floorId, protoIdToIndexHead[floorId])));
+        floorId = uint(keccak256(abi.encodePacked(floorId, protoIdToIndexHead[floorId])));
         uint128 floorPrice = cloneIdToShape[floorId].worth;
 
         if (intraBlock) {
@@ -359,12 +359,12 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
         return floorPrice > clonePrice ? floorPrice : clonePrice;
     }
 
-    function issueVoucher(address to, uint256 cloneId, uint256 protoId, uint128 value) private {
+    function issueVoucher(address to, uint cloneId, uint protoId, uint128 value) private {
 
         uint128 termLength = BASE_TERM + TimeCurve.calc(cloneIdToShape[cloneId].heat);
 
-        bool isIndexHead = uint256(keccak256(abi.encodePacked(protoId, protoIdToIndexHead[protoId]))) == cloneId;
-        uint256 voucher = uint256(keccak256(abi.encodePacked(
+        bool isIndexHead = uint(keccak256(abi.encodePacked(protoId, protoIdToIndexHead[protoId]))) == cloneId;
+        uint voucher = uint(keccak256(abi.encodePacked(
             isIndexHead,
             cloneId, // encodes: protoId (nft contract, token id, erc20 contract, if floor), index
             to,
@@ -386,26 +386,26 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
     // i.e. the contract of the token being received.
     function onTokenReceived(
         address from,
-        uint256 id,
+        uint id,
         address ERC20Contract,
         bool floor,
         bool isERC1155
     ) private {
-        uint256 protoId = uint256(keccak256(abi.encodePacked(
+        uint protoId = uint(keccak256(abi.encodePacked(
             msg.sender, // ERC721 or ERC1155 Contract address
             id,
             ERC20Contract,
             false
         )));
-        uint256 cloneId = uint256(keccak256(abi.encodePacked(protoId, protoIdToIndexHead[protoId])));
+        uint cloneId = uint(keccak256(abi.encodePacked(protoId, protoIdToIndexHead[protoId])));
 
-        uint256 flotoId = uint256(keccak256(abi.encodePacked( // floorId + protoId = flotoId
+        uint flotoId = uint(keccak256(abi.encodePacked( // floorId + protoId = flotoId
             msg.sender,
             FLOOR_ID,
             ERC20Contract,
             true
         )));
-        uint256 floorId = uint256(keccak256(abi.encodePacked(flotoId, protoIdToIndexHead[flotoId])));
+        uint floorId = uint(keccak256(abi.encodePacked(flotoId, protoIdToIndexHead[flotoId])));
 
         if (
             floor ||
@@ -422,7 +422,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
         Oracle.write(protoId, cloneIdToShape[cloneId].worth);
 
         CloneShape memory cloneShape = cloneIdToShape[cloneId];
-        uint256 subsidy = cloneIdToSubsidy[cloneId];
+        uint subsidy = cloneIdToSubsidy[cloneId];
         address owner = ownerOf[cloneId];
         delete cloneIdToShape[cloneId];
         delete cloneIdToSubsidy[cloneId];
@@ -452,7 +452,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
         }
 
         if (IERC165(msg.sender).supportsInterface(_INTERFACE_ID_ERC2981)) {
-            (address receiver, uint256 royaltyAmount) = IERC2981(msg.sender).royaltyInfo(
+            (address receiver, uint royaltyAmount) = IERC2981(msg.sender).royaltyInfo(
                 cloneShape.tokenId,
                 cloneShape.worth
             );
@@ -481,7 +481,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
     function onERC721Received(
         address,
         address from,
-        uint256 id,
+        uint id,
         bytes calldata data
     ) external returns (bytes4) {
         (address ERC20Contract, bool floor) = abi.decode(data, (address, bool));
@@ -494,8 +494,8 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
     function onERC1155Received(
         address,
         address from,
-        uint256 id,
-        uint256 amount,
+        uint id,
+        uint amount,
         bytes calldata data
     ) external returns (bytes4) {
         if (amount != 1) revert AmountInvalid();
@@ -510,17 +510,17 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
     function onERC1155BatchReceived(
         address,
         address from,
-        uint256[] calldata ids,
-        uint256[] calldata amounts,
+        uint[] calldata ids,
+        uint[] calldata amounts,
         bytes calldata data
     ) external returns (bytes4) {
-        for (uint256 i=0; i < amounts.length; i++) {
+        for (uint i=0; i < amounts.length; i++) {
             if (amounts[i] != 1) revert AmountInvalid();
         }
 
         (address[] memory ERC20Contracts, bool[] memory floors) = abi.decode(data, (address[], bool[]));
 
-        for (uint256 i=0; i < ids.length; i++) {
+        for (uint i=0; i < ids.length; i++) {
             onTokenReceived(from, ids[i], ERC20Contracts[i], floors[i], true);
         }
 
@@ -545,7 +545,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
     function forceSafeTransferFrom(
         address from,
         address to,
-        uint256 id
+        uint id
     ) private {
         // no ownership or approval checks cause we're forcing a change of ownership
         if (from != ownerOf[id]) revert FromInvalid();
@@ -588,7 +588,7 @@ interface IERC721TokenEjector {
     function onERC721Ejected(
         address operator,
         address to,
-        uint256 id,
+        uint id,
         bytes calldata data
     ) external returns (bytes4);
 

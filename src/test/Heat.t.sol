@@ -14,12 +14,12 @@ contract HeatTest is TestBase {
     }
 
     function testHeatIncrease() public {
-        uint256 nftId = nft.mint();
+        uint nftId = nft.mint();
         vm.startPrank(eoa1);
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
 
         // buy a clone using the minimum purchase amount
-        (uint256 cloneId, ) = dm.duplicate(eoa1, nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
+        (uint cloneId, ) = dm.duplicate(eoa1, nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
         assertEq(dm.ownerOf(cloneId), eoa1);
 
         // ensure erc20 balances
@@ -30,7 +30,7 @@ contract HeatTest is TestBase {
         assertEq(shape.heat, 1);
         // console.log(dm.cloneIdToSubsidy(cloneId));
 
-        for (uint256 i = 1; i < 83; i++) {
+        for (uint i = 1; i < 83; i++) {
             // after 83 price calculation will overflow error when calculating fees
 
             vm.roll(block.number+1);
@@ -40,7 +40,7 @@ contract HeatTest is TestBase {
             currency.mint(eoa1, minAmountToBuyClone);
             currency.approve(dmAddr, minAmountToBuyClone);
 
-            uint256 fee = minAmountToBuyClone * MIN_FEE * (1 + shape.heat) / DNOM;
+            uint fee = minAmountToBuyClone * MIN_FEE * (1 + shape.heat) / DNOM;
             console.log(fee);
             console.log(minAmountToBuyClone);
             console.log(minAmountToBuyClone - fee);
@@ -56,12 +56,12 @@ contract HeatTest is TestBase {
     }
 
     function testHeatStatic() public {
-        uint256 nftId = nft.mint();
+        uint nftId = nft.mint();
         vm.startPrank(eoa1);
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
 
         // buy a clone using the minimum purchase amount
-        (uint256 cloneId, ) = dm.duplicate(eoa1, nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
+        (uint cloneId, ) = dm.duplicate(eoa1, nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
         assertEq(dm.ownerOf(cloneId), eoa1);
 
         // ensure erc20 balances
@@ -73,7 +73,7 @@ contract HeatTest is TestBase {
 
         vm.stopPrank();
 
-        for (uint256 i = 1; i < 256; i++) {
+        for (uint i = 1; i < 256; i++) {
             vm.warp(block.timestamp + (BASE_TERM) + TimeCurve.calc(shape.heat));
 
             vm.startPrank(eoa1);
@@ -93,12 +93,12 @@ contract HeatTest is TestBase {
     }
 
     function testHeatDuplicatePrice(uint16 time) public {
-        uint256 nftId = nft.mint();
+        uint nftId = nft.mint();
         vm.startPrank(eoa1);
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
 
         // buy a clone using the minimum purchase amount
-        (uint256 cloneId, ) = dm.duplicate(eoa1, nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
+        (uint cloneId, ) = dm.duplicate(eoa1, nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
         assertEq(dm.ownerOf(cloneId), eoa1);
 
         // ensure erc20 balances
@@ -108,10 +108,10 @@ contract HeatTest is TestBase {
         CloneShape memory shape = getCloneShape(cloneId);
         assertEq(shape.heat, 1);
 
-        for (uint256 i = 1; i < 50; i++) {
+        for (uint i = 1; i < 50; i++) {
             console.log(i);
             vm.roll(block.number+1);
-            vm.warp(block.timestamp + uint256(time));
+            vm.warp(block.timestamp + uint(time));
 
             bool sameBlock = dm._getBlockRefund(cloneId) != 0;
 

@@ -9,7 +9,7 @@ contract BlockRefundTest is TestBase {
 
     // test first owner is fully refunded within the block
     function testRefund() public {
-        uint256 nftId = nft.mint();
+        uint nftId = nft.mint();
 
         for (uint128 i = 0; i<10; ++i) {
             address testEoa = generateAddress(bytes(Strings.toString(i)));
@@ -20,7 +20,7 @@ contract BlockRefundTest is TestBase {
             currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE * (i+1));
 
             // buy a clone using the minimum purchase amount
-            (uint256 cloneId, ) = dm.duplicate(testEoa, nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE * (i+1), false, 0);
+            (uint cloneId, ) = dm.duplicate(testEoa, nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE * (i+1), false, 0);
 
             assertEq(dm.ownerOf(cloneId), testEoa);
             assertEq(currency.balanceOf(testEoa), 0);
@@ -48,7 +48,7 @@ contract BlockRefundTest is TestBase {
 
         // amount1 can be assumed to fit because it is greater tha  amount0
 
-        uint256 nftId = nft.mint();
+        uint nftId = nft.mint();
 
         // eoa0 enters clone position
         currency.mint(eoa0, amount0);
@@ -56,7 +56,7 @@ contract BlockRefundTest is TestBase {
         vm.startPrank(eoa0);
         currency.approve(dmAddr, amount0);
 
-        (uint256 cloneId, ) = dm.duplicate(eoa0, nftAddr, nftId, currencyAddr, amount0, false, 0);
+        (uint cloneId, ) = dm.duplicate(eoa0, nftAddr, nftId, currencyAddr, amount0, false, 0);
 
         assertEq(dm.ownerOf(cloneId), eoa0);
         assertEq(currency.balanceOf(eoa0), 0);
@@ -81,14 +81,14 @@ contract BlockRefundTest is TestBase {
     }
 
     function testRefundSelf() public {
-        uint256 nftId = nft.mint();
+        uint nftId = nft.mint();
 
         currency.mint(eoa0, MIN_AMOUNT_FOR_NEW_CLONE);
 
         vm.startPrank(eoa0);
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
         // open initial clone position
-        (uint256 cloneId, ) = dm.duplicate(eoa0, nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
+        (uint cloneId, ) = dm.duplicate(eoa0, nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
 
         uint128 minAmountToBuyClone = MIN_AMOUNT_FOR_NEW_CLONE*2;
         currency.mint(eoa0, minAmountToBuyClone);
@@ -103,7 +103,7 @@ contract BlockRefundTest is TestBase {
 
         shape = getCloneShape(cloneId);
 
-        uint256 balance = currency.balanceOf(eoa0);
+        uint balance = currency.balanceOf(eoa0);
 
         assertEq(balance, MIN_AMOUNT_FOR_NEW_CLONE);
         assertEq(shape.worth + sub2, currency.balanceOf(dmAddr), "worth + sub, dm balance");
@@ -115,14 +115,14 @@ contract BlockRefundTest is TestBase {
         vm.assume(amount >= MIN_AMOUNT_FOR_NEW_CLONE);
         vm.assume(amount < 2**105); // math will overflow error if amount is too large
 
-        uint256 nftId = nft.mint();
+        uint nftId = nft.mint();
 
         currency.mint(eoa0, amount);
 
         vm.startPrank(eoa0);
         currency.approve(dmAddr, amount);
         // open initial clone position
-        (uint256 cloneId, ) = dm.duplicate(eoa0, nftAddr, nftId, currencyAddr, amount, false, 0);
+        (uint cloneId, ) = dm.duplicate(eoa0, nftAddr, nftId, currencyAddr, amount, false, 0);
 
         uint128 minAmountToBuyClone = dm.getMinAmountForCloneTransfer(cloneId);
         currency.mint(eoa0, minAmountToBuyClone);
@@ -130,7 +130,7 @@ contract BlockRefundTest is TestBase {
 
         dm.duplicate(eoa0, nftAddr, nftId, currencyAddr, minAmountToBuyClone, false, 0);
 
-        uint256 balance = currency.balanceOf(eoa0);
+        uint balance = currency.balanceOf(eoa0);
         console.log(amount);
         console.log(balance);
         assertEq(balance, amount);
