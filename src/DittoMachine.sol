@@ -110,6 +110,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
      * @dev if floor == true, FLOOR_ID will replace _tokenId in cloneId calculation.
      */
     function duplicate(
+        address receiver,
         address _ERC721Contract,
         uint _tokenId,
         address _ERC20Contract,
@@ -135,6 +136,8 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
         if (index == protoIdToIndexHead[protoId]) {
             Oracle.write(protoId, cloneIdToShape[cloneId].worth);
         }
+
+        address[1] memory r = [receiver];
 
         if (ownerOf[cloneId] == address(0)) {
             // check that index references have been set
@@ -165,7 +168,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
                 if (value > cloneIdToShape[elderId].worth) revert AmountInvalid();
             }
 
-            _mint(msg.sender, cloneId);
+            _mint(r[0], cloneId);
 
             cloneIdToShape[cloneId] = CloneShape({
                 tokenId: _tokenId,
@@ -258,7 +261,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
                 (cloneShape.worth + (feeRefund == 0 ? ((subsidy >> 1) + (subsidy & 1)) : feeRefund) )
             );
             // force transfer from current owner to new highest bidder
-            forceTransferFrom(curOwner, msg.sender, cloneId); // EXTERNAL CALL
+            forceSafeTransferFrom(curOwner, r[0], cloneId); // EXTERNAL CALL
         }
     }
 
@@ -539,7 +542,7 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
      *    `to` != address(0) is assumed and is not explicitly check.
      *    `onERC721Received` is not called on the receiver, the bidder is responsible for accounting.
      */
-    function forceTransferFrom(
+    function forceSafeTransferFrom(
         address from,
         address to,
         uint id
@@ -556,6 +559,14 @@ contract DittoMachine is ERC721, ERC721TokenReceiver, ERC1155TokenReceiver, Clon
 
         delete getApproved[id];
         emit Transfer(from, to, id);
+
+        // require statement copied from solmate ERC721 safeTransferFrom()
+        require(
+            to.code.length == 0 ||
+                ERC721TokenReceiver(to).onERC721Received(msg.sender, from, id, "") ==
+                ERC721TokenReceiver.onERC721Received.selector,
+            "UNSAFE_RECIPIENT"
+        );
 
         // give contracts the option to account for a forced transfer.
         // if they don't implement the ejector we're stll going to move the token.

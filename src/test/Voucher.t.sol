@@ -22,7 +22,7 @@ contract TestVoucher is TestBase {
         currency.approve(dmAddr, smallAmount);
 
         uint128 startTime = uint128(block.timestamp);
-        (uint cloneId, uint protoId) = dm.duplicate(nftAddr, nftId, currencyAddr, smallAmount, false, 0);
+        (uint cloneId, uint protoId) = dm.duplicate(eoa1, nftAddr, nftId, currencyAddr, smallAmount, false, 0);
         uint128 worth = getCloneShape(cloneId).worth;
 
         vm.stopPrank();
@@ -39,7 +39,7 @@ contract TestVoucher is TestBase {
 
         uint8 heat = getCloneShape(cloneId).heat;
         uint128 issueTime = uint128(block.timestamp);
-        dm.duplicate(nftAddr, nftId, currencyAddr, largeAmount, false, 0);
+        dm.duplicate(eoa2, nftAddr, nftId, currencyAddr, largeAmount, false, 0);
         uint128 value = getCloneShape(cloneId).worth;
 
         vm.stopPrank();
