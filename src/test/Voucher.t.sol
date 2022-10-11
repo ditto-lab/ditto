@@ -22,14 +22,20 @@ contract TestVoucher is TestBase {
         currency.approve(dmAddr, smallAmount);
 
         uint128 startTime = uint128(block.timestamp);
-        (uint cloneId, uint protoId) = dm.duplicate(eoa1, nftAddr, nftId, currencyAddr, smallAmount, false, 0);
+        ProtoShape memory protoShape = ProtoShape({
+            tokenId: nftId,
+            ERC721Contract: nftAddr,
+            ERC20Contract: currencyAddr,
+            floor: false
+        });
+        (uint cloneId, uint protoId) = dm.duplicate(eoa1, protoShape, smallAmount, 0);
         uint128 worth = getCloneShape(cloneId).worth;
 
         vm.stopPrank();
 
         vm.warp(block.timestamp + time);
 
-        uint newMinAmount = dm.getMinAmountForCloneTransfer(cloneId);
+        uint newMinAmount = dm.getMinAmountForCloneTransfer(protoId, cloneId);
         vm.assume(largeAmount > newMinAmount);
 
         currency.mint(eoa2, largeAmount);
@@ -39,7 +45,7 @@ contract TestVoucher is TestBase {
 
         uint8 heat = getCloneShape(cloneId).heat;
         uint128 issueTime = uint128(block.timestamp);
-        dm.duplicate(eoa2, nftAddr, nftId, currencyAddr, largeAmount, false, 0);
+        dm.duplicate(eoa2, protoShape, largeAmount, 0);
         uint128 value = getCloneShape(cloneId).worth;
 
         vm.stopPrank();

@@ -4,20 +4,20 @@ pragma solidity ^0.8.4;
 abstract contract CloneList {
 
     // protoId is a precursor hash to a cloneId used to identify tokenId/erc20 pairs
-    mapping(uint => uint) public protoIdToIndexHead;
+    mapping(uint => uint128) public protoIdToIndexHead;
 
     // mapping to track the index before a specified index
     // 0 <- 1 <- 2 <- 3
-    mapping(uint => mapping(uint => uint)) public protoIdToIndexToPrior;
+    mapping(uint => mapping(uint128 => uint128)) public protoIdToIndexToPrior;
 
     // mapping to track the next index after a specified index
     // 0 -> 1 -> 2 -> 3
-    mapping(uint => mapping(uint => uint)) public protoIdToIndexToAfter;
+    mapping(uint => mapping(uint128 => uint128)) public protoIdToIndexToAfter;
     // tracks the number of clones in circulation under a protoId
 
     mapping(uint => uint) public protoIdToDepth;
 
-    function pushListTail(uint protoId, uint index) internal {
+    function pushListTail(uint protoId, uint128 index) internal {
         unchecked { // ethereum will be irrelevant if this ever overflows
             protoIdToDepth[protoId]++; // increase depth counter
 
@@ -29,7 +29,7 @@ abstract contract CloneList {
         }
     }
 
-    function popListIndex(uint protoId, uint index) internal {
+    function popListIndex(uint protoId, uint128 index) internal {
         unchecked { // if clone deoesn't exist an error will throw above. should not underflow
             protoIdToDepth[protoId]--; // decrement clone depth counter
         }
@@ -51,7 +51,7 @@ abstract contract CloneList {
     }
 
     function popListHead(uint protoId) internal {
-        uint head = protoIdToIndexHead[protoId];
+        uint128 head = protoIdToIndexHead[protoId];
         // indexHead -> next
         // head = next
         protoIdToIndexHead[protoId] = protoIdToIndexToAfter[protoId][head]; // move head to next index
@@ -69,7 +69,7 @@ abstract contract CloneList {
         protoIdToIndexToPrior[protoId][protoIdToIndexToAfter[protoId][head]] = protoIdToIndexToPrior[protoId][head];
     }
 
-    function validIndex(uint protoId, uint index) internal view returns(bool) {
+    function validIndex(uint protoId, uint128 index) internal view returns(bool) {
         // prev <- index
         // prev -> index
         return protoIdToIndexToAfter[protoId][protoIdToIndexToPrior[protoId][index]] == index;

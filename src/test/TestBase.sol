@@ -4,7 +4,7 @@ pragma solidity ^0.8.4;
 import "forge-std/Test.sol";
 import "../DittoMachine.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
-import {Bidder, DittoMachine} from "./Bidder.sol";
+import {Bidder} from "./Bidder.sol";
 import {BidderWithEjector, BidderWithBadEjector, BidderWithGassyEjector} from "./BidderWithEjector.sol";
 import {ERC721, IERC2981, UnderlyingNFTWithRoyalties, UnderlyingNFT, UnderlyingNFT1155} from "./UnderlyingNFTWithRoyalties.sol";
 
@@ -86,11 +86,17 @@ contract TestBase is Test, DittoMachine {
         return a;
     }
 
-    function getCloneShape(uint cloneId) internal view returns (CloneShape memory) {
-        (uint tokenId, address ERC721Contract,
-            address ERC20Contract, uint8 heat, bool floor, uint128 worth, uint128 term) = dm.cloneIdToShape(cloneId);
+    function getCloneShape(uint id) internal view returns (CloneShape memory) {
+        (uint128 index, uint128 worth, uint8 heat, uint128 term) = dm.cloneIdToShape(id);
 
-        CloneShape memory shape = CloneShape(tokenId, ERC721Contract, ERC20Contract, heat, floor, worth, term);
+        CloneShape memory shape = CloneShape(index, worth, heat, term);
+        return shape;
+    }
+
+    function getProtoShape(uint id) internal view returns (ProtoShape memory) {
+        (uint tokenId, address ERC721Contract, address ERC20Contract, bool floor) = dm.protoIdToShape(id);
+
+        ProtoShape memory shape = ProtoShape(tokenId, ERC721Contract, ERC20Contract, floor);
         return shape;
     }
 }

@@ -19,7 +19,13 @@ contract HeatTest is TestBase {
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
 
         // buy a clone using the minimum purchase amount
-        (uint cloneId, ) = dm.duplicate(eoa1, nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
+        ProtoShape memory protoShape = ProtoShape({
+            tokenId: nftId,
+            ERC721Contract: nftAddr,
+            ERC20Contract: currencyAddr,
+            floor: false
+        });
+        (uint cloneId, uint protoId) = dm.duplicate(eoa1, protoShape, MIN_AMOUNT_FOR_NEW_CLONE, 0);
         assertEq(dm.ownerOf(cloneId), eoa1);
 
         // ensure erc20 balances
@@ -36,7 +42,7 @@ contract HeatTest is TestBase {
             vm.roll(block.number+1);
             vm.warp(block.timestamp + i);
 
-            uint128 minAmountToBuyClone = dm.getMinAmountForCloneTransfer(cloneId);
+            uint128 minAmountToBuyClone = dm.getMinAmountForCloneTransfer(protoId, cloneId);
             currency.mint(eoa1, minAmountToBuyClone);
             currency.approve(dmAddr, minAmountToBuyClone);
 
@@ -46,7 +52,7 @@ contract HeatTest is TestBase {
             console.log(minAmountToBuyClone - fee);
             // console.log(dm._getMinAmount(shape, false));
 
-            dm.duplicate(eoa1, nftAddr, nftId, currencyAddr, minAmountToBuyClone, false, 0);
+            dm.duplicate(eoa1, protoShape, minAmountToBuyClone, 0);
 
             shape = getCloneShape(cloneId);
             assertEq(shape.heat, 1+i);
@@ -61,7 +67,13 @@ contract HeatTest is TestBase {
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
 
         // buy a clone using the minimum purchase amount
-        (uint cloneId, ) = dm.duplicate(eoa1, nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
+        ProtoShape memory protoShape = ProtoShape({
+            tokenId: nftId,
+            ERC721Contract: nftAddr,
+            ERC20Contract: currencyAddr,
+            floor: false
+        });
+        (uint cloneId, uint protoId) = dm.duplicate(eoa1, protoShape, MIN_AMOUNT_FOR_NEW_CLONE, 0);
         assertEq(dm.ownerOf(cloneId), eoa1);
 
         // ensure erc20 balances
@@ -78,11 +90,11 @@ contract HeatTest is TestBase {
 
             vm.startPrank(eoa1);
 
-            uint128 minAmountToBuyClone = dm.getMinAmountForCloneTransfer(cloneId);
+            uint128 minAmountToBuyClone = dm.getMinAmountForCloneTransfer(protoId, cloneId);
             currency.mint(eoa1, minAmountToBuyClone);
             currency.approve(dmAddr, minAmountToBuyClone);
 
-            dm.duplicate(eoa1, nftAddr, nftId, currencyAddr, minAmountToBuyClone, false, 0);
+            dm.duplicate(eoa1, protoShape, minAmountToBuyClone, 0);
 
             shape = getCloneShape(cloneId);
             assertEq(shape.heat, 1);
@@ -98,7 +110,13 @@ contract HeatTest is TestBase {
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
 
         // buy a clone using the minimum purchase amount
-        (uint cloneId, ) = dm.duplicate(eoa1, nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
+        ProtoShape memory protoShape = ProtoShape({
+            tokenId: nftId,
+            ERC721Contract: nftAddr,
+            ERC20Contract: currencyAddr,
+            floor: false
+        });
+        (uint cloneId, uint protoId) = dm.duplicate(eoa1, protoShape, MIN_AMOUNT_FOR_NEW_CLONE, 0);
         assertEq(dm.ownerOf(cloneId), eoa1);
 
         // ensure erc20 balances
@@ -115,7 +133,7 @@ contract HeatTest is TestBase {
 
             bool sameBlock = dm._getBlockRefund(cloneId) != 0;
 
-            uint128 minAmountToBuyClone = dm.getMinAmountForCloneTransfer(cloneId);
+            uint128 minAmountToBuyClone = dm.getMinAmountForCloneTransfer(protoId, cloneId);
             currency.mint(eoa1, minAmountToBuyClone);
             currency.approve(dmAddr, minAmountToBuyClone);
 
@@ -133,7 +151,7 @@ contract HeatTest is TestBase {
                 "price"
             );
 
-            dm.duplicate(eoa1, nftAddr, nftId, currencyAddr, minAmountToBuyClone, false, 0);
+            dm.duplicate(eoa1, protoShape, minAmountToBuyClone, 0);
             shape = getCloneShape(cloneId);
         }
         vm.stopPrank();

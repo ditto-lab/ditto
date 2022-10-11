@@ -17,7 +17,13 @@ contract ContractTest is TestBase {
     //     string memory uri721 = nft.tokenURI(nftId721);
     //     currency.mint(address(this), MIN_AMOUNT_FOR_NEW_CLONE);
     //     currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
-    //     (uint cloneId0, ) = dm.duplicate(address(this), nftAddr, nftId721, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
+    //     ProtoShape memory protoShape = ProtoShape({
+    //         tokenId: nftId721,
+    //         ERC721Contract: nftAddr,
+    //         ERC20Contract: currencyAddr,
+    //         floor: false
+    //     });
+    //     (uint cloneId0, ) = dm.duplicate(address(this), protoShape, MIN_AMOUNT_FOR_NEW_CLONE, 0);
     //     assertEq(uri721, dm.uri(cloneId0));
     // }
 
@@ -26,7 +32,13 @@ contract ContractTest is TestBase {
     //     string memory uri1155 = nft1155.uri(nftId1155);
     //     currency.mint(address(this), MIN_AMOUNT_FOR_NEW_CLONE);
     //     currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
-    //     (uint cloneId1, ) = dm.duplicate(address(this), nft1155Addr, nftId1155, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
+    //     ProtoShape memory protoShape = ProtoShape({
+    //         tokenId: nftId1155,
+    //         ERC721Contract: nft1155Addr,
+    //         ERC20Contract: currencyAddr,
+    //         floor: false
+    //     });
+    //     (uint cloneId1, ) = dm.duplicate(address(this), protoShape, MIN_AMOUNT_FOR_NEW_CLONE, 0);
     //     assertEq(uri1155, dm.uri(cloneId1));
     // }
 
@@ -53,17 +65,35 @@ contract ContractTest is TestBase {
 
         vm.expectRevert(abi.encodeWithSelector(DittoMachine.AmountInvalidMin.selector));
         // MIN_AMOUNT_FOR_NEW_CLONE is the minimum amount for a clone
-        dm.duplicate(eoa1, nftAddr, nftId, currencyAddr, 1, false, 0);
+        ProtoShape memory protoShape = ProtoShape({
+            tokenId: nftId,
+            ERC721Contract: nftAddr,
+            ERC20Contract: currencyAddr,
+            floor: false
+        });
+        dm.duplicate(eoa1, protoShape, 1, 0);
 
         vm.expectRevert(abi.encodeWithSelector(DittoMachine.InvalidFloorId.selector));
-        dm.duplicate(eoa1, nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, true, 0);
+        protoShape = ProtoShape({
+            tokenId: nftId,
+            ERC721Contract: nftAddr,
+            ERC20Contract: currencyAddr,
+            floor: true
+        });
+        dm.duplicate(eoa1, protoShape, MIN_AMOUNT_FOR_NEW_CLONE, 0);
 
         vm.stopPrank();
         // TODO: test revert when clone has been minted.
     }
 
     function testFailDuplicateForFloor(uint128 _currAmount) public {
-        dm.duplicate(address(this), nftAddr, FLOOR_ID, currencyAddr, _currAmount, true, 0);
+        ProtoShape memory protoShape = ProtoShape({
+            tokenId: FLOOR_ID,
+            ERC721Contract: nftAddr,
+            ERC20Contract: currencyAddr,
+            floor: true
+        });
+        dm.duplicate(address(this), protoShape, _currAmount, 0);
     }
 
     // test that a floor clone is minted
@@ -73,18 +103,19 @@ contract ContractTest is TestBase {
         vm.startPrank(address(bidder));
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
 
-        (uint cloneId, uint protoId) = dm.duplicate(address(bidder), nftAddr, FLOOR_ID, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, true, 0);
+        ProtoShape memory protoShape = ProtoShape({
+            tokenId: FLOOR_ID,
+            ERC721Contract: nftAddr,
+            ERC20Contract: currencyAddr,
+            floor: true
+        });
+        (uint cloneId, uint protoId) = dm.duplicate(address(bidder), protoShape, MIN_AMOUNT_FOR_NEW_CLONE, 0);
         vm.stopPrank();
 
         assertEq(dm.ownerOf(cloneId), address(bidder));
         assertEq(
             protoId,
-            uint(keccak256(abi.encodePacked(
-                nftAddr,
-                FLOOR_ID,
-                currencyAddr,
-                true
-            )))
+            uint(keccak256(abi.encode(protoShape)))
         );
         assertEq(
             cloneId,
@@ -112,19 +143,20 @@ contract ContractTest is TestBase {
         vm.startPrank(address(bidder));
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
 
-        uint index = 0;
-        (uint cloneId, uint protoId)  = dm.duplicate(address(bidder), nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, index);
+        uint128 index = 0;
+        ProtoShape memory protoShape = ProtoShape({
+            tokenId: nftId,
+            ERC721Contract: nftAddr,
+            ERC20Contract: currencyAddr,
+            floor: false
+        });
+        (uint cloneId, uint protoId)  = dm.duplicate(address(bidder), protoShape, MIN_AMOUNT_FOR_NEW_CLONE, index);
         vm.stopPrank();
 
         assertEq(dm.ownerOf(cloneId), address(bidder));
         assertEq(
             protoId,
-            uint(keccak256(abi.encodePacked(
-                nftAddr,
-                uint(0),
-                currencyAddr,
-                false
-            )))
+            uint(keccak256(abi.encode(protoShape)))
         );
         assertEq(
             cloneId,
@@ -153,7 +185,13 @@ contract ContractTest is TestBase {
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
 
         // buy a clone using the minimum purchase amount
-        (uint cloneId1, uint protoId1) = dm.duplicate(eoa1, nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
+        ProtoShape memory protoShape = ProtoShape({
+            tokenId: nftId,
+            ERC721Contract: nftAddr,
+            ERC20Contract: currencyAddr,
+            floor: false
+        });
+        (uint cloneId1, uint protoId1) = dm.duplicate(eoa1, protoShape, MIN_AMOUNT_FOR_NEW_CLONE, 0);
         vm.stopPrank();
 
         assertEq(dm.ownerOf(cloneId1), eoa1);
@@ -188,7 +226,7 @@ contract ContractTest is TestBase {
 
         assertEq(shape1.term, block.timestamp);
 
-        uint128 minAmountToBuyClone = dm.getMinAmountForCloneTransfer(cloneId1);
+        uint128 minAmountToBuyClone = dm.getMinAmountForCloneTransfer(protoId1, cloneId1);
         uint128 minAmountWithoutSubsidy = shape1.worth;
         assertEq(minAmountToBuyClone, minAmountWithoutSubsidy + (minAmountWithoutSubsidy * (MIN_FEE*2) / DNOM));
 
@@ -198,9 +236,9 @@ contract ContractTest is TestBase {
 
         vm.expectRevert(abi.encodeWithSelector(DittoMachine.AmountInvalid.selector));
         // this reverts as we pass lower than minimum purchase amount
-        dm.duplicate(eoa2, nftAddr, nftId, currencyAddr, minAmountToBuyClone - 1, false, 0);
+        dm.duplicate(eoa2, protoShape, minAmountToBuyClone - 1, 0);
 
-        (uint cloneId2, ) = dm.duplicate(eoa2, nftAddr, nftId, currencyAddr, minAmountToBuyClone, false, 0);
+        (uint cloneId2, ) = dm.duplicate(eoa2, protoShape, minAmountToBuyClone, 0);
         vm.stopPrank();
 
         assertEq(dm.ownerOf(cloneId2), eoa2);
@@ -257,8 +295,14 @@ contract ContractTest is TestBase {
         currency.approve(dmAddr, type(uint).max);
 
         // mint a clone
-        uint index = 0;
-        (uint cloneId, uint protoId) = dm.duplicate(eoa1, nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, index);
+        uint128 index = 0;
+        ProtoShape memory protoShape = ProtoShape({
+            tokenId: nftId,
+            ERC721Contract: nftAddr,
+            ERC20Contract: currencyAddr,
+            floor: false
+        });
+        (uint cloneId, uint protoId) = dm.duplicate(eoa1, protoShape, MIN_AMOUNT_FOR_NEW_CLONE, index);
         vm.warp(block.timestamp+10);
         CloneShape memory shape1 = getCloneShape(cloneId);
         // eoa1 should be able to dissolve the clone it owns
@@ -275,7 +319,7 @@ contract ContractTest is TestBase {
 
         vm.warp(block.timestamp + 100);
 
-        (cloneId, protoId) = dm.duplicate(eoa1, nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, ++index);
+        (cloneId, protoId) = dm.duplicate(eoa1, protoShape, MIN_AMOUNT_FOR_NEW_CLONE, ++index);
         {
             uint128[] memory secondsAgos = new uint128[](1);
             secondsAgos[0] = 0;
@@ -314,7 +358,7 @@ contract ContractTest is TestBase {
 
         vm.startPrank(eoa1);
         vm.warp(block.timestamp + 200);
-        (cloneId, protoId) = dm.duplicate(eoa1, nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, ++index);
+        (cloneId, protoId) = dm.duplicate(eoa1, protoShape, MIN_AMOUNT_FOR_NEW_CLONE, ++index);
 
         shape = getCloneShape(cloneId);
 
@@ -329,7 +373,7 @@ contract ContractTest is TestBase {
     }
 
     function testGetMinAmountForCloneTransfer() public {
-        assertEq(dm.getMinAmountForCloneTransfer(0), MIN_AMOUNT_FOR_NEW_CLONE);
+        assertEq(dm.getMinAmountForCloneTransfer(0, 0), MIN_AMOUNT_FOR_NEW_CLONE);
 
         // TODO: test with existing clone and different timeLeft values
     }
@@ -346,7 +390,13 @@ contract ContractTest is TestBase {
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
 
         // buy a clone using the minimum purchase amount
-        (uint cloneId1, ) = dm.duplicate(eoaBidder, nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
+        ProtoShape memory protoShape = ProtoShape({
+            tokenId: nftId,
+            ERC721Contract: nftAddr,
+            ERC20Contract: currencyAddr,
+            floor: false
+        });
+        (uint cloneId1, ) = dm.duplicate(eoaBidder, protoShape, MIN_AMOUNT_FOR_NEW_CLONE, 0);
         assertEq(dm.ownerOf(cloneId1), eoaBidder);
 
         // ensure erc20 balances
@@ -381,7 +431,13 @@ contract ContractTest is TestBase {
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
 
         // buy a clone using the minimum purchase amount
-        (uint cloneId1, ) = dm.duplicate(eoaBidder, nft1155Addr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
+        ProtoShape memory protoShape = ProtoShape({
+            tokenId: nftId,
+            ERC721Contract: nft1155Addr,
+            ERC20Contract: currencyAddr,
+            floor: false
+        });
+        (uint cloneId1, ) = dm.duplicate(eoaBidder, protoShape, MIN_AMOUNT_FOR_NEW_CLONE, 0);
         assertEq(dm.ownerOf(cloneId1), eoaBidder);
 
         // ensure erc20 balances
@@ -418,12 +474,19 @@ contract ContractTest is TestBase {
         uint[] memory cloneIds = new uint[](nftIds.length);
         uint[] memory protoIds = new uint[](nftIds.length);
         uint[] memory amounts = new uint[](nftIds.length);
+        ProtoShape memory protoShape = ProtoShape({
+            tokenId: 0,
+            ERC721Contract: nft1155Addr,
+            ERC20Contract: currencyAddr,
+            floor: false
+        });
         CloneShape[] memory shapes = new CloneShape[](nftIds.length);
         for (uint j; j < cloneIds.length; j++) {
             currency.mint(eoaBidder, MIN_AMOUNT_FOR_NEW_CLONE);
             currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
 
-            (cloneIds[j], protoIds[j]) = dm.duplicate(eoaBidder, nft1155Addr, nftIds[j], currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
+            protoShape.tokenId = nftIds[j];
+            (cloneIds[j], protoIds[j]) = dm.duplicate(eoaBidder, protoShape, MIN_AMOUNT_FOR_NEW_CLONE, 0);
             shapes[j] = getCloneShape(cloneIds[j]);
             assertEq(dm.ownerOf(cloneIds[j]), eoaBidder);
             amounts[j] = 1;
@@ -479,7 +542,13 @@ contract ContractTest is TestBase {
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
 
         // buy a clone using the minimum purchase amount
-        (uint cloneId1, ) = dm.duplicate(eoaBidder, nftWRAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
+        ProtoShape memory protoShape = ProtoShape({
+            tokenId: nftId,
+            ERC721Contract: nftWRAddr,
+            ERC20Contract: currencyAddr,
+            floor: false
+        });
+        (uint cloneId1, ) = dm.duplicate(eoaBidder, protoShape, MIN_AMOUNT_FOR_NEW_CLONE, 0);
         assertEq(dm.ownerOf(cloneId1), eoaBidder);
 
         // ensure erc20 balances
