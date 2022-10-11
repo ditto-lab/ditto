@@ -554,8 +554,8 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
         // require statement copied from solmate ERC721 safeTransferFrom()
         require(
             to.code.length == 0 ||
-                ERC721TokenReceiver(to).onERC721Received(msg.sender, from, id, "") ==
-                ERC721TokenReceiver.onERC721Received.selector,
+                ERC1155TokenReceiver(to).onERC1155Received(msg.sender, from, id, 1, "") ==
+                ERC1155TokenReceiver.onERC1155Received.selector,
             "UNSAFE_RECIPIENT"
         );
 
