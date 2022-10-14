@@ -9,7 +9,6 @@ contract DittoMachineScript is Script {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         vm.startBroadcast(deployerPrivateKey);
         DittoMachine dm = new DittoMachine();
-        console.log(dm.name());
         console.log(address(dm));
 
         vm.stopBroadcast();

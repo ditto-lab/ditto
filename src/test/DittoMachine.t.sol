@@ -7,10 +7,10 @@ contract ContractTest is TestBase {
 
     constructor() {}
 
-    function testNameAndSymbol() public {
-        assertEq(dm.name(), "Ditto");
-        assertEq(dm.symbol(), "DTO");
-    }
+    // function testNameAndSymbol() public {
+    //     assertEq(dm.name(), "Ditto");
+    //     assertEq(dm.symbol(), "DTO");
+    // }
 
     function testTokenUri() public {
         uint nftId721 = nft.mint();
@@ -18,7 +18,7 @@ contract ContractTest is TestBase {
         currency.mint(address(this), MIN_AMOUNT_FOR_NEW_CLONE);
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
         (uint cloneId0, ) = dm.duplicate(address(this), nftAddr, nftId721, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
-        assertEq(uri721, dm.tokenURI(cloneId0));
+        assertEq(uri721, dm.uri(cloneId0));
     }
 
     function testTokenUri1155() public {
@@ -27,7 +27,7 @@ contract ContractTest is TestBase {
         currency.mint(address(this), MIN_AMOUNT_FOR_NEW_CLONE);
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
         (uint cloneId1, ) = dm.duplicate(address(this), nft1155Addr, nftId1155, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
-        assertEq(uri1155, dm.tokenURI(cloneId1));
+        assertEq(uri1155, dm.uri(cloneId1));
     }
 
     // DittoMachine should revert when ether is sent to it
@@ -295,7 +295,7 @@ contract ContractTest is TestBase {
         vm.stopPrank();
 
         vm.prank(eoa1);
-        dm.approve(eoa2, cloneId);
+        dm.setApprovalForAll(eoa2, true);
 
         vm.prank(eoa2);
         vm.warp(block.timestamp + 100);
