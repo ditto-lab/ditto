@@ -15,11 +15,8 @@ abstract contract CloneList {
     mapping(uint => mapping(uint => uint)) public protoIdToIndexToAfter;
     // tracks the number of clones in circulation under a protoId
 
-    mapping(uint => uint) public protoIdToDepth;
-
     function pushListTail(uint protoId, uint index) internal {
         unchecked { // ethereum will be irrelevant if this ever overflows
-            protoIdToDepth[protoId]++; // increase depth counter
 
             // index -> next
             protoIdToIndexToAfter[protoId][index] = index+1; // set reference **to** the next index
@@ -30,9 +27,6 @@ abstract contract CloneList {
     }
 
     function popListIndex(uint protoId, uint index) internal {
-        unchecked { // if clone deoesn't exist an error will throw above. should not underflow
-            protoIdToDepth[protoId]--; // decrement clone depth counter
-        }
         if (index == protoIdToIndexHead[protoId]) { // if index == indexHead move head to next index
             // index -> next
             // head = next
@@ -55,7 +49,6 @@ abstract contract CloneList {
         // indexHead -> next
         // head = next
         protoIdToIndexHead[protoId] = protoIdToIndexToAfter[protoId][head]; // move head to next index
-        unchecked { --protoIdToDepth[protoId]; } // should not underflow, will error above if clone does not exist
 
         // index pointers will change:
         // prev -> index -> next
