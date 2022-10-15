@@ -386,9 +386,8 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
         address from,
         uint id,
         address ERC20Contract,
-        bool floor,
-        bool isERC1155
-    ) private {
+        bool floor
+    ) private returns (address, bytes memory) {
         uint protoId = uint(keccak256(abi.encodePacked(
             msg.sender, // ERC721 or ERC1155 Contract address
             id,
@@ -397,22 +396,24 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
         )));
         uint cloneId = uint(keccak256(abi.encodePacked(protoId, protoIdToIndexHead[protoId])));
 
-        uint flotoId = uint(keccak256(abi.encodePacked( // floorId + protoId = flotoId
-            msg.sender,
-            FLOOR_ID,
-            ERC20Contract,
-            true
-        )));
-        uint floorId = uint(keccak256(abi.encodePacked(flotoId, protoIdToIndexHead[flotoId])));
+        {
+            uint flotoId = uint(keccak256(abi.encodePacked( // floorId + protoId = flotoId
+                msg.sender,
+                FLOOR_ID,
+                ERC20Contract,
+                true
+            )));
+            uint floorId = uint(keccak256(abi.encodePacked(flotoId, protoIdToIndexHead[flotoId])));
 
-        if (
-            floor ||
-            ownerOf[cloneId] == address(0) ||
-            cloneIdToShape[floorId].worth > cloneIdToShape[cloneId].worth
-        ) {
-            // if cloneId is not active, check floor clone
-            cloneId = floorId;
-            protoId = flotoId;
+            if (
+                floor ||
+                ownerOf[cloneId] == address(0) ||
+                cloneIdToShape[floorId].worth > cloneIdToShape[cloneId].worth
+            ) {
+                // if cloneId is not active, check floor clone
+                cloneId = floorId;
+                protoId = flotoId;
+            }
         }
         address owner = ownerOf[cloneId];
         // if no cloneId is active, revert
@@ -426,26 +427,8 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
         delete cloneIdToSubsidy[cloneId];
         _burn(owner, cloneId);
 
-        // send useful data along with safe transfer to sontracts
-        bytes memory data = abi.encode(
-            // NFT contract address is sent as msg.sender with function call
-            // NFT ID is sent with function call
-            ERC20Contract,
-            floor,
-            protoIdToIndexHead[protoId], // index
-            owner,
-            worth,
-            subsidy
-        );
-
         // token can only be sold to the clone at the index head
         popListHead(protoId);
-
-        if (isERC1155) {
-            ERC1155(msg.sender).safeTransferFrom(address(this), owner, id, 1, data);
-        } else {
-            ERC721(msg.sender).safeTransferFrom(address(this), owner, id, data);
-        }
 
         if (IERC165(msg.sender).supportsInterface(_INTERFACE_ID_ERC2981)) {
             (address receiver, uint royaltyAmount) = IERC2981(msg.sender).royaltyInfo(
@@ -466,6 +449,20 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
             from,
             worth + subsidy
         );
+
+        // send useful data along with safe transfer to sontracts
+        bytes memory data = abi.encode(
+            // NFT contract address is sent as msg.sender with function call
+            // NFT ID is sent with function call
+            ERC20Contract,
+            floor,
+            protoIdToIndexHead[protoId], // index
+            owner,
+            worth,
+            subsidy
+        );
+
+        return (owner, data);
     }
 
     /**
@@ -482,8 +479,11 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
     ) external returns (bytes4) {
         (address ERC20Contract, bool floor) = abi.decode(data, (address, bool));
 
-        onTokenReceived(from, id, ERC20Contract, floor, false);
+        (address owner, bytes memory retData) = onTokenReceived(from, id, ERC20Contract, floor);
 
+        // no need to check if ditto is the owner of `id`,
+        // as transfer fails in that case.
+        ERC721(msg.sender).safeTransferFrom(address(this), owner, id, retData);
         return this.onERC721Received.selector;
     }
 
@@ -498,7 +498,11 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
         // address ERC1155Contract = msg.sender;
         (address ERC20Contract, bool floor) = abi.decode(data, (address, bool));
 
-        onTokenReceived(from, id, ERC20Contract, floor, true);
+        (address owner, bytes memory retData) = onTokenReceived(from, id, ERC20Contract, floor);
+
+        // no need to check if ditto is the owner of `id`,
+        // as transfer fails in that case.
+        ERC1155(msg.sender).safeTransferFrom(address(this), owner, id, 1, retData);
 
         return this.onERC1155Received.selector;
     }
@@ -510,14 +514,13 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
         uint[] calldata amounts,
         bytes calldata data
     ) external returns (bytes4) {
-        for (uint i=0; i < amounts.length; i++) {
-            if (amounts[i] != 1) revert AmountInvalid();
-        }
-
         (address[] memory ERC20Contracts, bool[] memory floors) = abi.decode(data, (address[], bool[]));
 
-        for (uint i=0; i < ids.length; i++) {
-            onTokenReceived(from, ids[i], ERC20Contracts[i], floors[i], true);
+        for (uint i=0; i < ids.length;) {
+            if (amounts[i] != 1) revert AmountInvalid();
+            (address owner, bytes memory retData) = onTokenReceived(from, ids[i], ERC20Contracts[i], floors[i]);
+            ERC1155(msg.sender).safeTransferFrom(address(this), owner, ids[i], 1, retData);
+            unchecked { ++i; }
         }
 
         return this.onERC1155BatchReceived.selector;
