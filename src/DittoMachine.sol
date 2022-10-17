@@ -171,7 +171,6 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
                 if (value > cloneIdToShape[elderId].worth) revert AmountInvalid();
             }
 
-            _mintSingle(r[0], cloneId);
 
             cloneIdToShape[cloneId] = CloneShape({
                 tokenId: _tokenId,
@@ -193,6 +192,7 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
                 address(this),
                 _amount
             );
+            _mintSingle(r[0], cloneId); // EXTERNAL CALL
 
         } else {
 

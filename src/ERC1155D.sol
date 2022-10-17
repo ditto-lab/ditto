@@ -149,10 +149,7 @@ contract ERC1155D is ERC165, IERC1155, IERC1155MetadataURI {
         uint256 amount,
         bytes calldata data
     ) internal virtual {
-        require(to != address(0), "zero address");
-
-        address operator = msg.sender;
-
+        require(to != address(0), "ZERO_ADDRESS");
         require(ownerOf[id] == from && amount < 2, "!balance");
 
         // The ERC1155 spec allows for transfering zero tokens, but we are still expected
@@ -162,6 +159,7 @@ contract ERC1155D is ERC165, IERC1155, IERC1155MetadataURI {
             ownerOf[id] = to;
         }
 
+        address operator = msg.sender;
         emit TransferSingle(operator, from, to, id, amount);
 
         if (to.code.length != 0) {
@@ -187,10 +185,8 @@ contract ERC1155D is ERC165, IERC1155, IERC1155MetadataURI {
         uint256[] calldata amounts,
         bytes calldata data
     ) internal virtual {
+        require(to != address(0), "ZERO_ADDRESS");
         require(ids.length == amounts.length, "!length");
-        require(to != address(0), "zero address");
-
-        address operator = msg.sender;
 
         for (uint256 i = 0; i < ids.length;) {
             uint256 id = ids[i];
@@ -203,6 +199,7 @@ contract ERC1155D is ERC165, IERC1155, IERC1155MetadataURI {
             unchecked { ++i; }
         }
 
+        address operator = msg.sender;
         emit TransferBatch(operator, from, to, ids, amounts);
 
         if (to.code.length != 0) {
