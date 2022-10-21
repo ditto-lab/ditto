@@ -15,6 +15,7 @@ import {TimeCurve} from "./TimeCurve.sol";
 import {BlockRefund} from "./BlockRefund.sol";
 import {Oracle} from "./Oracle.sol";
 import {DittoMachineSvg} from "./DittoMachineSvg.sol";
+import {ExcessivelySafeCall} from "./ExcessivelySafeCall.sol";
 
 /**
  * @title NFT derivative exchange inspired by the SALSA concept.
@@ -564,9 +565,14 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
         // give contracts the option to account for a forced transfer.
         // if they don't implement the ejector we're stll going to move the token.
         if (from.code.length != 0) {
+            // ExcessivelySafeCall used so that `from` cannot prevert force transfer by returning very large data
+            // causing OOG.
             // not sure if this is exploitable yet?
-            try IERC1155TokenEjector(from).onERC1155Ejected{gas: 30000}(address(this), to, id, 1, "") {} // EXTERNAL CALL
-            catch {}
+            ExcessivelySafeCall.excessivelySafeCall( // EXTERNAL CALL
+                from,
+                30000,
+                abi.encodeCall(IERC1155TokenEjector.onERC1155Ejected, (address(this), to, id, 1, ""))
+            );
         }
     }
 
