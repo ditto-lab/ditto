@@ -195,7 +195,7 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
                 address(this),
                 _amount
             );
-            _mintSingle(r[0], cloneId); // EXTERNAL CALL
+            _mintSingle(receiver, cloneId); // EXTERNAL CALL
 
         } else {
 
