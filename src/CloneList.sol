@@ -15,11 +15,8 @@ abstract contract CloneList {
     mapping(uint => mapping(uint => uint)) public protoIdToIndexToAfter;
     // tracks the number of clones in circulation under a protoId
 
-    mapping(uint => uint) public protoIdToDepth;
-
     function pushListTail(uint protoId, uint index) internal {
         unchecked { // ethereum will be irrelevant if this ever overflows
-            protoIdToDepth[protoId]++; // increase depth counter
 
             // index -> next
             protoIdToIndexToAfter[protoId][index] = index+1; // set reference **to** the next index
@@ -30,43 +27,47 @@ abstract contract CloneList {
     }
 
     function popListIndex(uint protoId, uint index) internal {
-        unchecked { // if clone deoesn't exist an error will throw above. should not underflow
-            protoIdToDepth[protoId]--; // decrement clone depth counter
-        }
-        if (index == protoIdToIndexHead[protoId]) { // if index == indexHead move head to next index
-            // index -> next
-            // head = next
-            protoIdToIndexHead[protoId] = protoIdToIndexToAfter[protoId][index];
-        }
+        uint prevIndex = protoIdToIndexToPrior[protoId][index];
+        uint nextIndex = protoIdToIndexToAfter[protoId][index];
         // index pointers will change:
         // prev -> index -> next
         // becomes:
         // prev ----------> next
-        protoIdToIndexToAfter[protoId][protoIdToIndexToPrior[protoId][index]] = protoIdToIndexToAfter[protoId][index];
+        protoIdToIndexToAfter[protoId][prevIndex] = nextIndex;
 
         // prev <- index <- next
         // becomes:
         // prev <---------- next
-        protoIdToIndexToPrior[protoId][protoIdToIndexToAfter[protoId][index]] = protoIdToIndexToPrior[protoId][index];
+        protoIdToIndexToPrior[protoId][nextIndex] = prevIndex;
+
+        if (index == protoIdToIndexHead[protoId]) { // if index == indexHead move head to next index
+            // index -> next
+            // head = next
+            protoIdToIndexHead[protoId] = nextIndex;
+        }
     }
 
     function popListHead(uint protoId) internal {
         uint head = protoIdToIndexHead[protoId];
+        uint prevIndex = protoIdToIndexToPrior[protoId][head];
+        uint nextIndex = protoIdToIndexToAfter[protoId][head];
+
+        delete head;
+
         // indexHead -> next
         // head = next
-        protoIdToIndexHead[protoId] = protoIdToIndexToAfter[protoId][head]; // move head to next index
-        unchecked { --protoIdToDepth[protoId]; } // should not underflow, will error above if clone does not exist
+        protoIdToIndexHead[protoId] = nextIndex; // move head to next index
 
         // index pointers will change:
         // prev -> index -> next
         // becomes:
         // prev ----------> next
-        protoIdToIndexToAfter[protoId][protoIdToIndexToPrior[protoId][head]] = protoIdToIndexToAfter[protoId][head];
+        protoIdToIndexToAfter[protoId][prevIndex] = nextIndex;
 
         // prev <- index <- next
         // becomes:
         // prev <---------- next
-        protoIdToIndexToPrior[protoId][protoIdToIndexToAfter[protoId][head]] = protoIdToIndexToPrior[protoId][head];
+        protoIdToIndexToPrior[protoId][nextIndex] = prevIndex;
     }
 
     function validIndex(uint protoId, uint index) internal view returns(bool) {

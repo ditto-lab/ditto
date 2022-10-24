@@ -30,7 +30,6 @@ contract MultidimensionalCloneTest is TestBase {
         vm.stopPrank();
         // check successful mint
         assertEq(dm.ownerOf(cloneId0), eoa1);
-        assertEq(dm.protoIdToDepth(protoId0), 1);
 
         // mint clone at depth 1
         vm.startPrank(eoa2);
@@ -47,7 +46,6 @@ contract MultidimensionalCloneTest is TestBase {
         // check successful mint
         assertEq(dm.ownerOf(cloneId1), eoa2);
         assertEq(protoId1, protoId0);
-        assertEq(dm.protoIdToDepth(protoId1), 2);
 
 
         // mint clone at depth 2
@@ -65,8 +63,6 @@ contract MultidimensionalCloneTest is TestBase {
         // check successful mint
         assertEq(dm.ownerOf(cloneId2), eoa3);
         assertEq(protoId2, protoId1);
-        assertEq(dm.protoIdToDepth(protoId2), 3);
-
 
         assertEq(dm.protoIdToIndexHead(protoId2), 0);
 
@@ -76,8 +72,6 @@ contract MultidimensionalCloneTest is TestBase {
         assertEq(dm.ownerOf(cloneId0), address(0));
         assertEq(nft.ownerOf(nftId), eoa1);
         assertEq(dm.protoIdToIndexHead(protoId2), 1);
-        assertEq(dm.protoIdToDepth(protoId2), 2);
-
 
         vm.startPrank(eoa1);
         nft.safeTransferFrom(eoa1, dmAddr, nftId, abi.encode(currencyAddr, false));
@@ -85,8 +79,6 @@ contract MultidimensionalCloneTest is TestBase {
         assertEq(dm.ownerOf(cloneId1), address(0));
         assertEq(nft.ownerOf(nftId), eoa2);
         assertEq(dm.protoIdToIndexHead(protoId2), 2);
-        assertEq(dm.protoIdToDepth(protoId2), 1);
-
 
         vm.startPrank(eoa2);
         nft.safeTransferFrom(eoa2, dmAddr, nftId, abi.encode(currencyAddr, false));
@@ -94,7 +86,6 @@ contract MultidimensionalCloneTest is TestBase {
         assertEq(dm.ownerOf(cloneId2), address(0));
         assertEq(nft.ownerOf(nftId), eoa3);
         assertEq(dm.protoIdToIndexHead(protoId2), 3);
-        assertEq(dm.protoIdToDepth(protoId2), 0);
     }
 
     function testMultiFloors() public {
@@ -105,7 +96,6 @@ contract MultidimensionalCloneTest is TestBase {
         vm.stopPrank();
         // check successful mint
         assertEq(dm.ownerOf(cloneId0), eoa1);
-        assertEq(dm.protoIdToDepth(protoId0), 1);
 
 
         // mint clone at depth 1
@@ -123,7 +113,6 @@ contract MultidimensionalCloneTest is TestBase {
         // check successful mint
         assertEq(dm.ownerOf(cloneId1), eoa2);
         assertEq(protoId1, protoId0);
-        assertEq(dm.protoIdToDepth(protoId1), 2);
 
 
         // mint clone at depth 2
@@ -141,7 +130,6 @@ contract MultidimensionalCloneTest is TestBase {
         // check successful mint
         assertEq(dm.ownerOf(cloneId2), eoa3);
         assertEq(protoId2, protoId1);
-        assertEq(dm.protoIdToDepth(protoId2), 3);
 
 
         assertEq(dm.protoIdToIndexHead(protoId2), 0);
@@ -152,7 +140,6 @@ contract MultidimensionalCloneTest is TestBase {
         assertEq(dm.ownerOf(cloneId0), address(0));
         assertEq(nft.ownerOf(nftId), eoa1);
         assertEq(dm.protoIdToIndexHead(protoId2), 1);
-        assertEq(dm.protoIdToDepth(protoId2), 2);
 
 
         vm.startPrank(eoa1);
@@ -161,7 +148,6 @@ contract MultidimensionalCloneTest is TestBase {
         assertEq(dm.ownerOf(cloneId1), address(0));
         assertEq(nft.ownerOf(nftId), eoa2);
         assertEq(dm.protoIdToIndexHead(protoId2), 2);
-        assertEq(dm.protoIdToDepth(protoId2), 1);
 
 
         vm.startPrank(eoa2);
@@ -170,7 +156,6 @@ contract MultidimensionalCloneTest is TestBase {
         assertEq(dm.ownerOf(cloneId2), address(0));
         assertEq(nft.ownerOf(nftId), eoa3);
         assertEq(dm.protoIdToIndexHead(protoId2), 3);
-        assertEq(dm.protoIdToDepth(protoId2), 0);
     }
 
     function testMultiDissolve() public {
@@ -182,7 +167,6 @@ contract MultidimensionalCloneTest is TestBase {
         vm.stopPrank();
         // check successful mint
         assertEq(dm.ownerOf(cloneId0), eoa1);
-        assertEq(dm.protoIdToDepth(protoId0), 1);
         uint cloneId0Subsidy = MIN_AMOUNT_FOR_NEW_CLONE * MIN_FEE / DNOM;
         assertEq(dm.cloneIdToSubsidy(cloneId0), cloneId0Subsidy);
 
@@ -203,7 +187,6 @@ contract MultidimensionalCloneTest is TestBase {
         // check successful mint
         assertEq(dm.ownerOf(cloneId1), eoa2);
         assertEq(protoId1, protoId0);
-        assertEq(dm.protoIdToDepth(protoId1), 2);
         uint cloneId1Subsidy = dm.cloneIdToSubsidy(cloneId1);
 
 
@@ -223,7 +206,6 @@ contract MultidimensionalCloneTest is TestBase {
         // check successful mint
         assertEq(dm.ownerOf(cloneId2), eoa3);
         assertEq(protoId2, protoId1);
-        assertEq(dm.protoIdToDepth(protoId2), 3);
         uint cloneId2Subsidy = dm.cloneIdToSubsidy(cloneId2);
 
 
@@ -232,7 +214,6 @@ contract MultidimensionalCloneTest is TestBase {
         vm.stopPrank();
         assertEq(dm.ownerOf(cloneId0), address(0));
         assertEq(dm.protoIdToIndexHead(protoId2), 1);
-        assertEq(dm.protoIdToDepth(protoId2), 2);
         assertEq(dm.cloneIdToSubsidy(cloneId0), 0);
 
         // subsidy is passed to the next clone in the linked list.
@@ -246,7 +227,6 @@ contract MultidimensionalCloneTest is TestBase {
         assertEq(dm.ownerOf(cloneId2), address(0));
         // this dissolve should not move the index head
         assertEq(dm.protoIdToIndexHead(protoId2), 1);
-        assertEq(dm.protoIdToDepth(protoId2), 1);
 
         uint cloneId3 = uint(keccak256(abi.encodePacked(protoId2,uint(3))));
         // subsidy is passed to the next clone in the linked list, even if it's not minted yet.
@@ -258,7 +238,6 @@ contract MultidimensionalCloneTest is TestBase {
         vm.stopPrank();
         assertEq(dm.ownerOf(cloneId1), address(0));
         assertEq(dm.protoIdToIndexHead(protoId2), 3);
-        assertEq(dm.protoIdToDepth(protoId2), 0);
         assertEq(dm.cloneIdToSubsidy(cloneId2), 0);
 
         // since cloneId2 has already been burnt,
@@ -275,7 +254,6 @@ contract MultidimensionalCloneTest is TestBase {
         vm.stopPrank();
         // check successful mint
         assertEq(dm.ownerOf(cloneId0), eoa1);
-        assertEq(dm.protoIdToDepth(protoId0), 1);
 
 
         // mint clone at depth 1
@@ -294,7 +272,6 @@ contract MultidimensionalCloneTest is TestBase {
         // check successful mint
         assertEq(dm.ownerOf(cloneId1), eoa2);
         assertEq(protoId1, protoId0);
-        assertEq(dm.protoIdToDepth(protoId1), 2);
 
 
         // mint clone at depth 2
@@ -312,7 +289,6 @@ contract MultidimensionalCloneTest is TestBase {
         // check successful mint
         assertEq(dm.ownerOf(cloneId2), eoa3);
         assertEq(protoId2, protoId1);
-        assertEq(dm.protoIdToDepth(protoId2), 3);
 
 
         // dissolve middle clone sibling
@@ -321,7 +297,6 @@ contract MultidimensionalCloneTest is TestBase {
         vm.stopPrank();
         assertEq(dm.ownerOf(cloneId1), address(0));
         assertEq(dm.protoIdToIndexHead(protoId2), 0);
-        assertEq(dm.protoIdToDepth(protoId2), 2);
 
 
         // sell nft to first clone sibling holder
@@ -331,7 +306,6 @@ contract MultidimensionalCloneTest is TestBase {
         assertEq(dm.ownerOf(cloneId0), address(0));
         assertEq(nft.ownerOf(nftId), eoa1);
         assertEq(dm.protoIdToIndexHead(protoId2), 2);
-        assertEq(dm.protoIdToDepth(protoId2), 1);
 
 
         vm.startPrank(eoa1);
@@ -340,7 +314,6 @@ contract MultidimensionalCloneTest is TestBase {
         assertEq(dm.ownerOf(cloneId2), address(0));
         assertEq(nft.ownerOf(nftId), eoa3);
         assertEq(dm.protoIdToIndexHead(protoId2), 3);
-        assertEq(dm.protoIdToDepth(protoId2), 0);
     }
 
     function testMultiCannotMintCloneAtPrevIndex() public {
@@ -351,7 +324,6 @@ contract MultidimensionalCloneTest is TestBase {
         vm.stopPrank();
         // check successful mint
         assertEq(dm.ownerOf(cloneId0), eoa1);
-        assertEq(dm.protoIdToDepth(protoId0), 1);
 
 
         // mint clone at depth 1
@@ -369,7 +341,6 @@ contract MultidimensionalCloneTest is TestBase {
         // check successful mint
         assertEq(dm.ownerOf(cloneId1), eoa2);
         assertEq(protoId1, protoId0);
-        assertEq(dm.protoIdToDepth(protoId1), 2);
 
 
         // mint clone at depth 2
@@ -387,7 +358,6 @@ contract MultidimensionalCloneTest is TestBase {
         // check successful mint
         assertEq(dm.ownerOf(cloneId2), eoa3);
         assertEq(protoId2, protoId1);
-        assertEq(dm.protoIdToDepth(protoId2), 3);
 
 
         assertEq(dm.protoIdToIndexHead(protoId2), 0);
@@ -398,7 +368,6 @@ contract MultidimensionalCloneTest is TestBase {
         assertEq(dm.ownerOf(cloneId0), address(0));
         assertEq(nft.ownerOf(nftId), eoa1);
         assertEq(dm.protoIdToIndexHead(protoId2), 1);
-        assertEq(dm.protoIdToDepth(protoId2), 2);
 
 
         vm.startPrank(eoa1);
@@ -407,7 +376,6 @@ contract MultidimensionalCloneTest is TestBase {
         assertEq(dm.ownerOf(cloneId1), address(0));
         assertEq(nft.ownerOf(nftId), eoa2);
         assertEq(dm.protoIdToIndexHead(protoId2), 2);
-        assertEq(dm.protoIdToDepth(protoId2), 1);
 
 
         vm.startPrank(eoa2);
@@ -416,7 +384,6 @@ contract MultidimensionalCloneTest is TestBase {
         assertEq(dm.ownerOf(cloneId2), address(0));
         assertEq(nft.ownerOf(nftId), eoa3);
         assertEq(dm.protoIdToIndexHead(protoId2), 3);
-        assertEq(dm.protoIdToDepth(protoId2), 0);
 
 
         vm.startPrank(eoa4);
@@ -436,6 +403,5 @@ contract MultidimensionalCloneTest is TestBase {
         // check successful mint
         assertEq(dm.ownerOf(cloneId3), eoa4);
         assertEq(dm.protoIdToIndexHead(protoId3), 3);
-        assertEq(dm.protoIdToDepth(protoId0), 1);
     }
 }
