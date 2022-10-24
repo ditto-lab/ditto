@@ -42,7 +42,7 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
 
     bytes4 private constant _INTERFACE_ID_ERC2981 = 0x2a55205a;
 
-    uint internal constant FLOOR_ID = uint(0xfddc260aecba8a66725ee58da4ea3cbfcf4ab6c6ad656c48345a575ca18c45c9);
+    uint internal constant FLOOR_ID = 0;
 
     // ensure that CloneShape can always be casted to int128.
     // change the type to ensure this?
@@ -195,7 +195,7 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
                 address(this),
                 _amount
             );
-            _mintSingle(r[0], cloneId); // EXTERNAL CALL
+            _mintSingle(receiver, cloneId); // EXTERNAL CALL
 
         } else {
 
