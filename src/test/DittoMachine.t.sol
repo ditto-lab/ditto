@@ -12,23 +12,23 @@ contract ContractTest is TestBase {
     //     assertEq(dm.symbol(), "DTO");
     // }
 
-    function testTokenUri() public {
-        uint nftId721 = nft.mint();
-        string memory uri721 = nft.tokenURI(nftId721);
-        currency.mint(address(this), MIN_AMOUNT_FOR_NEW_CLONE);
-        currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
-        (uint cloneId0, ) = dm.duplicate(address(this), nftAddr, nftId721, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
-        assertEq(uri721, dm.uri(cloneId0));
-    }
+    // function testTokenUri() public {
+    //     uint nftId721 = nft.mint();
+    //     string memory uri721 = nft.tokenURI(nftId721);
+    //     currency.mint(address(this), MIN_AMOUNT_FOR_NEW_CLONE);
+    //     currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
+    //     (uint cloneId0, ) = dm.duplicate(address(this), nftAddr, nftId721, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
+    //     assertEq(uri721, dm.uri(cloneId0));
+    // }
 
-    function testTokenUri1155() public {
-        uint nftId1155 = nft1155.mint(eoaSeller, 1);
-        string memory uri1155 = nft1155.uri(nftId1155);
-        currency.mint(address(this), MIN_AMOUNT_FOR_NEW_CLONE);
-        currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
-        (uint cloneId1, ) = dm.duplicate(address(this), nft1155Addr, nftId1155, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
-        assertEq(uri1155, dm.uri(cloneId1));
-    }
+    // function testTokenUri1155() public {
+    //     uint nftId1155 = nft1155.mint(eoaSeller, 1);
+    //     string memory uri1155 = nft1155.uri(nftId1155);
+    //     currency.mint(address(this), MIN_AMOUNT_FOR_NEW_CLONE);
+    //     currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
+    //     (uint cloneId1, ) = dm.duplicate(address(this), nft1155Addr, nftId1155, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
+    //     assertEq(uri1155, dm.uri(cloneId1));
+    // }
 
     // DittoMachine should revert when ether is sent to it
     function testSendEther() public {
