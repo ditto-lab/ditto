@@ -36,6 +36,7 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
     error IndexInvalid();
     error NFTNotReceived();
     error NotAuthorized();
+    error ZeroAddress();
 
     ////////////// CONSTANT VARIABLES //////////////
 
@@ -120,6 +121,7 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
         bool floor,
         uint index
     ) external returns (uint cloneId, uint protoId) {
+        if (receiver == address(0)) revert ZeroAddress();
         // ensure enough funds to do some math on
         if (_amount < MIN_AMOUNT_FOR_NEW_CLONE) revert AmountInvalidMin();
         if (floor && _tokenId != FLOOR_ID) revert InvalidFloorId();
@@ -455,7 +457,7 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
                 id,
                 worth
             );
-            if (royaltyAmount > 0 && royaltyAmount < type(uint128).max) {
+            if (receiver != address(0) && royaltyAmount > 0 && royaltyAmount < type(uint128).max) {
                 worth -= uint128(royaltyAmount);
                 SafeTransferLib.safeTransfer(
                     ERC20(ERC20Contract),
