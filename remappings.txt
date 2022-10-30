@@ -3,3 +3,4 @@
 ds-test/=lib/ds-test/src/
 abdk-libraries-solidity/=lib/abdk-libraries-solidity/
 base64-sol/=lib/base64/
+forge-std/=lib/forge-std/src/

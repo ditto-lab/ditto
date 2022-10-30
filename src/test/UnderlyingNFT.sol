@@ -5,23 +5,39 @@ import {ERC1155} from "@rari-capital/solmate/src/tokens/ERC1155.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
 contract UnderlyingNFT is ERC721 {
+    uint id = 0;
     constructor() ERC721("Underlying", "UNDER") {}
 
-    function mint(address to, uint256 id) external {
-        _mint(to, id);
+    function mint() external returns (uint) {
+        _mint(msg.sender, id);
+        return id++;
     }
-    function tokenURI(uint256 id) public pure override returns (string memory) {
-        return string(abi.encodePacked("id: ", Strings.toString(id)));
+
+    function mint(address to) external returns (uint) {
+        _mint(to, id);
+        return id++;
+    }
+
+    function tokenURI(uint _id) public pure override returns (string memory) {
+        return string(abi.encodePacked("id: ", Strings.toString(_id)));
     }
 }
 
 contract UnderlyingNFT1155 is ERC1155 {
+    uint id = 0;
     constructor() {}
 
-    function mint(address to, uint256 id, uint256 amount) external {
-        _mint(to, id, amount, "");
+    function mint(uint amount) external returns (uint) {
+        _mint(msg.sender, id, amount, "");
+        return id++;
     }
-    function uri(uint256 id) public pure override returns (string memory) {
-        return string(abi.encodePacked("id: ", Strings.toString(id)));
+
+    function mint(address to, uint amount) external returns (uint) {
+        _mint(to, id, amount, "");
+        return id++;
+    }
+
+    function uri(uint _id) public pure override returns (string memory) {
+        return string(abi.encodePacked("id: ", Strings.toString(_id)));
     }
 }

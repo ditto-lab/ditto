@@ -1,2 +1,5 @@
 cache/
 out/
+broadcast/
+.gas-snapshot
+.env

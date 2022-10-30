@@ -7,4 +7,14 @@ contract Bidder {
 
     constructor() {}
 
+    function onERC1155Received(
+        address /*data*/,
+        address /*data*/,
+        uint /*data*/,
+        uint /*data*/,
+        bytes calldata /*data*/
+    ) external pure returns (bytes4) {
+        return this.onERC1155Received.selector;
+    }
+
 }

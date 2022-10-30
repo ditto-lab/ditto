@@ -3,20 +3,23 @@ pragma solidity ^0.8.4;
 
 import "./TestBase.sol";
 
-contract HeatTests is TestBase {
+contract HeatTest is TestBase {
 
     constructor() {}
 
-    function testHeatIncrease() public {
-        uint256 nftId = mintNft();
-        address eoa1 = generateAddress("eoa1");
-        currency.mint(eoa1, MIN_AMOUNT_FOR_NEW_CLONE);
+    function setUp() public override {
+        super.setUp();
 
-        cheats.startPrank(eoa1);
+        currency.mint(eoa1, MIN_AMOUNT_FOR_NEW_CLONE);
+    }
+
+    function testHeatIncrease() public {
+        uint nftId = nft.mint();
+        vm.startPrank(eoa1);
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
 
         // buy a clone using the minimum purchase amount
-        uint256 cloneId = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false);
+        (uint cloneId, ) = dm.duplicate(eoa1, nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
         assertEq(dm.ownerOf(cloneId), eoa1);
 
         // ensure erc20 balances
@@ -25,44 +28,40 @@ contract HeatTests is TestBase {
 
         CloneShape memory shape = getCloneShape(cloneId);
         assertEq(shape.heat, 1);
+        // console.log(dm.cloneIdToSubsidy(cloneId));
 
-        cheats.stopPrank();
+        for (uint i = 1; i < 83; i++) {
+            // after 83 price calculation will overflow error when calculating fees
 
-        for (uint256 i = 1; i < 221; i++) {
-            // after 221 overflow error
+            vm.roll(block.number+1);
+            vm.warp(block.timestamp + i);
 
-            cheats.warp(block.timestamp + i);
-            cheats.startPrank(eoa1);
-
-            uint256 minAmountToBuyClone = dm.getMinAmountForCloneTransfer(cloneId);
+            uint128 minAmountToBuyClone = dm.getMinAmountForCloneTransfer(cloneId);
             currency.mint(eoa1, minAmountToBuyClone);
             currency.approve(dmAddr, minAmountToBuyClone);
 
-            uint256 lastCumulativePrice = dm.cloneIdToCumulativePrice(cloneId);
-            dm.duplicate(nftAddr, nftId, currencyAddr, minAmountToBuyClone, false);
+            uint fee = minAmountToBuyClone * MIN_FEE * (1 + shape.heat) / DNOM;
+            console.log(fee);
+            console.log(minAmountToBuyClone);
+            console.log(minAmountToBuyClone - fee);
+            // console.log(dm._getMinAmount(shape, false));
 
-            // ensure correct oracle related values
-            assertEq(dm.cloneIdToCumulativePrice(cloneId), lastCumulativePrice + (shape.worth * i));
-            assertEq(dm.cloneIdToTimestampLast(cloneId), block.timestamp);
+            dm.duplicate(eoa1, nftAddr, nftId, currencyAddr, minAmountToBuyClone, false, 0);
 
             shape = getCloneShape(cloneId);
             assertEq(shape.heat, 1+i);
-
-            cheats.stopPrank();
+            console.log(shape.worth);
         }
+        vm.stopPrank();
     }
 
     function testHeatStatic() public {
-        uint256 nftId = mintNft();
-        address eoa1 = generateAddress("eoa1");
-
-        currency.mint(eoa1, MIN_AMOUNT_FOR_NEW_CLONE);
-
-        cheats.startPrank(eoa1);
+        uint nftId = nft.mint();
+        vm.startPrank(eoa1);
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
 
         // buy a clone using the minimum purchase amount
-        uint256 cloneId = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false);
+        (uint cloneId, ) = dm.duplicate(eoa1, nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
         assertEq(dm.ownerOf(cloneId), eoa1);
 
         // ensure erc20 balances
@@ -72,43 +71,34 @@ contract HeatTests is TestBase {
         CloneShape memory shape = getCloneShape(cloneId);
         assertEq(shape.heat, 1);
 
-        cheats.stopPrank();
+        vm.stopPrank();
 
-        for (uint256 i = 1; i < 256; i++) {
-            cheats.warp(block.timestamp + (BASE_TERM-1) + shape.heat**2);
+        for (uint i = 1; i < 256; i++) {
+            vm.warp(block.timestamp + (BASE_TERM) + TimeCurve.calc(shape.heat));
 
-            cheats.startPrank(eoa1);
+            vm.startPrank(eoa1);
 
-            uint256 minAmountToBuyClone = dm.getMinAmountForCloneTransfer(cloneId);
+            uint128 minAmountToBuyClone = dm.getMinAmountForCloneTransfer(cloneId);
             currency.mint(eoa1, minAmountToBuyClone);
             currency.approve(dmAddr, minAmountToBuyClone);
 
-            uint256 lastCumulativePrice = dm.cloneIdToCumulativePrice(cloneId);
-            dm.duplicate(nftAddr, nftId, currencyAddr, minAmountToBuyClone, false);
-
-            // ensure correct oracle related values
-            assertEq(dm.cloneIdToCumulativePrice(cloneId), lastCumulativePrice + (shape.worth * ((BASE_TERM-1) + shape.heat**2)));
-            assertEq(dm.cloneIdToTimestampLast(cloneId), block.timestamp);
+            dm.duplicate(eoa1, nftAddr, nftId, currencyAddr, minAmountToBuyClone, false, 0);
 
             shape = getCloneShape(cloneId);
             assertEq(shape.heat, 1);
             assertEq(shape.term, block.timestamp + (BASE_TERM-1) + shape.heat**2);
 
-            cheats.stopPrank();
+            vm.stopPrank();
         }
     }
 
     function testHeatDuplicatePrice(uint16 time) public {
-        uint256 nftId = mintNft();
-        address eoa1 = generateAddress("eoa1");
-
-        currency.mint(eoa1, MIN_AMOUNT_FOR_NEW_CLONE);
-
-        cheats.startPrank(eoa1);
+        uint nftId = nft.mint();
+        vm.startPrank(eoa1);
         currency.approve(dmAddr, MIN_AMOUNT_FOR_NEW_CLONE);
 
         // buy a clone using the minimum purchase amount
-        uint256 cloneId = dm.duplicate(nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false);
+        (uint cloneId, ) = dm.duplicate(eoa1, nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
         assertEq(dm.ownerOf(cloneId), eoa1);
 
         // ensure erc20 balances
@@ -118,34 +108,34 @@ contract HeatTests is TestBase {
         CloneShape memory shape = getCloneShape(cloneId);
         assertEq(shape.heat, 1);
 
-        cheats.stopPrank();
+        for (uint i = 1; i < 50; i++) {
+            console.log(i);
+            vm.roll(block.number+1);
+            vm.warp(block.timestamp + uint(time));
 
-        for (uint256 i = 1; i < 30; i++) {
-            cheats.warp(block.timestamp + uint256(time));
+            bool sameBlock = dm._getBlockRefund(cloneId) != 0;
 
-            cheats.startPrank(eoa1);
-
-            uint256 minAmountToBuyClone = dm.getMinAmountForCloneTransfer(cloneId);
+            uint128 minAmountToBuyClone = dm.getMinAmountForCloneTransfer(cloneId);
             currency.mint(eoa1, minAmountToBuyClone);
             currency.approve(dmAddr, minAmountToBuyClone);
 
-            uint256 timeLeft = shape.term > block.timestamp ? shape.term - block.timestamp : 0;
-            uint256 termStart = shape.term - ((BASE_TERM-1) + uint256(shape.heat)**2);
-            uint256 termLength = shape.term - termStart;
+            uint128 timeLeft = shape.term > block.timestamp ? shape.term - uint128(block.timestamp) : 0;
+            uint128 termStart = shape.term - (BASE_TERM + TimeCurve.calc(shape.heat));
+            uint128 termLength = shape.term - termStart;
 
-            uint256 auctionPrice = shape.worth + (shape.worth * timeLeft / termLength);
+            uint128 auctionPrice = shape.worth + (shape.worth * timeLeft / termLength);
 
-            assertEq(minAmountToBuyClone, (auctionPrice + (auctionPrice * MIN_FEE * (1+shape.heat) / DNOM)), "price");
+            assertEq(
+                minAmountToBuyClone,
+                (sameBlock ?
+                    (shape.worth + ((shape.worth * (MIN_FEE * (shape.heat))) * DNOM) / (DNOM - (MIN_FEE * shape.heat)) / DNOM):
+                    (auctionPrice + ((auctionPrice * (MIN_FEE * (1+shape.heat))) * DNOM) / (DNOM - (MIN_FEE * (1+shape.heat))) / DNOM) ),
+                "price"
+            );
 
-            uint256 lastCumulativePrice = dm.cloneIdToCumulativePrice(cloneId);
-            dm.duplicate(nftAddr, nftId, currencyAddr, minAmountToBuyClone, false);
-
-            // ensure correct oracle related values
-            assertEq(dm.cloneIdToCumulativePrice(cloneId), lastCumulativePrice + (shape.worth * time));
-            assertEq(dm.cloneIdToTimestampLast(cloneId), block.timestamp);
+            dm.duplicate(eoa1, nftAddr, nftId, currencyAddr, minAmountToBuyClone, false, 0);
             shape = getCloneShape(cloneId);
-
-            cheats.stopPrank();
         }
+        vm.stopPrank();
     }
 }
