@@ -429,20 +429,21 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
         // token can only be sold to the clone at the index head
         popListHead(protoId);
 
-        if (IERC165(msg.sender).supportsInterface(_INTERFACE_ID_ERC2981)) {
-            (address receiver, uint royaltyAmount) = IERC2981(msg.sender).royaltyInfo(
-                id,
-                worth
-            );
-            if (royaltyAmount > 0 && royaltyAmount < type(uint128).max) {
-                worth -= uint128(royaltyAmount);
-                SafeTransferLib.safeTransfer(
-                    ERC20(ERC20Contract),
-                    receiver,
-                    royaltyAmount
-                );
+        try IERC165(msg.sender).supportsInterface(_INTERFACE_ID_ERC2981) returns (bool isRoyalty) {
+            if (isRoyalty) {
+                try IERC2981(msg.sender).royaltyInfo(id, worth) returns (address receiver, uint royaltyAmount) {
+                    if (receiver != address(0) && royaltyAmount > 0 && royaltyAmount < worth) {
+                        worth -= uint128(royaltyAmount);
+                        SafeTransferLib.safeTransfer(
+                            ERC20(ERC20Contract),
+                            receiver,
+                            royaltyAmount
+                        );
+                    }
+                } catch {}
             }
-        }
+        } catch {}
+
         SafeTransferLib.safeTransfer(
             ERC20(ERC20Contract),
             from,
