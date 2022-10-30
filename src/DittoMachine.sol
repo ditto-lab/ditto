@@ -455,7 +455,8 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
                 id,
                 worth
             );
-            if (royaltyAmount > 0 && royaltyAmount < type(uint128).max) {
+            if (royaltyAmount > 0 && royaltyAmount < worth) {
+                // downcasting is safe since worth is uint128
                 worth -= uint128(royaltyAmount);
                 SafeTransferLib.safeTransfer(
                     ERC20(ERC20Contract),
