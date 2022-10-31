@@ -9,11 +9,27 @@ import {BidderWithEjector, BidderWithBadEjector, BidderWithGassyEjector} from ".
 import {ERC721, IERC2981, UnderlyingNFTWithRoyalties, UnderlyingNFT, UnderlyingNFT1155} from "./UnderlyingNFTWithRoyalties.sol";
 
 
+// reverts on transfer to 0 address since some production tokens,
+// like USDC, revert in this case.
 contract Currency is ERC20 {
     constructor() ERC20("Currency", "CRY", 18) {}
 
     function mint(address to, uint amount) external {
         _mint(to, amount);
+    }
+
+    function transfer(address to, uint256 amount) public virtual override returns (bool) {
+        if (to == address(0)) revert("Transfer to 0 address");
+        return super.transfer(to, amount);
+    }
+
+    function transferFrom(
+        address from,
+        address to,
+        uint256 amount
+    ) public virtual override returns (bool) {
+        if (to == address(0)) revert("Transfer to 0 address");
+        return super.transferFrom(from, to, amount);
     }
 }
 
