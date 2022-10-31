@@ -133,7 +133,7 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
         )));
 
         // hash protoId and index to get cloneId
-        assembly {
+        assembly ("memory-safe") {
             mstore(0, protoId)
             mstore(0x20, index)
             cloneId := keccak256(0, 0x40)
@@ -163,7 +163,7 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
                     _ERC20Contract,
                     true
                 )));
-                assembly {
+                assembly ("memory-safe") {
                     mstore(0, floorId)
                     mstore(0x20, index)
                     floorId := keccak256(0, 0x40)
@@ -178,7 +178,7 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
             if (!isIndexHead) { // check cloneId at prior index
                 // prev <- index
                 uint elderId = protoIdToIndexToPrior[protoId][index];
-                assembly {
+                assembly ("memory-safe") {
                     mstore(0, protoId)
                     mstore(0x20, elderId)
                     elderId := keccak256(0, 0x40)
@@ -225,7 +225,7 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
                 if (!isIndexHead) { // check cloneId at prior index
                     // prev <- index
                     uint elderId = protoIdToIndexToPrior[protoId][index];
-                    assembly {
+                    assembly ("memory-safe") {
                         mstore(0, protoId)
                         mstore(0x20, elderId)
                         elderId := keccak256(0, 0x40)
@@ -298,7 +298,7 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
 
         // move its subsidy to the next clone in the linked list even if it's not minted yet.
         uint nextCloneId = protoIdToIndexToAfter[protoId][index];
-        assembly {
+        assembly ("memory-safe") {
             mstore(0, protoId)
             mstore(0x20, nextCloneId)
             nextCloneId := keccak256(0, 0x40)
@@ -346,7 +346,7 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
 
     function observe(uint protoId, uint128[] calldata secondsAgos) external view returns (uint128[] memory cumulativePrices) {
         uint cloneId = protoIdToIndexHead[protoId];
-        assembly {
+        assembly ("memory-safe") {
             mstore(0, protoId)
             mstore(0x20, cloneId)
             cloneId := keccak256(0, 0x40)
@@ -370,7 +370,7 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
         )));
         {
             uint head = protoIdToIndexHead[floorId];
-            assembly {
+            assembly ("memory-safe") {
                 mstore(0, floorId)
                 mstore(0x20, head)
                 floorId := keccak256(0, 0x40)
@@ -430,7 +430,7 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
             false
         )));
         uint cloneId = protoIdToIndexHead[protoId];
-        assembly {
+        assembly ("memory-safe") {
             mstore(0, protoId)
             mstore(0x20, cloneId)
             cloneId := keccak256(0, 0x40)
@@ -444,7 +444,7 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
                 true
             )));
             uint floorId = protoIdToIndexHead[flotoId];
-            assembly {
+            assembly ("memory-safe") {
                 mstore(0, flotoId)
                 mstore(0x20, floorId)
                 floorId := keccak256(0, 0x40)
