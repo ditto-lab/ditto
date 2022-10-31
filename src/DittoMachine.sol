@@ -133,7 +133,11 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
         )));
 
         // hash protoId and index to get cloneId
-        cloneId = uint(keccak256(abi.encodePacked(protoId, index)));
+        assembly {
+            mstore(0, protoId)
+            mstore(0x20, index)
+            cloneId := keccak256(0, 0x40)
+        }
 
         bool isIndexHead = index == protoIdToIndexHead[protoId];
         if (isIndexHead) {
@@ -159,7 +163,11 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
                     _ERC20Contract,
                     true
                 )));
-                floorId = uint(keccak256(abi.encodePacked(floorId, index)));
+                assembly {
+                    mstore(0, floorId)
+                    mstore(0x20, index)
+                    floorId := keccak256(0, 0x40)
+                }
 
                 if (ownerOf[floorId] != address(0)) {
                     // check price of floor clone to get price floor
@@ -169,7 +177,12 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
             }
             if (!isIndexHead) { // check cloneId at prior index
                 // prev <- index
-                uint elderId = uint(keccak256(abi.encodePacked(protoId, protoIdToIndexToPrior[protoId][index])));
+                uint elderId = protoIdToIndexToPrior[protoId][index];
+                assembly {
+                    mstore(0, protoId)
+                    mstore(0x20, elderId)
+                    elderId := keccak256(0, 0x40)
+                }
                 // check value is less than clone closer to the index head
                 if (value > cloneIdToShape[elderId].worth) revert AmountInvalid();
             }
@@ -211,7 +224,12 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
                 uint128 value = _amount - subsidy; // will be applied to cloneShape.worth
                 if (!isIndexHead) { // check cloneId at prior index
                     // prev <- index
-                    uint elderId = uint(keccak256(abi.encodePacked(protoId, protoIdToIndexToPrior[protoId][index])));
+                    uint elderId = protoIdToIndexToPrior[protoId][index];
+                    assembly {
+                        mstore(0, protoId)
+                        mstore(0x20, elderId)
+                        elderId := keccak256(0, 0x40)
+                    }
                     if (value > cloneIdToShape[elderId].worth) revert AmountInvalid();
                 }
                 uint128 termLength = BASE_TERM + TimeCurve.calc(heat);
@@ -279,7 +297,12 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
         }
 
         // move its subsidy to the next clone in the linked list even if it's not minted yet.
-        uint nextCloneId = uint(keccak256(abi.encodePacked(protoId, protoIdToIndexToAfter[protoId][index])));
+        uint nextCloneId = protoIdToIndexToAfter[protoId][index];
+        assembly {
+            mstore(0, protoId)
+            mstore(0x20, nextCloneId)
+            nextCloneId := keccak256(0, 0x40)
+        }
         // invariant: cloneId != nextCloneId
         cloneIdToSubsidy[nextCloneId] += cloneIdToSubsidy[cloneId];
         delete cloneIdToSubsidy[cloneId];
@@ -322,7 +345,13 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
     }
 
     function observe(uint protoId, uint128[] calldata secondsAgos) external view returns (uint128[] memory cumulativePrices) {
-        uint cloneId = uint(keccak256(abi.encodePacked(protoId, protoIdToIndexHead[protoId])));
+        uint cloneId = protoIdToIndexHead[protoId];
+        assembly {
+            mstore(0, protoId)
+            mstore(0x20, cloneId)
+            cloneId := keccak256(0, 0x40)
+        }
+
         return Oracle.observe(protoId, secondsAgos, cloneIdToShape[cloneId].worth);
     }
 
@@ -339,7 +368,14 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
             cloneShape.ERC20Contract,
             true
         )));
-        floorId = uint(keccak256(abi.encodePacked(floorId, protoIdToIndexHead[floorId])));
+        {
+            uint head = protoIdToIndexHead[floorId];
+            assembly {
+                mstore(0, floorId)
+                mstore(0x20, head)
+                floorId := keccak256(0, 0x40)
+            }
+        }
         uint128 floorPrice = cloneIdToShape[floorId].worth;
 
         if (intraBlock) {
@@ -393,7 +429,12 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
             ERC20Contract,
             false
         )));
-        uint cloneId = uint(keccak256(abi.encodePacked(protoId, protoIdToIndexHead[protoId])));
+        uint cloneId = protoIdToIndexHead[protoId];
+        assembly {
+            mstore(0, protoId)
+            mstore(0x20, cloneId)
+            cloneId := keccak256(0, 0x40)
+        }
 
         {
             uint flotoId = uint(keccak256(abi.encodePacked( // floorId + protoId = flotoId
@@ -402,7 +443,12 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
                 ERC20Contract,
                 true
             )));
-            uint floorId = uint(keccak256(abi.encodePacked(flotoId, protoIdToIndexHead[flotoId])));
+            uint floorId = protoIdToIndexHead[flotoId];
+            assembly {
+                mstore(0, flotoId)
+                mstore(0x20, floorId)
+                floorId := keccak256(0, 0x40)
+            }
 
             if (
                 floor ||
