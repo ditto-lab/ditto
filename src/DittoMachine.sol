@@ -1,13 +1,12 @@
 pragma solidity ^0.8.4;
 //SPDX-License-Identifier: MIT
 
-import {ERC721, ERC721TokenReceiver} from "@rari-capital/solmate/src/tokens/ERC721.sol";
-import {ERC1155, ERC1155TokenReceiver} from "@rari-capital/solmate/src/tokens/ERC1155.sol";
-import {ERC1155D} from "./ERC1155D.sol";
-import {ERC20} from "@rari-capital/solmate/src/utils/SafeTransferLib.sol";
-import {SafeTransferLib} from "./SafeTransferLib.sol";
-import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
+import {IERC721Receiver} from "@openzeppelin/contracts/interfaces/IERC721Receiver.sol";
+import {IERC721} from "@openzeppelin/contracts/interfaces/IERC721.sol";
 import {IERC2981, IERC165} from "@openzeppelin/contracts/interfaces/IERC2981.sol";
+import {ERC1155D, IERC1155, IERC1155Receiver} from "./ERC1155D.sol";
+import {SafeTransferLib, ERC20} from "./SafeTransferLib.sol";
+import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {Base64} from 'base64-sol/base64.sol';
 import {CloneList} from "./CloneList.sol";
@@ -23,7 +22,7 @@ import {DittoMachineSvg} from "./DittoMachineSvg.sol";
  * the right to ownership when it is sold via this contract. Anybody may buy the
  * token for a higher price and force a transfer from the previous owner to the new buyer.
  */
-contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, CloneList, BlockRefund, Oracle {
+contract DittoMachine is ERC1155D, IERC721Receiver, IERC1155Receiver, CloneList, BlockRefund, Oracle {
     /**
      * @notice Insufficient bid for purchasing a clone.
      * @dev thrown when the number of erc20 tokens sent is lower than
@@ -529,7 +528,7 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
 
         // no need to check if ditto is the owner of `id`,
         // as transfer fails in that case.
-        ERC721(msg.sender).safeTransferFrom(address(this), owner, id, retData);
+        IERC721(msg.sender).safeTransferFrom(address(this), owner, id, retData);
         return this.onERC721Received.selector;
     }
 
@@ -548,7 +547,7 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
 
         // no need to check if ditto is the owner of `id`,
         // as transfer fails in that case.
-        ERC1155(msg.sender).safeTransferFrom(address(this), owner, id, 1, retData);
+        IERC1155(msg.sender).safeTransferFrom(address(this), owner, id, 1, retData);
 
         return this.onERC1155Received.selector;
     }
@@ -565,7 +564,7 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
         for (uint i=0; i < ids.length;) {
             if (amounts[i] != 1) revert AmountInvalid();
             (address owner, bytes memory retData) = onTokenReceived(from, ids[i], ERC20Contracts[i], floors[i]);
-            ERC1155(msg.sender).safeTransferFrom(address(this), owner, ids[i], 1, retData);
+            IERC1155(msg.sender).safeTransferFrom(address(this), owner, ids[i], 1, retData);
             unchecked { ++i; }
         }
 
@@ -602,8 +601,8 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
         // require statement copied from solmate ERC721 safeTransferFrom()
         require(
             to.code.length == 0 ||
-                ERC1155TokenReceiver(to).onERC1155Received(msg.sender, from, id, 1, "") ==
-                ERC1155TokenReceiver.onERC1155Received.selector,
+                IERC1155Receiver(to).onERC1155Received(msg.sender, from, id, 1, "") ==
+                IERC1155Receiver.onERC1155Received.selector,
             "UNSAFE_RECIPIENT"
         );
 

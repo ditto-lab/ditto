@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.4;
 
-import "./TestBase.sol";
+import "./DittoTestBase.sol";
 import {
     UnderlyingNFTWithRevert1,
     UnderlyingNFTWithRevert2,
@@ -10,7 +10,7 @@ import {
     UnderlyingNFTWithHigherRoyalty
 } from "./UnderlyingNFTMalicious.sol";
 
-contract NoRoyaltyTest is TestBase {
+contract NoRoyaltyTest is DittoTestBase {
 
     UnderlyingNFTWithRevert1 r1;
     UnderlyingNFTWithRevert2 r2;

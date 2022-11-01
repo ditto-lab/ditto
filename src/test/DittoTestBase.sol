@@ -2,8 +2,9 @@
 pragma solidity ^0.8.4;
 
 import "forge-std/Test.sol";
-import {DittoMachine, ERC20, TimeCurve} from "../DittoMachine.sol";
-import "@openzeppelin/contracts/utils/Strings.sol";
+import {DittoMachine, TimeCurve} from "../DittoMachine.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {Bidder} from "./Bidder.sol";
 import {BidderWithEjector, BidderWithBadEjector, BidderWithGassyEjector} from "./BidderWithEjector.sol";
 import {ERC721, IERC2981, UnderlyingNFTWithRoyalties, UnderlyingNFT, UnderlyingNFT1155} from "./UnderlyingNFTWithRoyalties.sol";
@@ -12,28 +13,14 @@ import {ERC721, IERC2981, UnderlyingNFTWithRoyalties, UnderlyingNFT, UnderlyingN
 // reverts on transfer to 0 address since some production tokens,
 // like USDC, revert in this case.
 contract Currency is ERC20 {
-    constructor() ERC20("Currency", "CRY", 18) {}
+    constructor() ERC20("Currency", "CRY") {}
 
     function mint(address to, uint amount) external {
         _mint(to, amount);
     }
-
-    function transfer(address to, uint256 amount) public virtual override returns (bool) {
-        if (to == address(0)) revert("Transfer to 0 address");
-        return super.transfer(to, amount);
-    }
-
-    function transferFrom(
-        address from,
-        address to,
-        uint256 amount
-    ) public virtual override returns (bool) {
-        if (to == address(0)) revert("Transfer to 0 address");
-        return super.transferFrom(from, to, amount);
-    }
 }
 
-contract TestBase is Test, DittoMachine {
+contract DittoTestBase is Test, DittoMachine {
     uint constant INIT_TIME = 1644911858;
 
     DittoMachine dm;
