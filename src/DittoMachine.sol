@@ -272,6 +272,8 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
      */
     function dissolve(uint protoId, uint cloneId) external returns (bool) {
         uint index = cloneIdToIndex[cloneId];
+        if (uint(keccak256(abi.encodePacked(protoId, index))) != cloneId) revert();
+        
         address owner = ownerOf[cloneId];
         if (!(msg.sender == owner
                 || isApprovedForAll[owner][msg.sender])) {
