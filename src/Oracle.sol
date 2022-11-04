@@ -125,7 +125,7 @@ abstract contract Oracle {
         }
 
         // check if oldest obervation is newer than the requested observation
-        beforeOrAt = observations[protoId][(lastIndex.lastIndex + 1) % lastIndex.cardinality];
+        beforeOrAt = observations[protoId][addmod(lastIndex.lastIndex, 1, lastIndex.cardinality)];
         if (targetTimestamp < beforeOrAt.timestamp) revert TimeRequestedTooOld();
 
         // apply binary search
@@ -148,7 +148,7 @@ abstract contract Oracle {
         while (true) {
             i = (l + r) >> 1; // divide by 2
             beforeOrAt = observations[protoId][i % lastIndex.cardinality];
-            atOrAfter = observations[protoId][(i+1) % lastIndex.cardinality];
+            atOrAfter = observations[protoId][addmod(i, 1, lastIndex.cardinality)];
 
             if (targetTimestamp < beforeOrAt.timestamp) r = i-1;
             else if (targetTimestamp > atOrAfter.timestamp) l = i+1; // beforeOrAt.timestamp <= targetTimestamp
