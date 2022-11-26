@@ -25,9 +25,9 @@ contract UnderlyingNFTWithRevert2 is UnderlyingNFT, IERC2981 {
     function royaltyInfo(
         uint /*_tokenId*/,
         uint /*_salePrice*/
-    ) external view returns (
-        address receiver,
-        uint royaltyAmount
+    ) external pure returns (
+        address /*receiver*/,
+        uint /*royaltyAmount*/
     ) {
         revert();
     }
@@ -58,11 +58,12 @@ contract UnderlyingNFTWithFullRoyalty is UnderlyingNFT, IERC2981 {
     function royaltyInfo(
         uint /*_tokenId*/,
         uint _salePrice
-    ) external view returns (
+    ) external pure returns (
         address receiver,
         uint royaltyAmount
     ) {
         royaltyAmount = _salePrice;
+        receiver = address(1); // some randome address
     }
 
     function supportsInterface(bytes4) public pure override(ERC721, IERC165) returns (bool) {
@@ -75,11 +76,12 @@ contract UnderlyingNFTWithHigherRoyalty is UnderlyingNFT, IERC2981 {
     function royaltyInfo(
         uint /*_tokenId*/,
         uint _salePrice
-    ) external view returns (
+    ) external pure returns (
         address receiver,
         uint royaltyAmount
     ) {
         royaltyAmount = _salePrice+1;
+        receiver = address(1); // some randome address
     }
 
     function supportsInterface(bytes4) public pure override(ERC721, IERC165) returns (bool) {

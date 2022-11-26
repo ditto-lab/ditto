@@ -22,7 +22,7 @@ contract TestVoucher is DittoTestBase {
         currency.approve(dmAddr, smallAmount);
 
         uint128 startTime = uint128(block.timestamp);
-        (uint cloneId, uint protoId) = dm.duplicate(eoa1, nftAddr, nftId, currencyAddr, smallAmount, false, 0);
+        (uint cloneId, ) = dm.duplicate(eoa1, nftAddr, nftId, currencyAddr, smallAmount, false, 0);
         uint128 worth = getCloneShape(cloneId).worth;
 
         vm.stopPrank();
