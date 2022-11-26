@@ -14,6 +14,7 @@ import {TimeCurve} from "./TimeCurve.sol";
 import {BlockRefund} from "./BlockRefund.sol";
 import {Oracle} from "./Oracle.sol";
 import {DittoMachineSvg} from "./DittoMachineSvg.sol";
+import {FallbackReceiver} from "./FallbackReceiver.sol";
 
 /**
  * @title NFT derivative exchange inspired by the SALSA concept.
@@ -50,6 +51,8 @@ contract DittoMachine is ERC1155D, IERC721Receiver, IERC1155Receiver, CloneList,
     uint128 internal constant DNOM = 2**16 - 1; // 65535
     uint128 internal constant MIN_AMOUNT_FOR_NEW_CLONE = BASE_TERM + (BASE_TERM * MIN_FEE / DNOM); // 262272
 
+    address public immutable fallbackReceiver;
+
     ////////////// STATE VARIABLES //////////////
 
     // variables essential to calculating auction/price information for each cloneId
@@ -75,7 +78,9 @@ contract DittoMachine is ERC1155D, IERC721Receiver, IERC1155Receiver, CloneList,
     // non transferrable vouchers for reward tokens
     mapping(uint => bool) public voucherValidity;
 
-    constructor() {}
+    constructor() {
+        fallbackReceiver = address(new FallbackReceiver(address(this)));
+    }
 
     ///////////////////////////////////////////
     ////////////// URI FUNCTIONS //////////////
@@ -334,6 +339,29 @@ contract DittoMachine is ERC1155D, IERC721Receiver, IERC1155Receiver, CloneList,
         return true;
     }
 
+    function bumpSubsidy(address nft, uint id, address ERC20Contract, bool floor, uint128 amount) external {
+        uint protoId = uint(keccak256(abi.encodePacked(
+            nft,
+            id,
+            ERC20Contract,
+            false
+        )));
+        uint cloneId = protoIdToIndexHead[protoId];
+        assembly ("memory-safe") {
+            mstore(0, protoId)
+            mstore(0x20, cloneId)
+            cloneId := keccak256(0, 0x40)
+        }
+
+        SafeTransferLib.safeTransferFrom(
+            ERC20(ERC20Contract),
+            msg.sender,
+            address(this),
+            amount
+        );
+        cloneIdToSubsidy[cloneId] += amount;
+    }
+
     function getMinAmountForCloneTransfer(uint cloneId) external view returns (uint128) {
         if(ownerOf[cloneId] == address(0)) {
             return MIN_AMOUNT_FOR_NEW_CLONE;
@@ -484,6 +512,7 @@ contract DittoMachine is ERC1155D, IERC721Receiver, IERC1155Receiver, CloneList,
         _burn(owner, cloneId);
 
         // token can only be sold to the clone at the index head
+        uint index = protoIdToIndexHead[protoId];
         popListHead(protoId);
 
         try IERC165(msg.sender).supportsInterface(_INTERFACE_ID_ERC2981) returns (bool isRoyalty) {
@@ -513,7 +542,7 @@ contract DittoMachine is ERC1155D, IERC721Receiver, IERC1155Receiver, CloneList,
             // NFT ID is sent with function call
             ERC20Contract,
             floor,
-            protoIdToIndexHead[protoId], // index
+            index,
             owner,
             worth,
             subsidy
@@ -538,9 +567,11 @@ contract DittoMachine is ERC1155D, IERC721Receiver, IERC1155Receiver, CloneList,
 
         (address owner, bytes memory retData) = onTokenReceived(from, id, ERC20Contract, floor);
 
-        // no need to check if ditto is the owner of `id`,
-        // as transfer fails in that case.
-        IERC721(msg.sender).safeTransferFrom(address(this), owner, id, retData);
+        if (IERC721(msg.sender).ownerOf(id) != address(this)) revert NFTNotReceived();
+        try IERC721(msg.sender).safeTransferFrom(address(this), owner, id, retData) {}
+        catch {
+            IERC721(msg.sender).safeTransferFrom(address(this), fallbackReceiver, id, retData);
+        }
         return this.onERC721Received.selector;
     }
 
@@ -557,9 +588,12 @@ contract DittoMachine is ERC1155D, IERC721Receiver, IERC1155Receiver, CloneList,
 
         (address owner, bytes memory retData) = onTokenReceived(from, id, ERC20Contract, floor);
 
-        // no need to check if ditto is the owner of `id`,
-        // as transfer fails in that case.
-        IERC1155(msg.sender).safeTransferFrom(address(this), owner, id, 1, retData);
+        if (IERC1155(msg.sender).balanceOf(address(this), id) < 1) revert NFTNotReceived();
+        try IERC1155(msg.sender).safeTransferFrom(address(this), owner, id, 1, retData) {}
+        catch {
+            IERC1155(msg.sender).safeTransferFrom(address(this), fallbackReceiver, id, 1, retData);
+        }
+
         return this.onERC1155Received.selector;
     }
 
@@ -575,7 +609,11 @@ contract DittoMachine is ERC1155D, IERC721Receiver, IERC1155Receiver, CloneList,
         for (uint i=0; i < ids.length;) {
             if (amounts[i] != 1) revert AmountInvalid();
             (address owner, bytes memory retData) = onTokenReceived(from, ids[i], ERC20Contracts[i], floors[i]);
-            IERC1155(msg.sender).safeTransferFrom(address(this), owner, ids[i], 1, retData);
+            if (IERC1155(msg.sender).balanceOf(address(this), ids[i]) < 1) revert NFTNotReceived();
+            try IERC1155(msg.sender).safeTransferFrom(address(this), owner, ids[i], 1, retData) {}
+            catch {
+                IERC1155(msg.sender).safeTransferFrom(address(this), fallbackReceiver, ids[i], 1, retData);
+            }
             unchecked { ++i; }
         }
 

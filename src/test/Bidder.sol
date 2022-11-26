@@ -18,3 +18,33 @@ contract Bidder {
     }
 
 }
+
+contract BidderOnReceiveRevert {
+    bool isRevert = false;
+    constructor() {}
+
+    function setRevert(bool b) external {
+        isRevert = b;
+    }
+
+    function onERC1155Received(
+        address /*data*/,
+        address /*data*/,
+        uint /*data*/,
+        uint /*data*/,
+        bytes calldata /*data*/
+    ) external view returns (bytes4) {
+        require(!isRevert);
+        return this.onERC1155Received.selector;
+    }
+
+    function onERC721Received(
+        address /*data*/,
+        address /*data*/,
+        uint /*data*/,
+        bytes calldata /*data*/
+    ) external view returns (bytes4) {
+        require(!isRevert);
+        return this.onERC721Received.selector;
+    }
+}
