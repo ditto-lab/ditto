@@ -41,7 +41,7 @@ contract DittoMachine is ERC1155D, IERC721Receiver, IERC1155Receiver, CloneList,
 
     bytes4 private constant _INTERFACE_ID_ERC2981 = 0x2a55205a;
 
-    uint internal constant FLOOR_ID = uint(0xfddc260aecba8a66725ee58da4ea3cbfcf4ab6c6ad656c48345a575ca18c45c9);
+    uint internal constant FLOOR_ID = 0;
 
     // ensure that CloneShape can always be casted to int128.
     // change the type to ensure this?
@@ -294,6 +294,8 @@ contract DittoMachine is ERC1155D, IERC721Receiver, IERC1155Receiver, CloneList,
      */
     function dissolve(uint protoId, uint cloneId) external returns (bool) {
         uint index = cloneIdToIndex[cloneId];
+        if (uint(keccak256(abi.encodePacked(protoId, index))) != cloneId) revert();
+        
         address owner = ownerOf[cloneId];
         if (!(msg.sender == owner
                 || isApprovedForAll[owner][msg.sender])) {
@@ -558,7 +560,6 @@ contract DittoMachine is ERC1155D, IERC721Receiver, IERC1155Receiver, CloneList,
         // no need to check if ditto is the owner of `id`,
         // as transfer fails in that case.
         IERC1155(msg.sender).safeTransferFrom(address(this), owner, id, 1, retData);
-
         return this.onERC1155Received.selector;
     }
 

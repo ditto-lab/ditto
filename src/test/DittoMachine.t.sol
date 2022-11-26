@@ -56,7 +56,7 @@ contract ContractTest is DittoTestBase {
         dm.duplicate(eoa1, nftAddr, nftId, currencyAddr, 1, false, 0);
 
         vm.expectRevert(abi.encodeWithSelector(DittoMachine.InvalidFloorId.selector));
-        dm.duplicate(eoa1, nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, true, 0);
+        dm.duplicate(eoa1, nftAddr, 1, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, true, 0);
 
         vm.stopPrank();
         // TODO: test revert when clone has been minted.
@@ -261,6 +261,16 @@ contract ContractTest is DittoTestBase {
         (uint cloneId, uint protoId) = dm.duplicate(eoa1, nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, index);
         vm.warp(block.timestamp+10);
         CloneShape memory shape1 = getCloneShape(cloneId);
+
+        vm.expectRevert(); // revert with invalid cloneId
+        dm.dissolve(protoId, 0);
+
+        vm.expectRevert(); // revert with invalid protoId
+        dm.dissolve(0, cloneId);
+
+        vm.expectRevert(); // revert with unminted cloneId
+        dm.dissolve(protoId, uint(keccak256(abi.encodePacked(protoId, index+1))) );
+
         // eoa1 should be able to dissolve the clone it owns
         dm.dissolve(protoId, cloneId);
         // ensure the clone is burned
