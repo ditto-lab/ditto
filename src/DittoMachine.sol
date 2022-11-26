@@ -1,13 +1,12 @@
 pragma solidity ^0.8.4;
 //SPDX-License-Identifier: MIT
 
-import {ERC721, ERC721TokenReceiver} from "@rari-capital/solmate/src/tokens/ERC721.sol";
-import {ERC1155, ERC1155TokenReceiver} from "@rari-capital/solmate/src/tokens/ERC1155.sol";
-import {ERC1155D} from "./ERC1155D.sol";
-import {ERC20} from "@rari-capital/solmate/src/utils/SafeTransferLib.sol";
-import {SafeTransferLib} from "./SafeTransferLib.sol";
-import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
+import {IERC721Receiver} from "@openzeppelin/contracts/interfaces/IERC721Receiver.sol";
+import {IERC721} from "@openzeppelin/contracts/interfaces/IERC721.sol";
 import {IERC2981, IERC165} from "@openzeppelin/contracts/interfaces/IERC2981.sol";
+import {ERC1155D, IERC1155, IERC1155Receiver} from "./ERC1155D.sol";
+import {SafeTransferLib, ERC20} from "./SafeTransferLib.sol";
+import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {Base64} from 'base64-sol/base64.sol';
 import {CloneList} from "./CloneList.sol";
@@ -23,7 +22,7 @@ import {DittoMachineSvg} from "./DittoMachineSvg.sol";
  * the right to ownership when it is sold via this contract. Anybody may buy the
  * token for a higher price and force a transfer from the previous owner to the new buyer.
  */
-contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, CloneList, BlockRefund, Oracle {
+contract DittoMachine is ERC1155D, IERC721Receiver, IERC1155Receiver, CloneList, BlockRefund, Oracle {
     /**
      * @notice Insufficient bid for purchasing a clone.
      * @dev thrown when the number of erc20 tokens sent is lower than
@@ -133,7 +132,12 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
         )));
 
         // hash protoId and index to get cloneId
-        cloneId = uint(keccak256(abi.encodePacked(protoId, index)));
+        // cloneId = keccak256(abi.encodePacked(protoId, index))
+        assembly ("memory-safe") {
+            mstore(0, protoId)
+            mstore(0x20, index)
+            cloneId := keccak256(0, 0x40)
+        }
 
         bool isIndexHead = index == protoIdToIndexHead[protoId];
         if (isIndexHead) {
@@ -153,13 +157,19 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
             uint128 value = _amount - subsidy;
 
             if (!floor) {
+                // computing floorId
                 uint floorId = uint(keccak256(abi.encodePacked(
                     _ERC721Contract,
                     FLOOR_ID,
                     _ERC20Contract,
                     true
                 )));
-                floorId = uint(keccak256(abi.encodePacked(floorId, index)));
+                // floorId = keccak256(abi.encodePacked(floorId, index))
+                assembly ("memory-safe") {
+                    mstore(0, floorId)
+                    mstore(0x20, index)
+                    floorId := keccak256(0, 0x40)
+                }
 
                 if (ownerOf[floorId] != address(0)) {
                     // check price of floor clone to get price floor
@@ -169,7 +179,13 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
             }
             if (!isIndexHead) { // check cloneId at prior index
                 // prev <- index
-                uint elderId = uint(keccak256(abi.encodePacked(protoId, protoIdToIndexToPrior[protoId][index])));
+                // elderId = keccak256(abi.encodePacked(protoId, protoIdToIndexToPrior[protoId][index]))
+                uint elderId = protoIdToIndexToPrior[protoId][index];
+                assembly ("memory-safe") {
+                    mstore(0, protoId)
+                    mstore(0x20, elderId)
+                    elderId := keccak256(0, 0x40)
+                }
                 // check value is less than clone closer to the index head
                 if (value > cloneIdToShape[elderId].worth) revert AmountInvalid();
             }
@@ -211,7 +227,13 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
                 uint128 value = _amount - subsidy; // will be applied to cloneShape.worth
                 if (!isIndexHead) { // check cloneId at prior index
                     // prev <- index
-                    uint elderId = uint(keccak256(abi.encodePacked(protoId, protoIdToIndexToPrior[protoId][index])));
+                    // elderId = keccak256(abi.encodePacked(protoId, protoIdToIndexToPrior[protoId][index]));
+                    uint elderId = protoIdToIndexToPrior[protoId][index];
+                    assembly ("memory-safe") {
+                        mstore(0, protoId)
+                        mstore(0x20, elderId)
+                        elderId := keccak256(0, 0x40)
+                    }
                     if (value > cloneIdToShape[elderId].worth) revert AmountInvalid();
                 }
                 uint128 termLength = BASE_TERM + TimeCurve.calc(heat);
@@ -279,7 +301,13 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
         }
 
         // move its subsidy to the next clone in the linked list even if it's not minted yet.
-        uint nextCloneId = uint(keccak256(abi.encodePacked(protoId, protoIdToIndexToAfter[protoId][index])));
+        // nextCloneId = keccak256(abi.encodePacked(protoId, protoIdToIndexToAfter[protoId][index]))
+        uint nextCloneId = protoIdToIndexToAfter[protoId][index];
+        assembly ("memory-safe") {
+            mstore(0, protoId)
+            mstore(0x20, nextCloneId)
+            nextCloneId := keccak256(0, 0x40)
+        }
         // invariant: cloneId != nextCloneId
         cloneIdToSubsidy[nextCloneId] += cloneIdToSubsidy[cloneId];
         delete cloneIdToSubsidy[cloneId];
@@ -322,7 +350,14 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
     }
 
     function observe(uint protoId, uint128[] calldata secondsAgos) external view returns (uint128[] memory cumulativePrices) {
-        uint cloneId = uint(keccak256(abi.encodePacked(protoId, protoIdToIndexHead[protoId])));
+        // cloneId = keccak256(abi.encodePacked(protoId, protoIdToIndexHead[protoId]))
+        uint cloneId = protoIdToIndexHead[protoId];
+        assembly ("memory-safe") {
+            mstore(0, protoId)
+            mstore(0x20, cloneId)
+            cloneId := keccak256(0, 0x40)
+        }
+
         return Oracle.observe(protoId, secondsAgos, cloneIdToShape[cloneId].worth);
     }
 
@@ -339,7 +374,15 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
             cloneShape.ERC20Contract,
             true
         )));
-        floorId = uint(keccak256(abi.encodePacked(floorId, protoIdToIndexHead[floorId])));
+        {
+            uint head = protoIdToIndexHead[floorId];
+            // floorId = keccak256(abi.encodePacked(floorId, head))
+            assembly ("memory-safe") {
+                mstore(0, floorId)
+                mstore(0x20, head)
+                floorId := keccak256(0, 0x40)
+            }
+        }
         uint128 floorPrice = cloneIdToShape[floorId].worth;
 
         if (intraBlock) {
@@ -393,7 +436,13 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
             ERC20Contract,
             false
         )));
-        uint cloneId = uint(keccak256(abi.encodePacked(protoId, protoIdToIndexHead[protoId])));
+        // cloneId = keccak256(abi.encodePacked(protoId, protoIdToIndexHead[protoId]))
+        uint cloneId = protoIdToIndexHead[protoId];
+        assembly ("memory-safe") {
+            mstore(0, protoId)
+            mstore(0x20, cloneId)
+            cloneId := keccak256(0, 0x40)
+        }
 
         {
             uint flotoId = uint(keccak256(abi.encodePacked( // floorId + protoId = flotoId
@@ -402,7 +451,13 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
                 ERC20Contract,
                 true
             )));
-            uint floorId = uint(keccak256(abi.encodePacked(flotoId, protoIdToIndexHead[flotoId])));
+            // floorId = keccak256(abi.encodePacked(flotoId, protoIdToIndexHead[flotoId]))
+            uint floorId = protoIdToIndexHead[flotoId];
+            assembly ("memory-safe") {
+                mstore(0, flotoId)
+                mstore(0x20, floorId)
+                floorId := keccak256(0, 0x40)
+            }
 
             if (
                 floor ||
@@ -483,7 +538,7 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
 
         // no need to check if ditto is the owner of `id`,
         // as transfer fails in that case.
-        ERC721(msg.sender).safeTransferFrom(address(this), owner, id, retData);
+        IERC721(msg.sender).safeTransferFrom(address(this), owner, id, retData);
         return this.onERC721Received.selector;
     }
 
@@ -502,7 +557,7 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
 
         // no need to check if ditto is the owner of `id`,
         // as transfer fails in that case.
-        ERC1155(msg.sender).safeTransferFrom(address(this), owner, id, 1, retData);
+        IERC1155(msg.sender).safeTransferFrom(address(this), owner, id, 1, retData);
 
         return this.onERC1155Received.selector;
     }
@@ -519,7 +574,7 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
         for (uint i=0; i < ids.length;) {
             if (amounts[i] != 1) revert AmountInvalid();
             (address owner, bytes memory retData) = onTokenReceived(from, ids[i], ERC20Contracts[i], floors[i]);
-            ERC1155(msg.sender).safeTransferFrom(address(this), owner, ids[i], 1, retData);
+            IERC1155(msg.sender).safeTransferFrom(address(this), owner, ids[i], 1, retData);
             unchecked { ++i; }
         }
 
@@ -556,8 +611,8 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
         // require statement copied from solmate ERC721 safeTransferFrom()
         require(
             to.code.length == 0 ||
-                ERC1155TokenReceiver(to).onERC1155Received(msg.sender, from, id, 1, "") ==
-                ERC1155TokenReceiver.onERC1155Received.selector,
+                IERC1155Receiver(to).onERC1155Received(msg.sender, from, id, 1, "") ==
+                IERC1155Receiver.onERC1155Received.selector,
             "UNSAFE_RECIPIENT"
         );
 
