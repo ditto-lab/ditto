@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.4;
 
-import "./TestBase.sol";
+import "./DittoTestBase.sol";
 
-contract ContractTest is TestBase {
+contract ContractTest is DittoTestBase {
 
     constructor() {}
 
