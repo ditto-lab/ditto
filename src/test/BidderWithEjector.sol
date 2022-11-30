@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.4;
 
-import {DittoMachine, IERC1155TokenEjector} from "../DittoMachine.sol";
+import {IERC1155TokenEjector} from "../DittoMachine.sol";
 import {Bidder} from "./Bidder.sol";
 contract BidderWithEjector is Bidder, IERC1155TokenEjector {
 

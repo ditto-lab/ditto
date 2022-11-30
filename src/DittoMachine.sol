@@ -1,12 +1,12 @@
 pragma solidity ^0.8.4;
 //SPDX-License-Identifier: MIT
 
-import {ERC721, ERC721TokenReceiver} from "@rari-capital/solmate/src/tokens/ERC721.sol";
-import {ERC1155, ERC1155TokenReceiver} from "@rari-capital/solmate/src/tokens/ERC1155.sol";
-import {ERC1155D} from "./ERC1155D.sol";
-import {SafeTransferLib, ERC20} from "@rari-capital/solmate/src/utils/SafeTransferLib.sol";
-import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
+import {IERC721Receiver} from "@openzeppelin/contracts/interfaces/IERC721Receiver.sol";
+import {IERC721} from "@openzeppelin/contracts/interfaces/IERC721.sol";
 import {IERC2981, IERC165} from "@openzeppelin/contracts/interfaces/IERC2981.sol";
+import {ERC1155D, IERC1155, IERC1155Receiver} from "./ERC1155D.sol";
+import {SafeTransferLib, ERC20} from "./SafeTransferLib.sol";
+import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {Base64} from 'base64-sol/base64.sol';
 import {CloneList} from "./CloneList.sol";
@@ -14,6 +14,7 @@ import {TimeCurve} from "./TimeCurve.sol";
 import {BlockRefund} from "./BlockRefund.sol";
 import {Oracle} from "./Oracle.sol";
 import {DittoMachineSvg} from "./DittoMachineSvg.sol";
+import {FallbackReceiver} from "./FallbackReceiver.sol";
 
 /**
  * @title NFT derivative exchange inspired by the SALSA concept.
@@ -22,7 +23,7 @@ import {DittoMachineSvg} from "./DittoMachineSvg.sol";
  * the right to ownership when it is sold via this contract. Anybody may buy the
  * token for a higher price and force a transfer from the previous owner to the new buyer.
  */
-contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, CloneList, BlockRefund, Oracle {
+contract DittoMachine is ERC1155D, IERC721Receiver, IERC1155Receiver, CloneList, BlockRefund, Oracle {
     /**
      * @notice Insufficient bid for purchasing a clone.
      * @dev thrown when the number of erc20 tokens sent is lower than
@@ -41,9 +42,8 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
     ////////////// CONSTANT VARIABLES //////////////
 
     bytes4 private constant _INTERFACE_ID_ERC2981 = 0x2a55205a;
-    bytes16 private constant _HEX_SYMBOLS = "0123456789abcdef";
 
-    uint internal constant FLOOR_ID = uint(0xfddc260aecba8a66725ee58da4ea3cbfcf4ab6c6ad656c48345a575ca18c45c9);
+    uint internal constant FLOOR_ID = 0;
 
     // ensure that CloneShape can always be casted to int128.
     // change the type to ensure this?
@@ -51,6 +51,8 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
     uint128 internal constant MIN_FEE = 32;
     uint128 internal constant DNOM = 2**16 - 1; // 65535
     uint128 internal constant MIN_AMOUNT_FOR_NEW_CLONE = BASE_TERM + (BASE_TERM * MIN_FEE / DNOM); // 262272
+
+    address public immutable fallbackReceiver;
 
     ////////////// STATE VARIABLES //////////////
 
@@ -77,7 +79,9 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
     // non transferrable vouchers for reward tokens
     mapping(uint => bool) public voucherValidity;
 
-    constructor() {}
+    constructor() {
+        fallbackReceiver = address(new FallbackReceiver(address(this)));
+    }
 
     ///////////////////////////////////////////
     ////////////// URI FUNCTIONS //////////////
@@ -135,13 +139,18 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
         )));
 
         // hash protoId and index to get cloneId
-        cloneId = uint(keccak256(abi.encodePacked(protoId, index)));
+        // cloneId = keccak256(abi.encodePacked(protoId, index))
+        assembly ("memory-safe") {
+            mstore(0, protoId)
+            mstore(0x20, index)
+            cloneId := keccak256(0, 0x40)
+        }
 
-        if (index == protoIdToIndexHead[protoId]) {
+        bool isIndexHead = index == protoIdToIndexHead[protoId];
+        if (isIndexHead) {
             Oracle.write(protoId, cloneIdToShape[cloneId].worth);
         }
 
-        address[1] memory r = [receiver];
         address curOwner = ownerOf[cloneId];
 
         if (curOwner == address(0)) {
@@ -150,25 +159,40 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
                 // if references have not been set by a previous clone this clone cannot be minted
                 revert IndexInvalid();
             }
-            uint floorId = uint(keccak256(abi.encodePacked(
-                _ERC721Contract,
-                FLOOR_ID,
-                _ERC20Contract,
-                true
-            )));
-            floorId = uint(keccak256(abi.encodePacked(floorId, index)));
 
             uint128 subsidy = (_amount * MIN_FEE / DNOM); // with current constants subsidy <= _amount
             uint128 value = _amount - subsidy;
 
-            if (cloneId != floorId && ownerOf[floorId] != address(0)) {
-                // check price of floor clone to get price floor
-                uint128 minAmount = cloneIdToShape[floorId].worth;
-                if (value < minAmount) revert AmountInvalid();
+            if (!floor) {
+                // computing floorId
+                uint floorId = uint(keccak256(abi.encodePacked(
+                    _ERC721Contract,
+                    FLOOR_ID,
+                    _ERC20Contract,
+                    true
+                )));
+                // floorId = keccak256(abi.encodePacked(floorId, index))
+                assembly ("memory-safe") {
+                    mstore(0, floorId)
+                    mstore(0x20, index)
+                    floorId := keccak256(0, 0x40)
+                }
+
+                if (ownerOf[floorId] != address(0)) {
+                    // check price of floor clone to get price floor
+                    uint128 minAmount = cloneIdToShape[floorId].worth;
+                    if (value < minAmount) revert AmountInvalid();
+                }
             }
-            if (index != protoIdToIndexHead[protoId]) { // check cloneId at prior index
+            if (!isIndexHead) { // check cloneId at prior index
                 // prev <- index
-                uint elderId = uint(keccak256(abi.encodePacked(protoId, protoIdToIndexToPrior[protoId][index])));
+                // elderId = keccak256(abi.encodePacked(protoId, protoIdToIndexToPrior[protoId][index]))
+                uint elderId = protoIdToIndexToPrior[protoId][index];
+                assembly ("memory-safe") {
+                    mstore(0, protoId)
+                    mstore(0x20, elderId)
+                    elderId := keccak256(0, 0x40)
+                }
                 // check value is less than clone closer to the index head
                 if (value > cloneIdToShape[elderId].worth) revert AmountInvalid();
             }
@@ -194,7 +218,7 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
                 address(this),
                 _amount
             );
-            _mintSingle(r[0], cloneId); // EXTERNAL CALL
+            _mintSingle(receiver, cloneId); // EXTERNAL CALL
 
         } else {
 
@@ -202,24 +226,30 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
             uint128 heat = cloneShape.heat;
 
             uint128 feeRefund = _getBlockRefund(cloneId); // check if bids have occured within the current block
-            uint128 minAmount = _getMinAmount(cloneShape, feeRefund != 0);
-            // calculate subsidy and worth values
-            uint128 subsidy = (_amount * (MIN_FEE * ((feeRefund == 0 ? 1 : 0) + heat))) / DNOM;
 
             // scoping to prevent "stack too deep" errors
             {
+                // calculate subsidy and worth values
+                uint128 subsidy = (_amount * (MIN_FEE * ((feeRefund == 0 ? 1 : 0) + heat))) / DNOM;
                 uint128 value = _amount - subsidy; // will be applied to cloneShape.worth
-                if (index != protoIdToIndexHead[protoId]) { // check cloneId at prior index
+                if (!isIndexHead) { // check cloneId at prior index
                     // prev <- index
-                    uint elderId = uint(keccak256(abi.encodePacked(protoId, protoIdToIndexToPrior[protoId][index])));
+                    // elderId = keccak256(abi.encodePacked(protoId, protoIdToIndexToPrior[protoId][index]));
+                    uint elderId = protoIdToIndexToPrior[protoId][index];
+                    assembly ("memory-safe") {
+                        mstore(0, protoId)
+                        mstore(0x20, elderId)
+                        elderId := keccak256(0, 0x40)
+                    }
                     if (value > cloneIdToShape[elderId].worth) revert AmountInvalid();
                 }
-                if (value < minAmount) revert AmountInvalid();
+                uint128 termLength = BASE_TERM + TimeCurve.calc(heat);
+                if (value < _getMinAmount(cloneShape, termLength, feeRefund != 0)) revert AmountInvalid();
 
                 // reduce heat relative to amount of time elapsed by auction
                 if (feeRefund == 0) { // if call is in same block as another keep the current heat
+                    feeRefund = subsidy >> 1;
                     if (cloneShape.term > block.timestamp) {
-                        uint128 termLength = BASE_TERM + TimeCurve.calc(heat);
                         uint128 elapsed = uint128(block.timestamp) - (cloneShape.term - termLength); // current time - time when the current term started
                         // add 1 to current heat so heat is not stuck at low value with anything but extreme demand for a clone
                         uint128 cool = (heat+1) * elapsed / termLength;
@@ -227,13 +257,20 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
                     } else {
                         heat = 1;
                     }
+                    termLength = BASE_TERM + TimeCurve.calc(heat);
                 }
-                issueVoucher(curOwner, cloneId, protoId, value);
+
+                _setBlockRefund(cloneId, subsidy);
+                // half of fee goes into subsidy pool, half to previous clone owner
+                // if in same block subsidy is not split and replaces refunded fees
+                cloneIdToSubsidy[cloneId] += subsidy - feeRefund;
+
+                issueVoucher(curOwner, cloneId, cloneShape, termLength, isIndexHead, value);
 
                 // calculate new clone term values
                 cloneIdToShape[cloneId].heat = uint8(heat); // does not inherit heat of floor id
                 cloneIdToShape[cloneId].worth = value;
-                cloneIdToShape[cloneId].term = uint128(block.timestamp) + BASE_TERM + TimeCurve.calc(heat);
+                cloneIdToShape[cloneId].term = uint128(block.timestamp) + termLength;
             }
 
             // paying required funds to this contract
@@ -244,26 +281,16 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
                 _amount
             );
 
-            // subtract subsidy refund from subsidy pool
-            cloneIdToSubsidy[cloneId] -= feeRefund;
-
-            {
-                _setBlockRefund(cloneId, subsidy);
-            }
-            // half of fee goes into subsidy pool, half to previous clone owner
-            // if in same block subsidy is not split and replaces refunded fees
-            cloneIdToSubsidy[cloneId] += feeRefund == 0 ? (subsidy >> 1) : subsidy;
-
             SafeTransferLib.safeTransfer( // EXTERNAL CALL
                 ERC20(_ERC20Contract),
                 curOwner,
                 // previous clone value + half of subsidy sent to prior clone owner
                 // clone's worth is refunded here
                 // fees are completely refunded if in same block as another bid
-                (cloneShape.worth + (feeRefund == 0 ? ((subsidy >> 1) + (subsidy & 1)) : feeRefund) )
+                cloneShape.worth + feeRefund
             );
             // force transfer from current owner to new highest bidder
-            forceSafeTransferFrom(curOwner, r[0], cloneId); // EXTERNAL CALL
+            forceSafeTransferFrom(curOwner, receiver, cloneId); // EXTERNAL CALL
         }
     }
 
@@ -274,6 +301,8 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
      */
     function dissolve(uint protoId, uint cloneId) external returns (bool) {
         uint index = cloneIdToIndex[cloneId];
+        if (uint(keccak256(abi.encodePacked(protoId, index))) != cloneId) revert();
+
         address owner = ownerOf[cloneId];
         if (!(msg.sender == owner
                 || isApprovedForAll[owner][msg.sender])) {
@@ -281,15 +310,21 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
         }
 
         // move its subsidy to the next clone in the linked list even if it's not minted yet.
-        uint nextCloneId = uint(keccak256(abi.encodePacked(protoId, protoIdToIndexToAfter[protoId][index])));
+        // nextCloneId = keccak256(abi.encodePacked(protoId, protoIdToIndexToAfter[protoId][index]))
+        uint nextCloneId = protoIdToIndexToAfter[protoId][index];
+        assembly ("memory-safe") {
+            mstore(0, protoId)
+            mstore(0x20, nextCloneId)
+            nextCloneId := keccak256(0, 0x40)
+        }
         // invariant: cloneId != nextCloneId
         cloneIdToSubsidy[nextCloneId] += cloneIdToSubsidy[cloneId];
         delete cloneIdToSubsidy[cloneId];
 
-        CloneShape memory cloneShape = cloneIdToShape[cloneId];
+        uint128 worth = cloneIdToShape[cloneId].worth;
 
         if (index == protoIdToIndexHead[protoId]) {
-            Oracle.write(protoId, cloneIdToShape[cloneId].worth);
+            Oracle.write(protoId, worth);
         }
 
         popListIndex(protoId, index);
@@ -299,20 +334,44 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
 
         _burn(owner, cloneId);
         SafeTransferLib.safeTransfer( // EXTERNAL CALL
-            ERC20(cloneShape.ERC20Contract),
+            ERC20(cloneIdToShape[cloneId].ERC20Contract),
             owner,
-            cloneShape.worth
+            worth
         );
         return true;
+    }
+
+    function bumpSubsidy(address nft, uint id, address ERC20Contract, bool floor, uint128 amount) external {
+        uint protoId = uint(keccak256(abi.encodePacked(
+            nft,
+            id,
+            ERC20Contract,
+            false
+        )));
+        uint cloneId = protoIdToIndexHead[protoId];
+        assembly ("memory-safe") {
+            mstore(0, protoId)
+            mstore(0x20, cloneId)
+            cloneId := keccak256(0, 0x40)
+        }
+
+        SafeTransferLib.safeTransferFrom(
+            ERC20(ERC20Contract),
+            msg.sender,
+            address(this),
+            amount
+        );
+        cloneIdToSubsidy[cloneId] += amount;
     }
 
     function getMinAmountForCloneTransfer(uint cloneId) external view returns (uint128) {
         if(ownerOf[cloneId] == address(0)) {
             return MIN_AMOUNT_FOR_NEW_CLONE;
         }
-        CloneShape memory cloneShape = cloneIdToShape[cloneId];
         bool intraBlock = _getBlockRefund(cloneId) != 0;
-        uint128 _minAmount = _getMinAmount(cloneShape, intraBlock);
+        CloneShape memory cloneShape = cloneIdToShape[cloneId];
+        uint128 termLength = BASE_TERM + TimeCurve.calc(cloneShape.heat);
+        uint128 _minAmount = _getMinAmount(cloneShape, termLength, intraBlock);
         // calculate fee multiplier with heat, if in active bidding block do not add 1.
         uint128 minFeeHeat = (MIN_FEE * ((intraBlock ? 0:1) + cloneShape.heat));
         // calculate fee needed from min value. Do not devide my DNOM as to not loose percision.
@@ -323,7 +382,14 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
     }
 
     function observe(uint protoId, uint128[] calldata secondsAgos) external view returns (uint128[] memory cumulativePrices) {
-        uint cloneId = uint(keccak256(abi.encodePacked(protoId, protoIdToIndexHead[protoId])));
+        // cloneId = keccak256(abi.encodePacked(protoId, protoIdToIndexHead[protoId]))
+        uint cloneId = protoIdToIndexHead[protoId];
+        assembly ("memory-safe") {
+            mstore(0, protoId)
+            mstore(0x20, cloneId)
+            cloneId := keccak256(0, 0x40)
+        }
+
         return Oracle.observe(protoId, secondsAgos, cloneIdToShape[cloneId].worth);
     }
 
@@ -333,14 +399,22 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
      * @param cloneShape clone for which to compute the minimum amount.
      * @dev only use it for a minted clone.
      */
-    function _getMinAmount(CloneShape memory cloneShape, bool intraBlock) internal view returns (uint128) {
+    function _getMinAmount(CloneShape memory cloneShape, uint128 termLength, bool intraBlock) internal view returns (uint128) {
         uint floorId = uint(keccak256(abi.encodePacked(
             cloneShape.ERC721Contract,
             FLOOR_ID,
             cloneShape.ERC20Contract,
             true
         )));
-        floorId = uint(keccak256(abi.encodePacked(floorId, protoIdToIndexHead[floorId])));
+        {
+            uint head = protoIdToIndexHead[floorId];
+            // floorId = keccak256(abi.encodePacked(floorId, head))
+            assembly ("memory-safe") {
+                mstore(0, floorId)
+                mstore(0x20, head)
+                floorId := keccak256(0, 0x40)
+            }
+        }
         uint128 floorPrice = cloneIdToShape[floorId].worth;
 
         if (intraBlock) {
@@ -348,31 +422,28 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
             return floorPrice > cloneShape.worth ? floorPrice : cloneShape.worth;
         }
 
-        uint128 timeLeft = 0;
-        unchecked {
-            if (cloneShape.term > block.timestamp) {
+        uint128 clonePrice = cloneShape.worth;
+        if (cloneShape.term > block.timestamp) {
+            uint128 timeLeft;
+            unchecked {
                 timeLeft = cloneShape.term - uint128(block.timestamp);
             }
+            clonePrice += clonePrice * timeLeft / termLength;
         }
-        uint128 termLength = BASE_TERM + TimeCurve.calc(cloneShape.heat);
-        uint128 clonePrice = cloneShape.worth + (cloneShape.worth * timeLeft / termLength);
         // return floor price if greater than clone auction price
         return floorPrice > clonePrice ? floorPrice : clonePrice;
     }
 
-    function issueVoucher(address to, uint cloneId, uint protoId, uint128 value) private {
+    function issueVoucher(address to, uint cloneId, CloneShape memory shape, uint128 termLength, bool isIndexHead, uint128 value) private {
 
-        uint128 termLength = BASE_TERM + TimeCurve.calc(cloneIdToShape[cloneId].heat);
-
-        bool isIndexHead = uint(keccak256(abi.encodePacked(protoId, protoIdToIndexHead[protoId]))) == cloneId;
         uint voucher = uint(keccak256(abi.encodePacked(
             isIndexHead,
             cloneId, // encodes: protoId (nft contract, token id, erc20 contract, if floor), index
             to,
-            cloneIdToShape[cloneId].heat,
-            cloneIdToShape[cloneId].worth, // old value of the clone
+            shape.heat,
+            shape.worth, // old value of the clone
             value, // new value of the clone
-            cloneIdToShape[cloneId].term - termLength,
+            shape.term - termLength,
             uint128(block.timestamp)
         )));
 
@@ -389,33 +460,46 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
         address from,
         uint id,
         address ERC20Contract,
-        bool floor,
-        bool isERC1155
-    ) private {
+        bool floor
+    ) private returns (address, bytes memory) {
         uint protoId = uint(keccak256(abi.encodePacked(
             msg.sender, // ERC721 or ERC1155 Contract address
             id,
             ERC20Contract,
             false
         )));
-        uint cloneId = uint(keccak256(abi.encodePacked(protoId, protoIdToIndexHead[protoId])));
+        // cloneId = keccak256(abi.encodePacked(protoId, protoIdToIndexHead[protoId]))
+        uint cloneId = protoIdToIndexHead[protoId];
+        assembly ("memory-safe") {
+            mstore(0, protoId)
+            mstore(0x20, cloneId)
+            cloneId := keccak256(0, 0x40)
+        }
 
-        uint flotoId = uint(keccak256(abi.encodePacked( // floorId + protoId = flotoId
-            msg.sender,
-            FLOOR_ID,
-            ERC20Contract,
-            true
-        )));
-        uint floorId = uint(keccak256(abi.encodePacked(flotoId, protoIdToIndexHead[flotoId])));
+        {
+            uint flotoId = uint(keccak256(abi.encodePacked( // floorId + protoId = flotoId
+                msg.sender,
+                FLOOR_ID,
+                ERC20Contract,
+                true
+            )));
+            // floorId = keccak256(abi.encodePacked(flotoId, protoIdToIndexHead[flotoId]))
+            uint floorId = protoIdToIndexHead[flotoId];
+            assembly ("memory-safe") {
+                mstore(0, flotoId)
+                mstore(0x20, floorId)
+                floorId := keccak256(0, 0x40)
+            }
 
-        if (
-            floor ||
-            ownerOf[cloneId] == address(0) ||
-            cloneIdToShape[floorId].worth > cloneIdToShape[cloneId].worth
-        ) {
-            // if cloneId is not active, check floor clone
-            cloneId = floorId;
-            protoId = flotoId;
+            if (
+                floor ||
+                ownerOf[cloneId] == address(0) ||
+                cloneIdToShape[floorId].worth > cloneIdToShape[cloneId].worth
+            ) {
+                // if cloneId is not active, check floor clone
+                cloneId = floorId;
+                protoId = flotoId;
+            }
         }
         address owner = ownerOf[cloneId];
         // if no cloneId is active, revert
@@ -429,48 +513,44 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
         delete cloneIdToSubsidy[cloneId];
         _burn(owner, cloneId);
 
+        // token can only be sold to the clone at the index head
+        uint index = protoIdToIndexHead[protoId];
+        popListHead(protoId);
+
+        try IERC165(msg.sender).supportsInterface(_INTERFACE_ID_ERC2981) returns (bool isRoyalty) {
+            if (isRoyalty) {
+                try IERC2981(msg.sender).royaltyInfo(id, worth) returns (address receiver, uint royaltyAmount) {
+                    if (receiver != address(0) && royaltyAmount > 0 && royaltyAmount < worth) {
+                        worth -= uint128(royaltyAmount);
+                        SafeTransferLib.safeTransfer(
+                            ERC20(ERC20Contract),
+                            receiver,
+                            royaltyAmount
+                        );
+                    }
+                } catch {}
+            }
+        } catch {}
+
+        SafeTransferLib.safeTransfer(
+            ERC20(ERC20Contract),
+            from,
+            worth + subsidy
+        );
+
         // send useful data along with safe transfer to sontracts
         bytes memory data = abi.encode(
             // NFT contract address is sent as msg.sender with function call
             // NFT ID is sent with function call
             ERC20Contract,
             floor,
-            protoIdToIndexHead[protoId], // index
+            index,
             owner,
             worth,
             subsidy
         );
 
-        // token can only be sold to the clone at the index head
-        popListHead(protoId);
-
-        if (isERC1155) {
-            if (ERC1155(msg.sender).balanceOf(address(this), id) < 1) revert NFTNotReceived();
-            ERC1155(msg.sender).safeTransferFrom(address(this), owner, id, 1, data);
-        } else {
-            if (ERC721(msg.sender).ownerOf(id) != address(this)) revert NFTNotReceived();
-            ERC721(msg.sender).safeTransferFrom(address(this), owner, id, data);
-        }
-
-        if (IERC165(msg.sender).supportsInterface(_INTERFACE_ID_ERC2981)) {
-            (address receiver, uint royaltyAmount) = IERC2981(msg.sender).royaltyInfo(
-                id,
-                worth
-            );
-            if (receiver != address(0) && royaltyAmount > 0 && royaltyAmount < type(uint128).max) {
-                worth -= uint128(royaltyAmount);
-                SafeTransferLib.safeTransfer(
-                    ERC20(ERC20Contract),
-                    receiver,
-                    royaltyAmount
-                );
-            }
-        }
-        SafeTransferLib.safeTransfer(
-            ERC20(ERC20Contract),
-            from,
-            worth + subsidy
-        );
+        return (owner, data);
     }
 
     /**
@@ -487,8 +567,13 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
     ) external returns (bytes4) {
         (address ERC20Contract, bool floor) = abi.decode(data, (address, bool));
 
-        onTokenReceived(from, id, ERC20Contract, floor, false);
+        (address owner, bytes memory retData) = onTokenReceived(from, id, ERC20Contract, floor);
 
+        if (IERC721(msg.sender).ownerOf(id) != address(this)) revert NFTNotReceived();
+        try IERC721(msg.sender).safeTransferFrom(address(this), owner, id, retData) {}
+        catch {
+            IERC721(msg.sender).safeTransferFrom(address(this), fallbackReceiver, id, retData);
+        }
         return this.onERC721Received.selector;
     }
 
@@ -503,7 +588,13 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
         // address ERC1155Contract = msg.sender;
         (address ERC20Contract, bool floor) = abi.decode(data, (address, bool));
 
-        onTokenReceived(from, id, ERC20Contract, floor, true);
+        (address owner, bytes memory retData) = onTokenReceived(from, id, ERC20Contract, floor);
+
+        if (IERC1155(msg.sender).balanceOf(address(this), id) < 1) revert NFTNotReceived();
+        try IERC1155(msg.sender).safeTransferFrom(address(this), owner, id, 1, retData) {}
+        catch {
+            IERC1155(msg.sender).safeTransferFrom(address(this), fallbackReceiver, id, 1, retData);
+        }
 
         return this.onERC1155Received.selector;
     }
@@ -515,14 +606,17 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
         uint[] calldata amounts,
         bytes calldata data
     ) external returns (bytes4) {
-        for (uint i=0; i < amounts.length; i++) {
-            if (amounts[i] != 1) revert AmountInvalid();
-        }
-
         (address[] memory ERC20Contracts, bool[] memory floors) = abi.decode(data, (address[], bool[]));
 
-        for (uint i=0; i < ids.length; i++) {
-            onTokenReceived(from, ids[i], ERC20Contracts[i], floors[i], true);
+        for (uint i=0; i < ids.length;) {
+            if (amounts[i] != 1) revert AmountInvalid();
+            (address owner, bytes memory retData) = onTokenReceived(from, ids[i], ERC20Contracts[i], floors[i]);
+            if (IERC1155(msg.sender).balanceOf(address(this), ids[i]) < 1) revert NFTNotReceived();
+            try IERC1155(msg.sender).safeTransferFrom(address(this), owner, ids[i], 1, retData) {}
+            catch {
+                IERC1155(msg.sender).safeTransferFrom(address(this), fallbackReceiver, ids[i], 1, retData);
+            }
+            unchecked { ++i; }
         }
 
         return this.onERC1155BatchReceived.selector;
@@ -558,8 +652,8 @@ contract DittoMachine is ERC1155D, ERC721TokenReceiver, ERC1155TokenReceiver, Cl
         // require statement copied from solmate ERC721 safeTransferFrom()
         require(
             to.code.length == 0 ||
-                ERC1155TokenReceiver(to).onERC1155Received(msg.sender, from, id, 1, "") ==
-                ERC1155TokenReceiver.onERC1155Received.selector,
+                IERC1155Receiver(to).onERC1155Received(msg.sender, from, id, 1, "") ==
+                IERC1155Receiver.onERC1155Received.selector,
             "UNSAFE_RECIPIENT"
         );
 

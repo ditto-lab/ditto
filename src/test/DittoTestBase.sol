@@ -2,22 +2,25 @@
 pragma solidity ^0.8.4;
 
 import "forge-std/Test.sol";
-import "../DittoMachine.sol";
-import "@openzeppelin/contracts/utils/Strings.sol";
-import {Bidder, DittoMachine} from "./Bidder.sol";
+import {DittoMachine, TimeCurve} from "../DittoMachine.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
+import {Bidder} from "./Bidder.sol";
 import {BidderWithEjector, BidderWithBadEjector, BidderWithGassyEjector} from "./BidderWithEjector.sol";
 import {ERC721, IERC2981, UnderlyingNFTWithRoyalties, UnderlyingNFT, UnderlyingNFT1155} from "./UnderlyingNFTWithRoyalties.sol";
 
 
+// reverts on transfer to 0 address since some production tokens,
+// like USDC, revert in this case.
 contract Currency is ERC20 {
-    constructor() ERC20("Currency", "CRY", 18) {}
+    constructor() ERC20("Currency", "CRY") {}
 
     function mint(address to, uint amount) external {
         _mint(to, amount);
     }
 }
 
-contract TestBase is Test, DittoMachine {
+contract DittoTestBase is Test, DittoMachine {
     uint constant INIT_TIME = 1644911858;
 
     DittoMachine dm;
