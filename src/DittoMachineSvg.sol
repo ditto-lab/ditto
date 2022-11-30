@@ -17,7 +17,7 @@ library DittoMachineSvg {
     ////////////// URI FUNCTIONS //////////////
     ///////////////////////////////////////////
 
-    function tokenURI(uint id, address token, address nft, address owner, uint nftId, bool floor) public view returns (string memory) {
+    function tokenURI(uint id, address /*token*/, address nft, address owner, uint nftId, bool floor) public view returns (string memory) {
 
         if (!floor) {
             // if clone is not a floor return underlying token uri

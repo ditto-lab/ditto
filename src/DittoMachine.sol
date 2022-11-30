@@ -346,7 +346,7 @@ contract DittoMachine is ERC1155D, IERC721Receiver, IERC1155Receiver, CloneList,
             nft,
             id,
             ERC20Contract,
-            false
+            floor
         )));
         uint cloneId = protoIdToIndexHead[protoId];
         assembly ("memory-safe") {
