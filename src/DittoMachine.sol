@@ -329,7 +329,6 @@ contract DittoMachine is ERC1155D, IERC721Receiver, IERC1155Receiver, CloneList,
 
         popListIndex(protoId, index);
 
-        delete cloneIdToShape[cloneId];
         delete cloneIdToIndex[cloneId];
 
         _burn(owner, cloneId);
@@ -338,6 +337,7 @@ contract DittoMachine is ERC1155D, IERC721Receiver, IERC1155Receiver, CloneList,
             owner,
             worth
         );
+        delete cloneIdToShape[cloneId];
         return true;
     }
 
