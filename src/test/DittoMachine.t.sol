@@ -58,6 +58,9 @@ contract ContractTest is DittoTestBase {
         vm.expectRevert(abi.encodeWithSelector(DittoMachine.InvalidFloorId.selector));
         dm.duplicate(eoa1, nftAddr, 1, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, true, 0);
 
+        vm.expectRevert(abi.encodeWithSelector(DittoMachine.ZeroAddress.selector));
+        dm.duplicate(address(0), nftAddr, nftId, currencyAddr, MIN_AMOUNT_FOR_NEW_CLONE, false, 0);
+
         vm.stopPrank();
         // TODO: test revert when clone has been minted.
     }

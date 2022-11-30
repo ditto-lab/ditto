@@ -37,6 +37,7 @@ contract DittoMachine is ERC1155D, IERC721Receiver, IERC1155Receiver, CloneList,
     error IndexInvalid();
     error NFTNotReceived();
     error NotAuthorized();
+    error ZeroAddress();
 
     ////////////// CONSTANT VARIABLES //////////////
 
@@ -124,6 +125,7 @@ contract DittoMachine is ERC1155D, IERC721Receiver, IERC1155Receiver, CloneList,
         bool floor,
         uint index
     ) external returns (uint cloneId, uint protoId) {
+        if (receiver == address(0)) revert ZeroAddress();
         // ensure enough funds to do some math on
         if (_amount < MIN_AMOUNT_FOR_NEW_CLONE) revert AmountInvalidMin();
         if (floor && _tokenId != FLOOR_ID) revert InvalidFloorId();
@@ -300,7 +302,7 @@ contract DittoMachine is ERC1155D, IERC721Receiver, IERC1155Receiver, CloneList,
     function dissolve(uint protoId, uint cloneId) external returns (bool) {
         uint index = cloneIdToIndex[cloneId];
         if (uint(keccak256(abi.encodePacked(protoId, index))) != cloneId) revert();
-        
+
         address owner = ownerOf[cloneId];
         if (!(msg.sender == owner
                 || isApprovedForAll[owner][msg.sender])) {
