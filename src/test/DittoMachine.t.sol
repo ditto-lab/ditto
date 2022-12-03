@@ -274,8 +274,11 @@ contract ContractTest is DittoTestBase {
         vm.expectRevert(); // revert with unminted cloneId
         dm.dissolve(protoId, uint(keccak256(abi.encodePacked(protoId, index+1))) );
 
+        uint subsidy = uint(dm.cloneIdToSubsidy(cloneId));
         // eoa1 should be able to dissolve the clone it owns
         dm.dissolve(protoId, cloneId);
+        assertEq(currency.balanceOf(dmAddr), subsidy, "testDissolve_e1");
+        assertEq(currency.balanceOf(eoa1), type(uint).max - subsidy, "testDissolve_e2");
         // ensure the clone is burned
         assertEq(dm.ownerOf(cloneId), address(0));
         {
